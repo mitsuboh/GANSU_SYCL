@@ -1,7 +1,7 @@
-# Quantum GANSU 
+# GANSU 
 
 ## Overview
-Quantum GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum chemistry software designed for high-performance computations on modern computing architectures. This software aims to accelerate quantum chemistry simulations using advanced computational techniques such as GPU parallelization and efficient algorithms.
+GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum chemistry software designed for high-performance computations on modern computing architectures. This software aims to accelerate quantum chemistry simulations using advanced computational techniques such as GPU parallelization and efficient algorithms.
 
 ## Features
 * Hartree-Fock Methods: Includes RHF, UHF, and ROHF implementations.
