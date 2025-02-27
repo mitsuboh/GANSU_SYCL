@@ -188,7 +188,7 @@ convergence_method = OptimalDamping
 ## License [![BSD 3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-orange)](https://opensource.org/licenses/BSD-3-Clause)
 
 
-Quantum GANSU (GPU Accelerated Numerical Simulation Utility)
+GANSU (GPU Accelerated Numerical Simulation Utility)
 
 Copyright (c) 2025, Hiroshima University and Fujitsu Limited All rights reserved.
 
