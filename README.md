@@ -116,9 +116,15 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 
 ### Build instructions
 1. Copy the source code.
+``` bash
+git clone https://github.com/Yasuaki-Ito/GANSU.git
+```
+
 2. Create a build directory and configure the build using CMake:
 ``` bash
-mkdir build && cd build
+cd GANSU
+mkdir build
+cd build
 cmake ..
 ```
 3. Build the software using the generated Makefile:
