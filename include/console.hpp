@@ -1,5 +1,5 @@
 /*
- * Quantum GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Acclerated Numerical Simulation Utility
  *
  * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
  * All rights reserved.
@@ -11,7 +11,6 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-
 
 #pragma once
 
