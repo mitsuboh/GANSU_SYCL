@@ -207,5 +207,5 @@ https://opensource.org/licenses/BSD-3-Clause
 ## Additional Resources (Japanese)
 A series of articles explaining how to use Quantum GANSU in Japanese is available on Zenn:
 
-https://zenn.dev/comp_lab/articles/e809e6e01c4be4
+* [GANSUで始める量子化学計算：とりあえず動かしてみよう！](https://zenn.dev/comp_lab/articles/e809e6e01c4be4)
 
