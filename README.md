@@ -202,3 +202,10 @@ This software is licensed under the BSD 3-Clause License.
 You may obtain a copy of the license in the LICENSE file
 located in the root directory of this source tree or at:
 https://opensource.org/licenses/BSD-3-Clause
+
+
+## Additional Resources (Japanese)
+A series of articles explaining how to use Quantum GANSU in Japanese is available on Zenn:
+
+https://zenn.dev/comp_lab/articles/e809e6e01c4be4
+
