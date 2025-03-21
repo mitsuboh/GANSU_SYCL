@@ -208,4 +208,4 @@ https://opensource.org/licenses/BSD-3-Clause
 A series of articles explaining how to use GANSU in Japanese is available on Zenn:
 
 * [GANSUで始める量子化学計算：とりあえず動かしてみよう！](https://zenn.dev/comp_lab/articles/e809e6e01c4be4)
-
+* [GANSUで始める量子化学計算: 水素分子の結合距離を求めてみる](https://zenn.dev/comp_lab/articles/4ee21a1d0d0b28)
