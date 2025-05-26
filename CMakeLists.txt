@@ -68,8 +68,8 @@ target_link_libraries(HF_main
 
 
 
-add_executable(demo src/demo.cu ${SOURCES})
-target_link_libraries(demo
+add_executable(GeometryOptimization src/GeometryOptimization.cu ${SOURCES})
+target_link_libraries(GeometryOptimization
         gansu
     )
 

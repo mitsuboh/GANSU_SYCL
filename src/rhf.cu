@@ -114,24 +114,25 @@ void RHF::precompute_eri_matrix(){
  * @brief Function to guess the initial Fock matrix
  * @param density_matrix_a Density matrix (alpha-spin)
  * @param density_matrix_b Density matrix (beta-spin)
+ * @param force_density Initialized by the precomputed density matrix
  * @details This function calculates the initial Fock matrix using the core Hamiltonian matrix.
  */
-void RHF::guess_initial_fock_matrix(const real_t* density_matrix_a, const real_t* density_matrix_b) {
+void RHF::guess_initial_fock_matrix(const real_t* density_matrix_a, const real_t* density_matrix_b, bool force_density) {
     PROFILE_FUNCTION();
 
     std::unique_ptr<InitialGuess_RHF> initial_guess; // the life time is only here since initial guess is performed only once
 
-    if(initail_guess_method_ == "core"){ // core Hamiltonian matrix
-        initial_guess = std::make_unique<InitialGuess_RHF_Core>(*this);
-    }else if(initail_guess_method_ == "gwh"){ // Generalized Wolfsberg-Helmholz (GWH) method
-        initial_guess = std::make_unique<InitialGuess_RHF_GWH>(*this);
-    }else if(initail_guess_method_ == "density"){ // Superposition of Atomic Densities (SAD) method
+    if(force_density == true || initail_guess_method_ == "density"){ // Inititialized by precomputed density matrices
         if(density_matrix_a == nullptr || density_matrix_b == nullptr){
-            std::cerr << "The density matrix is not provided even though ``density'' is set to ``initail_guess_method''. The core Hamiltonian matrix is used instead." << std::endl;
+            std::cerr << "The density matrix is not provided even though ``density'' is set to ``initail_guess_method'' or forced_density = true. The core Hamiltonian matrix is used instead." << std::endl;
             initial_guess = std::make_unique<InitialGuess_RHF_Core>(*this);
         }else{
             initial_guess = std::make_unique<InitialGuess_RHF_Density>(*this, density_matrix_a, density_matrix_b);
         }
+    }else if(initail_guess_method_ == "core"){ // core Hamiltonian matrix
+        initial_guess = std::make_unique<InitialGuess_RHF_Core>(*this);
+    }else if(initail_guess_method_ == "gwh"){ // Generalized Wolfsberg-Helmholz (GWH) method
+        initial_guess = std::make_unique<InitialGuess_RHF_GWH>(*this);
     }else if(initail_guess_method_ == "sad"){ // Superposition of Atomic Densities (SAD) method
         if(gbsfilename_ == ""){
             throw std::runtime_error("If ``sad'' is set to ``initail_guess_method'', the basis set file should be provided by setting the file path to ``gbsfilename''.");
@@ -258,7 +259,9 @@ void RHF::export_density_matrix(real_t* density_matrix_a, real_t* density_martix
     if(num_basis != this->num_basis){
         throw std::runtime_error("The number of basis functions is different.");
     }
-
+    if(density_matrix_a == nullptr || density_martix_b == nullptr){
+        throw std::runtime_error("The density matrix is not provided.");
+    }
     // copy the density matrix to the host memory
     density_matrix.toHost();
     for(size_t i=0; i<num_basis; i++){
@@ -359,11 +362,6 @@ void RHF::export_molden_file(const std::string& filename) {
     ofs.close();
 
 }
-
-
-
-
-
 
 
 

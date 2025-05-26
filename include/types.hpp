@@ -137,7 +137,8 @@ struct PrimitiveShell {
     Coordinate coordinate; ///< Center coordinate of the primitive shell
     int shell_type; ///< Azimuthal quantum number, 0=s, 1=p, 2=d, 3=f, ...
     size_t basis_index; ///< basis index (consecutive index) through all the basis functions
-    real_t cgto_normalize_factor; ///< Normalization factor of CGTO
+//    real_t cgto_normalize_factor; ///< Normalization factor of CGTO
+    int atom_index; ///< Atom index (atom index in the molecule)
 };
 
 

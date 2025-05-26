@@ -269,15 +269,14 @@ void nuclear_attraction_OSff(double* g_nucattr, PrimitiveShell *g_shell, real_t*
                            size_t num_threads,
                            int num_basis, double* g_boys_grid);
 
-
+// 2025-05-26 define a function to target matrices
+__global__ void Matrix_Symmetrization(double* matrix, int n);
 
 // define the kernel functions as function pointers for one electron integrals
 using overlap_kinect_kernel_t     = void (*)(real_t*, real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, size_t, int);
 using nuclear_attraction_kernel_t = void (*)(real_t*, PrimitiveShell*, real_t*, Atom*, int, ShellTypeInfo, ShellTypeInfo, size_t, int, real_t*);
 
 inline overlap_kinect_kernel_t get_overlap_kinetic_kernel(int a, int b){
-    if(a>b) std::swap(a, b);
-
     int flag=0;
 
     if(flag){
@@ -309,8 +308,6 @@ inline overlap_kinect_kernel_t get_overlap_kinetic_kernel(int a, int b){
 }
 
 inline nuclear_attraction_kernel_t get_nuclear_attraction_kernel(int a, int b){
-    if(a>b) std::swap(a, b);
-
     int flag=0;
 
     if(flag){

@@ -115,12 +115,19 @@ void UHF::precompute_eri_matrix(){
   * @brief Function to guess the initial Fock matrix
   * @details This function calculates the initial Fock matrix using the core Hamiltonian matrix.
   */
- void UHF::guess_initial_fock_matrix(const real_t* density_matrix_a, const real_t* density_matrix_b) {
+ void UHF::guess_initial_fock_matrix(const real_t* density_matrix_a, const real_t* density_matrix_b, bool force_density) {
     PROFILE_FUNCTION();
 
     std::unique_ptr<InitialGuess_UHF> initial_guess; // the life time is only here since initial guess is performed only once
 
-    if(initail_guess_method_ == "core"){ // core Hamiltonian matrix
+    if(force_density == true || initail_guess_method_ == "density"){ // initialized by the precomputed density matrix
+        if(density_matrix_a == nullptr || density_matrix_b == nullptr){
+            std::cerr << "The density matrix is not provided even though ``density'' is set to ``initail_guess_method'' or force_density=true. The core Hamiltonian matrix is used instead." << std::endl;
+            initial_guess = std::make_unique<InitialGuess_UHF_Core>(*this);
+        }else{
+            initial_guess = std::make_unique<InitialGuess_UHF_Density>(*this, density_matrix_a, density_matrix_b);
+        }
+    }else if(initail_guess_method_ == "core"){ // core Hamiltonian matrix
 
         initial_guess = std::make_unique<InitialGuess_UHF_Core>(*this);
 
@@ -128,13 +135,6 @@ void UHF::precompute_eri_matrix(){
 
         initial_guess = std::make_unique<InitialGuess_UHF_GWH>(*this);
     
-    }else if(initail_guess_method_ == "density"){ // initial guess using the density matrix
-        if(density_matrix_a == nullptr || density_matrix_b == nullptr){
-            std::cerr << "The density matrix is not provided even though ``density'' is set to ``initail_guess_method''. The core Hamiltonian matrix is used instead." << std::endl;
-            initial_guess = std::make_unique<InitialGuess_UHF_Core>(*this);
-        }else{
-            initial_guess = std::make_unique<InitialGuess_UHF_Density>(*this, density_matrix_a, density_matrix_b);
-        }
     }else if(initail_guess_method_ == "sad"){ // Superposition of Atomic Densities (SAD) method
         if(gbsfilename_ == ""){
             THROW_EXCEPTION("If ``sad'' is set to ``initail_guess_method'', the basis set file should be provided by setting the file path to ``gbsfilename''.");

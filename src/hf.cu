@@ -63,7 +63,9 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     verbose(parameters.get<int>("verbose")),
     max_iter(parameters.get<int>("maxiter")),
     convergence_energy_threshold(parameters.get<double>("convergence_energy_threshold")),
-    schwarz_screening_threshold(parameters.get<double>("schwarz_screening_threshold"))
+    schwarz_screening_threshold(parameters.get<double>("schwarz_screening_threshold")),
+    geometry_optimization(parameters.get<int>("geometry_optimization")),
+    geometry_optimization_method(parameters.get<std::string>("geometry_optimization_method"))
 {
     // print all the values of boys function for the test (temporary implementation)
     if(verbose){
@@ -225,9 +227,7 @@ void HF::compute_transform_matrix(){
 }
 
 
-
-
-real_t HF::solve(const real_t* density_matrix_alpha, const real_t* density_matrix_beta){
+real_t HF::single_point_energy(const real_t* density_matrix_alpha, const real_t* density_matrix_beta, bool force_density){
 //    PROFILE_FUNCTION();
     // Start Profiling
     GlobalProfiler::initialize(); // timer starts
@@ -253,7 +253,7 @@ real_t HF::solve(const real_t* density_matrix_alpha, const real_t* density_matri
     compute_transform_matrix();
     
 
-    guess_initial_fock_matrix(density_matrix_alpha, density_matrix_beta); // guess the initial Fock matrix
+    guess_initial_fock_matrix(density_matrix_alpha, density_matrix_beta, force_density); // guess the initial Fock matrix
 
     real_t prev_energy = std::numeric_limits<double>::max(); // set the previous energy to a large value
     real_t energy = 0.0; // initialize the energy
@@ -298,6 +298,92 @@ real_t HF::solve(const real_t* density_matrix_alpha, const real_t* density_matri
     return get_total_energy();
 }
 
+real_t HF::solve(const real_t* density_matrix_alpha, const real_t* density_matrix_beta, bool force_density){
+    if(geometry_optimization == 0){
+        // Single point energy calculation
+        return single_point_energy(density_matrix_alpha, density_matrix_beta, force_density);
+    }else{
+        std::cout << "[Geometry optimization]" << std::endl;
+
+        // Geometry optimization calculation
+        const real_t step_size = 0.01; // step size for geometry optimization
+        //const real_t threshold = 1.0e-6; // convergence threshold for geometry optimization
+        const int max_iter = 100; // maximum number of iterations for geometry optimization
+
+
+        // compute the initial energy and store the density matrices
+//        real_t prev_energy = single_point_energy(density_matrix_alpha, density_matrix_beta, false); // compute the initial energy
+        real_t prev_energy = single_point_energy(); // compute the initial energy
+        std::vector<double> prev_density_matrix_alpha(num_basis * num_basis);
+        std::vector<double> prev_density_matrix_beta(num_basis * num_basis);
+        export_density_matrix(prev_density_matrix_alpha.data(), prev_density_matrix_beta.data(), num_basis);
+
+        for(size_t i=0; i<num_basis; i++){
+            
+            for(size_t j=0; j<num_basis; j++){
+                std::cout << "[Geometry optimization] Density matrix alpha: " << prev_density_matrix_alpha[i*num_basis+j] << std::endl;
+                std::cout << "[Geometry optimization] Density matrix beta: " << prev_density_matrix_beta[i*num_basis+j] << std::endl;
+            }
+        }
+
+        atoms.toHost(); // copy the atoms to the host memory
+        std::vector<Atom> atom_list(atoms.size()); 
+        for(size_t i=0; i<atoms.size(); i++){        // copy the atoms to the host memory
+            atom_list[i] = atoms[i]; // copy the atoms to the host memory
+        }
+        for(size_t i=0; i<atom_list.size(); i++){
+            std::cout << "[Geometry optimization] Atom: " << atomic_number_to_element_name(atom_list[i].atomic_number) << " (" << atom_list[i].coordinate.x << ", " << atom_list[i].coordinate.y << ", " << atom_list[i].coordinate.z << ")" << std::endl;
+        }
+
+        for(int iter=0; iter<max_iter; iter++){
+            std::cout << "[Geometry optimization] loop: " << iter << " ------------------------------------" << std::endl;
+            bool improved = false;
+
+            for(int atom_index=0; atom_index<atom_list.size(); atom_index++){
+                // update the position of the atom
+                for(int dim=0; dim<3; dim++){
+                    for(real_t direction: {+1.0, -1.0}){
+                        Atom atom_moved = atom_list[atom_index];
+                        std::cout << "[Geometry optimization] " << "dimension: " << dim << " direction: " << direction << std::endl;
+                        real_t moved = direction * step_size;
+                        if(dim==0){
+                            atom_moved.coordinate.x += moved;
+                        }else if(dim==1){
+                            atom_moved.coordinate.y += moved;
+                        }else if(dim==2){
+                            atom_moved.coordinate.z += moved;
+                        }
+                        auto atoms_moved = atom_list;
+                        atoms_moved[atom_index] = atom_moved; // update the atom position
+                        update_geometry(atoms_moved); // update the geometry of the atoms
+                        //real_t new_energy = single_point_energy(prev_density_matrix_alpha.data(), prev_density_matrix_beta.data(), true); // compute the new energy by the density matrix initialization 
+                        real_t new_energy = single_point_energy(); // compute the new energy by the density matrix initialization 
+
+                        for(auto& atom: atoms_moved){
+                            std::cout << "[Geometry optimization] Atom: " << atomic_number_to_element_name(atom.atomic_number) << " (" << atom.coordinate.x << ", " << atom.coordinate.y << ", " << atom.coordinate.z << ")" << std::endl;
+                        }
+                        std::cout << "[Geometry optimization] Prev energy: " << prev_energy << std::endl;
+                        std::cout << "[Geometry optimization] New energy: " << new_energy << std::endl;
+                        
+                        if(new_energy < prev_energy /* - threshold*/){
+                            std::cout << "[Geometry optimization] Energy improved!" << std::endl;
+                            atom_list = atoms_moved;
+                            prev_energy = new_energy;
+                            export_density_matrix(prev_density_matrix_alpha.data(), prev_density_matrix_beta.data(), num_basis);
+                            improved = true;
+                            break;
+                        }else{
+                            update_geometry(atom_list); // restore the geometry of the atoms
+                        }
+                    }
+               }
+            }
+            if(!improved) break;
+        }
+        return prev_energy;
+    }
+}
+
 
 void HF::report(){
     std::cout << std::endl;
@@ -321,6 +407,51 @@ void HF::report(){
     std::cout << "Number of basis functions: " << num_basis << std::endl;
     std::cout << "Number of primitive basis functions: " << primitive_shells.size() << std::endl;
 }
+
+
+
+void HF::update_geometry(const std::vector<Atom>& moved_atoms){
+    // update the geometry of the atoms
+    atoms.toHost(); // copy the atoms to the host memory
+    for(size_t i=0; i<atoms.size(); i++){
+        std::cout << "[Geometry optimization] Before Atom: " << atomic_number_to_element_name(atoms[i].atomic_number) << " (" << atoms[i].coordinate.x << ", " << atoms[i].coordinate.y << ", " << atoms[i].coordinate.z << ")" << std::endl;
+        atoms[i] = moved_atoms[i]; // update the atoms in the host memory
+        std::cout << "[Geometry optimization] Moved  Atom: " << atomic_number_to_element_name(atoms[i].atomic_number) << " (" << atoms[i].coordinate.x << ", " << atoms[i].coordinate.y << ", " << atoms[i].coordinate.z << ")" << std::endl;
+    }
+    atoms.toDevice();
+
+    // update the primitive shells and shell type infos
+    primitive_shells.toHost(); // copy the primitive shells to the host memory
+    for(size_t i=0; i<primitive_shells.size(); i++){
+        for(int atom_index=0; atom_index<atoms.size(); atom_index++){
+            if(primitive_shells[i].atom_index == atom_index){
+                std::cout << "[Geometry optimization] Before Primitive Shell: " << " (" << primitive_shells[i].coordinate.x << ", " << primitive_shells[i].coordinate.y << ", " << primitive_shells[i].coordinate.z << ")" << std::endl;
+
+                primitive_shells[i].coordinate = atoms[atom_index].coordinate; // update the coordinate of the primitive shell
+
+                std::cout << "[Geometry optimization] Moved Primitive Shell: " <<  " (" << primitive_shells[i].coordinate.x << ", " << primitive_shells[i].coordinate.y << ", " << primitive_shells[i].coordinate.z << ")" << std::endl;
+            }
+        }
+    }
+    primitive_shells.toDevice(); // copy the list of primitive shells to the device memory
+
+    // update the primitive shells of the auxiliary basis set if RI is used in ERI calculation, which means that the auxiliary basis set is used
+    if(eri_method_->get_algorithm_name() == "RI"){
+        auto* ri_ptr = dynamic_cast<ERI_RI*>(eri_method_.get());
+        auto& auxiliary_primitive_shells = ri_ptr->get_auxiliary_primitive_shells(); // get the auxiliary basis set
+        auxiliary_primitive_shells.toHost(); // copy the auxiliary primitive shells to the host memory
+        for(size_t i=0; i<auxiliary_primitive_shells.size(); i++){
+            for(int atom_index=0; atom_index<atoms.size(); atom_index++){
+                if(auxiliary_primitive_shells[i].atom_index == atom_index){
+                    auxiliary_primitive_shells[i].coordinate = atoms[atom_index].coordinate; // update the coordinate of the primitive shell
+                }
+            }
+        }
+        auxiliary_primitive_shells.toDevice(); // copy the list of auxiliary primitive shells to the device memory
+    }
+
+}
+
 
 
 } // namespace gansu

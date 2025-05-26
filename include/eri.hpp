@@ -52,6 +52,13 @@ public:
      * @details This function must be implemented in the derived class.
      */
     virtual void compute_fock_matrix() = 0;
+
+    /**
+     * @brief Get the algorithm name
+     * @return Algorithm name as a string
+     * @details This function must be implemented in the derived class.
+    */
+    virtual std::string get_algorithm_name() = 0; ///< Get the algorithm name
 };
 
 /**
@@ -75,6 +82,8 @@ public:
      */
     void precomputation() override;
 
+    std::string get_algorithm_name() override { return "Stored"; } ///< Get the algorithm name
+
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
     const int num_basis_;
@@ -96,6 +105,10 @@ public:
     virtual ~ERI_RI() = default; ///< destructor
     
     void precomputation() override;
+
+    DeviceHostMemory<PrimitiveShell>& get_auxiliary_primitive_shells() { return auxiliary_primitive_shells_; } ///< Get the auxiliary primitive shells
+
+    std::string get_algorithm_name() override { return "RI"; } ///< Get the algorithm name
 
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
@@ -123,6 +136,8 @@ public:
     virtual ~ERI_Direct() = default; ///< destructor
         
     void precomputation() override;
+
+    std::string get_algorithm_name() override { return "Direct"; } ///< Get the algorithm name
     
 protected:
     const HF& hf_; ///< HF. This excludes MOs.

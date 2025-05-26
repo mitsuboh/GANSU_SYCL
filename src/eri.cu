@@ -95,7 +95,9 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
         auxiliary_cgto_nomalization_factors_(auxiliary_molecular.get_cgto_normalization_factors()),
         intermediate_matrix_B_(num_auxiliary_basis_, num_basis_*num_basis_)
 {
-    // nothing to do    
+    // to device memory
+    auxiliary_primitive_shells_.toDevice();
+    auxiliary_cgto_nomalization_factors_.toDevice();
 }
 
 

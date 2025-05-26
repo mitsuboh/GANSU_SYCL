@@ -311,8 +311,48 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
 
 
     // Call the kernel functions from (s0|s1),... (e.g. (s|s), (s|p), (s|d), (p|p), (p|d), (d|d) for s, p, d shells)
-    for(int s0=0; s0<shell_type_count; s0++){ // s=0, p=1, d=2,...
-        for(int s1=s0; s1<shell_type_count; s1++){ // s=0, p=1, d=2,...
+    // for(int s0=0; s0<shell_type_count; s0++){ // s=0, p=1, d=2,...
+    //     for(int s1=s0; s1<shell_type_count; s1++){ // s=0, p=1, d=2,...
+    //         const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+
+    //         const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+
+    //         const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
+    //         const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+    //         if(verbose){
+    //             std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
+    //             std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+    //             std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+    //             std::cout << "|[a|b]|=" << num_shell_pairs << ", ";
+    //             std::cout << "num_blocks: " << num_blocks << std::endl;
+    //         }
+
+    //         // call the kernel functions
+    //         get_overlap_kinetic_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
+    //         get_nuclear_attraction_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
+    //     }
+    // }
+    // dim3 blocks(int((num_basis + 31) / 32), int((num_basis + 31) / 32));
+    // dim3 threads(32,32);
+    // Matrix_Symmetrization<<<blocks, threads>>>(d_overlap_matrix, num_basis);
+    // Matrix_Symmetrization<<<blocks, threads>>>(d_core_hamiltonian_matrix, num_basis);
+
+    
+    // make multi stream
+    int N = (shell_type_count)*(shell_type_count+1) /2;
+    std::vector<cudaStream_t> streams(N);
+    std::vector<cudaStream_t> V_streams(N);
+
+    for (int i = 0; i < N; i++) {
+        cudaStreamCreate(&streams[i]);
+        cudaStreamCreate(&V_streams[i]);
+    }
+
+
+    // Call the kernel functions from (s0|s1),... (e.g. (f|f), (d|f), (d|d), (s|d), (p|d), (d|d) for s, p, d, f shells)
+    for (int s0 = shell_type_count-1; s0 >= 0; s0--) {
+        for (int s1 = shell_type_count-1; s1 >= s0; s1--) {
             const ShellTypeInfo shell_s0 = shell_type_infos[s0];
             const ShellTypeInfo shell_s1 = shell_type_infos[s1];
 
@@ -327,10 +367,27 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
                 std::cout << "num_blocks: " << num_blocks << std::endl;
             }
 
+            int index = (2*(shell_type_count-1)-s0+1)*s0 / 2 + s1;
+            // printf("(s0,s1) = (%d, %d), idx = %d\n", s0, s1, index);
+
             // call the kernel functions
-            get_overlap_kinetic_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
-            get_nuclear_attraction_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
+            get_overlap_kinetic_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, streams[index]>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
+            get_nuclear_attraction_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, V_streams[index]>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
         }
+    }
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+
+    dim3 blocks(int((num_basis + 31) / 32), int((num_basis + 31) / 32));
+    dim3 threads(32,32);
+    Matrix_Symmetrization<<<blocks, threads>>>(d_overlap_matrix, num_basis);
+    Matrix_Symmetrization<<<blocks, threads>>>(d_core_hamiltonian_matrix, num_basis);
+
+    // destory streams
+    for (int i = 0; i < N; i++) {
+        cudaStreamDestroy(streams[i]);
+        cudaStreamDestroy(V_streams[i]);
     }
 }
 

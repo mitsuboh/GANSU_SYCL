@@ -28,8 +28,13 @@
 #include "device_host_memory.hpp"
 #include "gpu_manager.hpp"
 #include "parameter_manager.hpp"
+#include "eri.hpp"
 
 namespace gansu{
+
+
+// prototype of classes
+class ERI;
 
 /**
  * @brief HF class
@@ -202,6 +207,15 @@ public:
      */
     size_t get_num_primitive_shell_pairs() const { return num_primitive_shell_pairs; }
 
+
+    /**
+     * @brief Single point energy calculation
+     * @param density_matrix_alpha Density matrix of alpha spin if UHF, otherwise the density matrix (optional)
+     * @param density_matrix_beta Density matrix of beta spin (optional)
+     * @param force_density Density matrix is used in the initial guess
+     */
+    real_t single_point_energy(const real_t* density_matrix_alpha=nullptr, const real_t* density_matrix_beta=nullptr, bool force_density=false);
+
 protected:
     long long solve_time_in_milliseconds_; ///< Time to solve the HF equation
 
@@ -217,6 +231,8 @@ protected:
     const int max_iter; ///< Maximum number of iterations
     int iter_; ///< Number of iterations
     real_t energy_difference_; ///< Energy difference between the current and the previous iteration
+    const int geometry_optimization; ///< Geometry optimization flag
+    const std::string geometry_optimization_method; ///< Geometry optimization method
     
     const std::vector<ShellTypeInfo> shell_type_infos; ///< Shell type info in the primitive shell list
     const std::vector<BasisRange> atom_to_basis_range; ///< Basis range for each atom
@@ -238,7 +254,8 @@ protected:
     std::vector<ShellPairTypeInfo> shell_pair_type_infos;
     size_t num_primitive_shell_pairs;
 
-    
+    // for ERI (stored, RI, direct)
+    std::unique_ptr<ERI> eri_method_; ///< ERI method
 
     /**
      * @brief Virtual function to compute the Fock matrix
@@ -258,10 +275,12 @@ protected:
      * @brief Virtual function to guess the initial Fock matrix
      * @param density_matrix_a Density matrix of alpha spin if UHF, otherwise the density matrix (optional)
      * @param density_matrix_b Density matrix of beta spin if UHF, otherwise no use (optional)
+     * @param force_density Density matrix is used in the initial guess (optional)
+     * @param 
      * @details This function guesses the initial Fock matrix.
      * @details This function must be implemented in the derived class.
      */
-    virtual void guess_initial_fock_matrix(const real_t* density_matrix_a=nullptr, const real_t* density_matrix_b=nullptr)=0;
+    virtual void guess_initial_fock_matrix(const real_t* density_matrix_a=nullptr, const real_t* density_matrix_b=nullptr, bool force_density=false)=0;
 
 
     /**
@@ -285,28 +304,27 @@ protected:
      */
     virtual void update_fock_matrix() = 0;
 
+
+
+
     /**
-     * @brief Export the density matrix
-     * @param density_matrix_a Density matrix (alpha spin) if UHF, otherwise the density matrix
-     * @param density_matrix_b Density matrix (beta spin) if UHF, otherwise no use
-     * @param num_basis Number of basis functions
-     * @details This function exports the density matrix.
-     * @details This function is implemented in the derived class.
-     * @details Matrix must be allocated before calling this function, and the size of the matrix must be num_basis x num_basis.
+     * @brief Update the geometry of the molecule
+     * @param moved_atoms New geometry of the atoms
+     * @details This function updates the geometry of the molecule.
+     * @details This function updates coordinates of atoms and primitive_shells.
+     * @details This function also updates the auxiliary basis set if RI method is used.
      */
-    virtual void export_density_matrix(real_t* density_matrix_a, real_t* density_martix_b, const int num_basis) = 0;
-
-
-
+    void update_geometry(const std::vector<Atom>& moved_atoms);
 public:
 
     /**
     * @brief Function to solve the Hartree-Fock equation by the SCF procedure
-    * @param density_matrix Density matrix (optional)
+    * @param density_matrix Density matrix_alpha (optional), density_matrix_beta (optional)
+    * @param force_density Density matrix is used in the initial guess (optional)
     * @return Energy of the system
     * @details This function solves the Hartree-Fock equation by iterating the SCF procedure.
     */
-    virtual real_t solve(const real_t* density_matrix_alpha=nullptr, const real_t* density_matrix_beta=nullptr); ///< Solve the HF equation by the SCF method
+    virtual real_t solve(const real_t* density_matrix_alpha=nullptr, const real_t* density_matrix_beta=nullptr, bool force_density=false); ///< Solve the HF equation by the SCF method
 
 
 
@@ -326,6 +344,17 @@ public:
      * @details This function is implemented in the derived class.
      */
     virtual void export_molden_file(const std::string& filename) = 0;
+
+    /**
+     * @brief Export the density matrix
+     * @param density_matrix_a Density matrix (alpha spin) if UHF, otherwise the density matrix
+     * @param density_matrix_b Density matrix (beta spin) if UHF, otherwise no use
+     * @param num_basis Number of basis functions
+     * @details This function exports the density matrix.
+     * @details This function is implemented in the derived class.
+     * @details Matrix must be allocated before calling this function, and the size of the matrix must be num_basis x num_basis.
+     */
+    virtual void export_density_matrix(real_t* density_matrix_a, real_t* density_martix_b, const int num_basis) = 0;
 };
 
 

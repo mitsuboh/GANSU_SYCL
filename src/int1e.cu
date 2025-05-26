@@ -22,21 +22,6 @@
 
 namespace gansu::gpu{
 
-/* not used???
-#define A_TR 0.352905920120321
-#define B_TR 0.015532762923351
-#define A_RS 0.064048916778075
-#define B_RS 28.487431543672
-
-#define AA 0.03768724  
-#define BB 0.60549623
-#define CC 6.32743473
-#define DD 10.350421
-*/
-
-
-
-
 // 二条階乗を返す関数
 __device__ int factorial2gpu(int i){
     if(i<1){
@@ -54,47 +39,42 @@ __device__ double calc_dist_GPU3(const double3& coord1, const Coordinate& coord2
     return (coord1.x-coord2.x)*(coord1.x-coord2.x) + (coord1.y-coord2.y)*(coord1.y-coord2.y) + (coord1.z-coord2.z)*(coord1.z-coord2.z);
 }
 
-// /* PGTOの規格化定数を算出(2つのPGTOまとめて) */
-// __device__ double calc_Norms(double alpha, double beta, int i, int j, int k, int l, int m, int n){
-//     return pow(2.0, i+j+k+l+m+n) 
-//         * pow(factorial2gpu(2.0*i-1.0)*factorial2gpu(2.0*j-1.0)*factorial2gpu(2.0*k-1.0)*factorial2gpu(2.0*l-1.0)*factorial2gpu(2.0*m-1.0)*factorial2gpu(2.0*n-1.0), -0.5) 
-//         * pow(2.0/M_PI, 1.5)
-//         * pow(alpha, (2.0*(i+j+k)+3.0)/4.0)
-//         * pow(beta, (2.0*(l+m+n)+3.0)/4.0);
-// }
 
-/* PGTOの規格化定数を算出(2つのPGTOまとめて) */
-__device__ double calc_Norms(double alpha, double beta, int i, int j, int k, int l, int m, int n){
-    return pow(2.0, i+j+k+l+m+n) 
+
+__device__ double calc_Norms(double alpha, double beta, int ijk, int lmn){
+    return pow(2.0, ijk+lmn) 
         * pow(2.0/M_PI, 1.5)
-        * pow(alpha, (2.0*(i+j+k)+3.0)/4.0)
-        * pow(beta, (2.0*(l+m+n)+3.0)/4.0);
+        * pow(alpha, (2.0*ijk+3.0)/4.0)
+        * pow(beta, (2.0*lmn+3.0)/4.0);
 }
 
 
+__global__ void Matrix_Symmetrization(double* matrix, int n){
+    __shared__ double sh_mem[32][33];
 
+    if(blockIdx.y > blockIdx.x) return;
 
+    int src_block = blockIdx.y*32*n + blockIdx.x*32;
+    int dst_block = blockIdx.x*32*n + blockIdx.y*32;
 
-// 該当箇所に排他的に加算する関数
-__device__ void AddToResult(double result, double *g_nucattr, int y, int x, int num_basis, bool is_symmetric){
-    atomicAdd(&g_nucattr[y*num_basis + x], result);
-    if(!is_symmetric){
-        // printf("%d, %d\n",y,x);
-        atomicAdd(&g_nucattr[x*num_basis + y], result);
+    if(blockIdx.x*32+threadIdx.x < n || blockIdx.y*32+threadIdx.y < n){
+        sh_mem[threadIdx.y][threadIdx.x] = matrix[src_block + threadIdx.y*n+threadIdx.x];
     }
+    __syncthreads();
+
+    if (blockIdx.y==blockIdx.x && threadIdx.y <= threadIdx.x || (dst_block + threadIdx.y*n+threadIdx.x >=n*n) ) return;
+
+    matrix[dst_block + threadIdx.y*n+threadIdx.x] = sh_mem[threadIdx.x][threadIdx.y];
 }
 
-// f軌道の場合における、基底関数の順番を調整する多に使用
-__constant__ int f_index[10] = {0, 1, 2, 4, 5, 3, 6, 8, 7, 9};
+
+__device__ int calc_result_index(int y, int x, int sumCGTO){
+    return (y<=x) ? y*sumCGTO + x : x*sumCGTO + y;
+}
 
 // MD method
-#include "MD_OandK_kernel.txt"
-#include "MD_V_kernel.txt"
-
-
-
+#include "MD_kernel.txt"
 // OS method
-#include "OS_OandK_kernel.txt"
-#include "OS_V_kernel.txt"
+#include "OS_kernel.txt"
 
 } // namespace gansu::gpu

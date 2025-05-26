@@ -21,7 +21,6 @@
 #pragma once
 
 #include "hf.hpp"
-#include "eri.hpp"
 #include "rohf.hpp"
 #include <memory> // std::unique_ptr
 #include <random> // std::random_device, std::mt19937, std::uniform_real_distribution
@@ -29,7 +28,6 @@
 #include "profiler.hpp"
 #include "gpu_manager.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
-
 
 namespace gansu{
 
@@ -57,7 +55,7 @@ public:
     void precompute_eri_matrix() override;
     void compute_fock_matrix() override;
     void compute_density_matrix() override;
-    void guess_initial_fock_matrix(const real_t* density_matrix_a=nullptr, const real_t* density_matrix_b=nullptr) override;
+    void guess_initial_fock_matrix(const real_t* density_matrix_a=nullptr, const real_t* density_matrix_b=nullptr, bool force_density=false) override;
     void compute_coefficient_matrix() override;
     void compute_energy() override;
     void update_fock_matrix() override;
@@ -149,7 +147,6 @@ private:
     const std::string initail_guess_method_; ///< Initial guess method name
     const std::string gbsfilename_; ///< Basis set file name (Gaussian basis set file)
 
-    std::unique_ptr<ERI> eri_method_; ///< ERI
 };
 
 

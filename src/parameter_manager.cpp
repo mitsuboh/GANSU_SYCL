@@ -51,13 +51,15 @@ ParameterManager::ParameterManager(bool set_default_values) {
         {"auxiliary_gbsfilename", ""},              // string
         {"maxiter", "100"},                         // int
         {"convergence_energy_threshold", "1e-6"},   // real_t
-        {"schwarz_screening_threshold", "1e-12"},     // real_t 
+        {"schwarz_screening_threshold", "1e-12"},   // real_t 
         {"initial_guess", "core"},                  // string
         {"convergence_method", "diis"},             // string
         {"damping_factor", "0.9"},                  // real_t (0<=damping_factor<=1)
         {"diis_size", "8"},                         // int
         {"diis_include_transform", "0"},            // int(bool)
-        {"rohf_parameter_name", "roothaan"}     // string
+        {"rohf_parameter_name", "roothaan"},        // string
+        {"geometry_optimization", "0"},             // int (bool)
+        {"geometry_optimization_method", "powell"}  // string
     };
 
 

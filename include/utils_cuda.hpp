@@ -19,6 +19,18 @@
 #include "types.hpp"
 
 namespace gansu::gpu {
+__device__ inline size_t2 index1to2_one_electron(const size_t index, bool is_symmetric, size_t num_basis=0){
+//    assert(is_symmetric or num_basis > 0);
+    if(is_symmetric){
+        const size_t x = __double2ll_rd((__dsqrt_rn(8 * index + 1) - 1) / 2);
+        const size_t y = index - x * (x + 1) / 2;
+        return {x, y};
+    }else{
+        const size_t x = index % num_basis;
+        const size_t y = index / num_basis;
+        return {x, y};
+    }
+}
 
 __device__ inline size_t2 index1to2(const size_t index, bool is_symmetric, size_t num_basis=0){
 //    assert(is_symmetric or num_basis > 0);

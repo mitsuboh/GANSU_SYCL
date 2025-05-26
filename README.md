@@ -7,6 +7,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 * Hartree-Fock Methods: Includes RHF, UHF, and ROHF implementations.
 * Parallel computing: Accelerates almost all operations on the GPU, achieving true speedup through custom implementations from scratch.
 * Flexible Input Options: Supports standard file formats such as XYZ and Gaussian basis set files.
+* The numerical calculations in this software are performed using 64-bit double precision floating-point arithmetic.
 * etc.
 
 

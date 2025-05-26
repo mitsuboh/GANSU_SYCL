@@ -53,8 +53,8 @@ struct BasisRange {
 class Molecular {
 public:
 
-    Molecular(const std::string xyz_filename, const std::string gbs_filename, const int charge=0, const unsigned int beta_to_alpha=0, bool use_density_fitting=false)
-        : Molecular(parseXYZ(xyz_filename), gbs_filename, charge, beta_to_alpha, use_density_fitting) {}
+    Molecular(const std::string xyz_filename, const std::string gbs_filename, const int charge=0, const unsigned int beta_to_alpha=0)
+        : Molecular(parseXYZ(xyz_filename), gbs_filename, charge, beta_to_alpha) {}
 
     /**
      * @brief Constructor of the Molecular class
@@ -62,7 +62,6 @@ public:
      * @param gbs_filename Basis set file name (Gaussian basis set file)
      * @param charge Charge of the molecule. Default is 0. For cation, the charge is positive. For anion, the charge is negative.
      * @param beta_to_alpha Number of beta_to_alphaed electrons. Default is 0.
-     * @param use_density_fitting Use density fitting. Default is false.
      * @details This function constructs the Molecular class.
      * @details How to calculate the number of electrons (alpha- and beta-spin electrons)
      * Given parameters:
@@ -88,14 +87,10 @@ public:
      * @throws std::runtime_error if the number of electrons is less than one or the number of beta-spin electrons is negative.
      * @throws std::runtime_error if no atoms are given.
      */
-    Molecular(const std::vector<Atom> atoms, const std::string gbs_filename, const int charge=0, const unsigned int beta_to_alpha=0, bool use_density_fitting=false)
-        : atoms_(atoms), gbs_filename_(gbs_filename), auxiliary_gbs_filename_(addSuffixBeforeExtension(gbs_filename, "-rifit")), use_density_fitting_(use_density_fitting)
+    Molecular(const std::vector<Atom> atoms, const std::string gbs_filename, const int charge=0, const unsigned int beta_to_alpha=0)
+        : atoms_(atoms), gbs_filename_(gbs_filename)
     {
         create_basis_set(gbs_filename);
-        if(use_density_fitting){
-            std::cout << "Auxiliary basis set file name: " << auxiliary_gbs_filename_ << std::endl;
-            create_auxiliary_basis_set(auxiliary_gbs_filename_);
-        }
 
         num_electrons_ = 0;
         for(const auto& atom : atoms_){
@@ -127,7 +122,10 @@ public:
         }
 
         size_t basis_index = 0; ///< Basis index (consecutive number through all the basis functions)
-        for(const auto& atom : atoms_){ // loop over atoms
+//        for(const auto& atom : atoms_){ // loop over atoms
+        for(int atom_index=0; atom_index<atoms_.size(); atom_index++){
+            const auto& atom = atoms_[atom_index];
+
             BasisRange basis_range;
             basis_range.start_index = basis_index;
 
@@ -147,7 +145,8 @@ public:
                         .coefficient = primitive.coefficient,
                         .coordinate = atom.coordinate,
                         .shell_type = shell_type,
-                        .basis_index = basis_index
+                        .basis_index = basis_index,
+                        .atom_index = atom_index
                     };
                     primitive_shells_.push_back(primitive_shell);
                 }
@@ -185,71 +184,6 @@ public:
             shell_type_infos_[i].start_index = shell_type_infos_[i-1].start_index + shell_type_infos_[i-1].count;
         }
     }
-
-
-    /**
-     * @brief Create the auxiliary basis set for density fitting
-     * @param auxiliary_gbs_filename Auxiliary basis set file name (Gaussian basis set file)
-     * @details This function creates the auxiliary basis set for density fitting.
-    */
-    void create_auxiliary_basis_set(const std::string auxiliary_gbs_filename){
-        BasisSet auxiliary_basis_set = BasisSet::construct_from_gbs(auxiliary_gbs_filename);
-
-        size_t basis_index = 0; ///< Basis index (consecutive number through all the basis functions)
-        for(const auto& atom : atoms_){ // loop over atoms
-            const ElementBasisSet& element_basis_set = auxiliary_basis_set.get_element_basis_set(atomic_number_to_element_name(atom.atomic_number));
-            for(size_t i=0; i<element_basis_set.get_num_contracted_gausses(); i++){ // loop over basis function (contracted Gauss functions)
-                const ContractedGauss& contracted_gauss = element_basis_set.get_contracted_gauss(i);
-
-                const size_t num_primitives = contracted_gauss.get_num_primitives();
-
-                const int shell_type = shell_name_to_shell_type(contracted_gauss.get_type());
-
-                for(size_t j=0; j<num_primitives; j++){
-                    const PrimitiveGauss& primitive = contracted_gauss.get_primitive_gauss(j);
-
-                    PrimitiveShell primitive_shell {
-                        .exponent = primitive.exponent,
-                        .coefficient = primitive.coefficient,
-                        .coordinate = atom.coordinate,
-                        .shell_type = shell_type,
-                        .basis_index = basis_index
-                    };
-                    auxiliary_primitive_shells_.push_back(primitive_shell);
-                }
-                basis_index += shell_type_to_num_basis(shell_type);
-
-                // store the normalization factor of the contracted Gauss function
-                const std::vector<real_t> normalization_factors = contracted_gauss.get_normalization_factor();
-                auxiliary_cgto_normalization_factors_.insert(auxiliary_cgto_normalization_factors_.end(), normalization_factors.begin(), normalization_factors.end());
-            }
-        }
-
-        num_auxiliary_basis_ = basis_index;
-
-        if(num_auxiliary_basis_ != auxiliary_cgto_normalization_factors_.size()){
-            THROW_EXCEPTION("The number of auxiliary basis functions is not equal to the number of normalization factors.");
-        }
-
-        // initialization for the primitive shells and the shell type counts
-
-        // sort the primitive shells by the shell type (Azimuthal quantum number)
-        std::sort(auxiliary_primitive_shells_.begin(), auxiliary_primitive_shells_.end(), 
-            [](const PrimitiveShell& a, const PrimitiveShell& b){return a.shell_type < b.shell_type;});
-
-        // count and store the shell type information
-        int max_shell_type = auxiliary_primitive_shells_[auxiliary_primitive_shells_.size()-1].shell_type;
-        auxiliary_shell_type_infos_.resize(max_shell_type+1, {0, 0});
-        for(size_t i=0; i<auxiliary_primitive_shells_.size(); i++){
-            auxiliary_shell_type_infos_[auxiliary_primitive_shells_[i].shell_type].count++;
-        }
-        auxiliary_shell_type_infos_[0].start_index = 0;
-        for(size_t i=1; i<auxiliary_shell_type_infos_.size(); i++){
-            auxiliary_shell_type_infos_[i].start_index = auxiliary_shell_type_infos_[i-1].start_index + auxiliary_shell_type_infos_[i-1].count;
-        }
-
-    }
-
 
     /**
      * @brief Get the number of basis functions
@@ -304,32 +238,6 @@ public:
     const std::vector<real_t>& get_cgto_normalization_factors() const { return cgto_normalization_factors_; }
 
 
-    /**
-     * @brief Get the number of auxiliary basis functions
-     */
-    size_t get_num_auxiliary_basis() const { return num_auxiliary_basis_;}
-
-    /**
-     * @brief Get the list of the auxiliary primitive shells
-     */
-    const std::vector<PrimitiveShell>& get_auxiliary_primitive_shells() const { return auxiliary_primitive_shells_; }
-
-    /**
-     * @brief Get the list of the numbers of shell types for the auxiliary basis set
-     */
-    const std::vector<ShellTypeInfo>& get_auxiliary_shell_type_infos() const { return auxiliary_shell_type_infos_; }
-
-    /**
-     * @brief Get the auxiliary basis set file name (Gaussian basis set file)
-     * @return Auxiliary basis set file name (Gaussian basis set file)
-     */
-    std::string get_auxiliary_gbs_filename() const { return auxiliary_gbs_filename_; }
-
-    /**
-     * @brief Get the list of the normalization factors of the contracted Gauss functions for the auxiliary basis set
-    */
-    const std::vector<real_t>& get_auxiliary_cgto_normalization_factors() const { return auxiliary_cgto_normalization_factors_; }
-
 
     Molecular(const Molecular&) = delete; ///< copy constructor is deleted
     ~Molecular() = default; ///< destructor
@@ -366,27 +274,6 @@ public:
             std::cout << "Shell type[" << i << "] (" << shell_type_to_shell_name(i) << "-type orbital): " << shell_type_infos_[i].count << ", " << shell_type_infos_[i].start_index << std::endl;
         }
 
-
-        if(use_density_fitting_){
-            std::cout << "Auxiliary basis set file name: " << auxiliary_gbs_filename_ << std::endl;
-            std::cout << "Number of auxiliary basis functions: " << num_auxiliary_basis_ << std::endl;
-            for(size_t i=0; i<auxiliary_cgto_normalization_factors_.size(); i++){
-                std::cout << "Auxiliary normalization factor[" << i << "]: " << auxiliary_cgto_normalization_factors_[i] << std::endl;
-            }
-
-            std::cout << "Number of auxiliary primitive shells: " << auxiliary_primitive_shells_.size() << std::endl;
-
-            // print properties of the auxiliary primitive shells
-            for(size_t i=0; i<auxiliary_primitive_shells_.size(); i++){
-                const auto& primitive_shell = auxiliary_primitive_shells_[i];
-                std::cout << "Auxiliary primitive shell[" << i << "]: {" << primitive_shell.exponent << ", " << primitive_shell.coefficient << ", (" << primitive_shell.coordinate.x << ", " << primitive_shell.coordinate.y << ", " << primitive_shell.coordinate.z << "), " << shell_type_to_shell_name(primitive_shell.shell_type) << ", " << primitive_shell.basis_index << "," << "}" << std::endl;
-            }
-
-            // print the number of shell types for the auxiliary basis set
-            for(size_t i=0; i<auxiliary_shell_type_infos_.size(); i++){
-                std::cout << "Auxiliary shell type[" << i << "] (" << shell_type_to_shell_name(i) << "-type orbital): " << auxiliary_shell_type_infos_[i].count << ", " << auxiliary_shell_type_infos_[i].start_index << std::endl;
-            }
-        }
     }
 
 private:
@@ -403,15 +290,6 @@ private:
     int num_beta_spins_; ///< Number of beta-spin electrons
 
     const std::string gbs_filename_; ///< Basis set file name (Gaussian basis set file)
-    const std::string auxiliary_gbs_filename_; ///< Auxiliary basis set file name (Gaussian basis set file)
-
-    /// auxiliary basis set for density fitting
-    const bool use_density_fitting_; ///< Use density fitting
-    std::vector<PrimitiveShell> auxiliary_primitive_shells_; ///< Auxiliary primitive shells
-    std::vector<ShellTypeInfo> auxiliary_shell_type_infos_; ///< The list of shell type information for the auxiliary basis set
-    int num_auxiliary_basis_; ///< Number of auxiliary basis functions
-
-    std::vector<real_t> auxiliary_cgto_normalization_factors_; ///< The list of the normalization factors of the contracted Gauss functions for the auxiliary basis set
 
 };
 
