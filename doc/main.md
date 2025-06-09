@@ -34,6 +34,8 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
       * Head-Godon-Pople algorithm (s- and p-orbitals) @cite Martin1988, @cite Suzuki2024
     * Boys function @cite Tsuji2023, @cite Tsuji2025
     * Swartz Screening @cite Gill1994, @cite Tsuji2024
+* Charge analysis
+    * Mulliken population analysis @cite Mulliken1955  (RHF, UHF, ROHF)
 * Export
     * Export wave function information in the Molden format for visualization
         * Tested by [Avogadro](https://avogadro.cc/) @cite Hanwell2012 and [Pegamoid](https://github.com/Jellby/Pegamoid) 
@@ -58,6 +60,9 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 * Density Functional Theory (DFT)
 * GPU implementation
   * Total spin \f$ \langle S^2 \rangle \f$ (UHF)
+* Charge analysis
+    * Lowdin population analysis @cite Lowdin1950
+    * Hirshfeld population analysis @cite Hirshfeld1977
 
 
 ## Installation

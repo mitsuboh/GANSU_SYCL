@@ -406,6 +406,7 @@ void HF::report(){
     std::cout << "[Basis Set Summary]" << std::endl;
     std::cout << "Number of basis functions: " << num_basis << std::endl;
     std::cout << "Number of primitive basis functions: " << primitive_shells.size() << std::endl;
+
 }
 
 

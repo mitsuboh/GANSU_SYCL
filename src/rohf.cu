@@ -323,6 +323,15 @@ void ROHF::export_density_matrix(real_t* density_matrix_a, real_t* density_matri
     
     HF::report(); // prints the information of the input molecular and basis set
 
+    // print the results of the charge analysis
+    std::cout << std::endl;
+    std::cout << "[Charge analysis]" << std::endl;
+    std::cout << "Mulliken population" << std::endl;
+    const auto& mulliken_population = analyze_mulliken_population();
+    for(size_t i=0; i<atoms.size(); i++){
+        std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
+    }
+
     std::cout << std::endl;
     std::cout << "[Calculation Summary]" << std::endl;
     std::cout << "Method: Restricted Open-shell Hartree-Fock (ROHF)" << std::endl;
@@ -405,5 +414,31 @@ void ROHF::export_molden_file(const std::string& filename) {
 
 }
 
+std::vector<real_t> ROHF::analyze_mulliken_population() const {
+    std::vector<real_t> mulliken_population_basis(num_basis);
+
+    // calculate the Mulliken population for each basis function
+    gpu::computeMullikenPopulation_RHF(
+        density_matrix.device_ptr(),
+        overlap_matrix.device_ptr(),
+        mulliken_population_basis.data(),
+        num_basis
+    );
+
+    const auto& atoms = get_atoms();
+    const int num_atoms = atoms.size();
+
+    std::vector<real_t> mulliken_population_atoms(num_atoms);
+    for(int i=0; i<num_atoms; i++){
+        const int basis_start = get_atom_to_basis_range()[i].start_index;
+        const int basis_end = get_atom_to_basis_range()[i].end_index;
+        mulliken_population_atoms[i] = atoms[i].atomic_number; // initialize with the atomic number (positive charge)
+        for(int j=basis_start; j<basis_end; j++){
+            mulliken_population_atoms[i] -= mulliken_population_basis[j];
+        }
+    }
+
+    return mulliken_population_atoms;
+}
 
 } // namespace gansu

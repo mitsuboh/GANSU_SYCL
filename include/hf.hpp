@@ -315,6 +315,19 @@ protected:
      * @details This function also updates the auxiliary basis set if RI method is used.
      */
     void update_geometry(const std::vector<Atom>& moved_atoms);
+
+
+    /**
+     * @brief Analyze Mulliken population
+     * @returns Mulliken population analysis per atom
+     * @details This function analyzes the Mulliken population.
+     * @details This function is a virtual function and must be implemented in the derived class.
+    */
+    virtual std::vector<real_t> analyze_mulliken_population() const = 0;
+
+
+
+
 public:
 
     /**

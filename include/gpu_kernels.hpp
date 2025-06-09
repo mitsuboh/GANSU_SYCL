@@ -45,5 +45,7 @@ __global__ void computeFockMatrix_RI_RHF_kernel(const double* d_core_hamiltonian
 __global__ void computeFockMatrix_RI_UHF_kernel(const double* d_core_hamiltonian_matrix, const double* d_J_matrix, const double* d_K_matrix, double* d_Fock_matrix, const int num_basis);
 __global__ void computeFockMatrix_RI_ROHF_kernel(const double* d_core_hamiltonian_matrix, const double* d_J_matrix, const double* d_K_matrix_closed, const double* d_K_matrix_open, double* d_Fock_matrix_closed, double* d_Fock_matrix_open, const int num_basis);
 __global__ void setZeroUpperTriangle(double* d_A, const int N);
+__global__ void compute_diagonal_of_product(const double* A, const double* B, double* diag, const int N);
+__global__ void compute_diagonal_of_product_sum(const double* A, const double* B, const double* C, double* diag, const int N);
 
 } // namespace gansu::gpu

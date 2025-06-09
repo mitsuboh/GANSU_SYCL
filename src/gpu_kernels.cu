@@ -529,5 +529,46 @@ __global__ void computeFockMatrix_RI_ROHF_kernel(const double* d_core_hamiltonia
 }
 
 
+/**
+ * @brief CUDA kernel for computing the diagonal of the product of two matrices A and B
+ * @param A Device pointer to the first matrix (row-major)
+ * @param B Device pointer to the second matrix (row-major)
+ * @param diag Device pointer to the output diagonal vector
+ * @param N Size of the matrices (N x N)
+ */
+__global__ void compute_diagonal_of_product(const double* A, const double* B, double* diag, const int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        double sum = 0.0;
+        for (int k = 0; k < N; ++k) {
+            sum += A[i * N + k] * B[k * N + i];  // Diagonal element of the product matrix stored in row-major order
+        }
+        diag[i] = sum;
+    }
+}
+
+
+/**
+ * @brief CUDA kernel for computing the diagonal of the sum of two matrices A and B, multiplied by a third matrix C
+ * @param A Device pointer to the first matrix (row-major)
+ * @param B Device pointer to the second matrix (row-major)
+ * @param C Device pointer to the third matrix (row-major)
+ * @param diag Device pointer to the output diagonal vector
+ * @param N Size of the matrices (N x N)
+ */
+__global__ void compute_diagonal_of_product_sum(const double* A, const double* B, const double* C, double* diag, const int N)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+
+    double sum = 0.0;
+    for (int k = 0; k < N; ++k) {
+        double a_plus_b = A[i * N + k] + B[i * N + k]; // (A + B)[i][k]
+        double c = C[k * N + i];                       // C[k][i] (row-major)
+        sum += a_plus_b * c;
+    }
+    diag[i] = sum;
+}
+
 
 } // namespace gansu::gpu

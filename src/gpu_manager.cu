@@ -345,10 +345,16 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
     std::vector<cudaStream_t> V_streams(N);
 
     for (int i = 0; i < N; i++) {
-        cudaStreamCreate(&streams[i]);
-        cudaStreamCreate(&V_streams[i]);
-    }
+        cudaError_t err = cudaStreamCreate(&streams[i]);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") + std::string(cudaGetErrorString(err)));
+        }
+        err = cudaStreamCreate(&V_streams[i]);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") + std::string(cudaGetErrorString(err)));
+        }
 
+    }
 
     // Call the kernel functions from (s0|s1),... (e.g. (f|f), (d|f), (d|d), (s|d), (p|d), (d|d) for s, p, d, f shells)
     for (int s0 = shell_type_count-1; s0 >= 0; s0--) {
@@ -370,6 +376,7 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
             int index = (2*(shell_type_count-1)-s0+1)*s0 / 2 + s1;
             // printf("(s0,s1) = (%d, %d), idx = %d\n", s0, s1, index);
 
+
             // call the kernel functions
             get_overlap_kinetic_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, streams[index]>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
             get_nuclear_attraction_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, V_streams[index]>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
@@ -377,7 +384,6 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
     }
     // syncronize streams
     cudaDeviceSynchronize();
-
 
     dim3 blocks(int((num_basis + 31) / 32), int((num_basis + 31) / 32));
     dim3 threads(32,32);
@@ -389,6 +395,7 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
         cudaStreamDestroy(streams[i]);
         cudaStreamDestroy(V_streams[i]);
     }
+
 }
 
 int get_index_2to1_horizontal(int i, int j, const int n)
@@ -1681,6 +1688,62 @@ void computeFockMatrix_Direct_RHF(
 }
 
 
+void computeMullikenPopulation_RHF(
+        const real_t* d_density_matrix,
+        const real_t* overlap_matrix,
+        real_t* mulliken_population_basis,
+        const int num_basis
+    )
+{
 
+    real_t* d_mulliken_population = nullptr;
+    cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+
+    // Compute the diagonal elements of the product of the density matrix and the overlap matrix
+    const size_t threads_per_block = 256;
+    const size_t num_blocks = (num_basis + threads_per_block - 1) / threads_per_block;
+    compute_diagonal_of_product<<<num_blocks, threads_per_block>>>(
+        d_density_matrix, 
+        overlap_matrix, 
+        d_mulliken_population, 
+        num_basis
+    );
+
+    // Copy the result to the host
+    cudaMemcpy(mulliken_population_basis, d_mulliken_population, num_basis * sizeof(real_t), cudaMemcpyDeviceToHost);
+
+    // Free the memory for the temporary matrix
+    cudaFree(d_mulliken_population);
+}
+
+void computeMullikenPopulation_UHF(
+        const real_t* d_density_matrix_a,
+        const real_t* d_density_matrix_b,
+        const real_t* overlap_matrix,
+        real_t* mulliken_population_basis,
+        const int num_basis
+    )
+{
+
+    real_t* d_mulliken_population = nullptr;
+    cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+
+    // Compute the diagonal elements of the product of the density matrix and the overlap matrix
+    const size_t threads_per_block = 256;
+    const size_t num_blocks = (num_basis + threads_per_block - 1) / threads_per_block;
+    compute_diagonal_of_product_sum<<<num_blocks, threads_per_block>>>(
+        d_density_matrix_a, 
+        d_density_matrix_b, 
+        overlap_matrix, 
+        d_mulliken_population, 
+        num_basis
+    );
+
+    // Copy the result to the host
+    cudaMemcpy(mulliken_population_basis, d_mulliken_population, num_basis * sizeof(real_t), cudaMemcpyDeviceToHost);
+
+    // Free the memory for the temporary matrix
+    cudaFree(d_mulliken_population);
+}
 
 } // namespace gansu::gpu

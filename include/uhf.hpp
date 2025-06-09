@@ -68,6 +68,8 @@ public:
 
     void set_eri_method(std::unique_ptr<ERI> eri_method);
 
+    std::vector<real_t> analyze_mulliken_population() const override;
+
     real_t get_total_spin() override;;
 
     /**

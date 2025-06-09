@@ -122,81 +122,84 @@ public:
     virtual void toHost() = 0;
 };
 
-
-/**
- * @brief Memory manager for host-device memory.
- *
- * This class manages memory that is accessible from both the host and the device.
- *
- * @tparam T The type of elements stored in the memory.
- */
 template <typename T>
 class DeviceHostMemory : public CudaMemoryManager<T> {
 public:
-    /**
-     * @brief Constructs a DeviceHostMemory with the given size.
-     * @param size The number of elements in the memory.
-     * @param allocate_host_memory_in_advance Allocate host memory in advance
-     */
-    DeviceHostMemory(size_t size, bool allocate_host_memory_in_advance=false) : CudaMemoryManager<T>(size), allocate_host_memory_in_advance(allocate_host_memory_in_advance) {
+    DeviceHostMemory(size_t size, bool allocate_host_memory_in_advance = false)
+        : CudaMemoryManager<T>(size),
+          allocate_host_memory_in_advance(allocate_host_memory_in_advance),
+          using_unified_memory_(false) {
         allocate();
     }
 
-    /**
-     * @brief Constructs a DeviceHostMemory from std::vector.
-     * @param vec The vector to copy data from.
-     * @details This constructor allocates memory and copies the data from the vector. Note that the data is copied only to the host memory, not to the device memory.
-     */
-    DeviceHostMemory(const std::vector<T>& vec) : CudaMemoryManager<T>(vec.size()) {
-        allocate_host_memory_in_advance = true; // always true
+    DeviceHostMemory(const std::vector<T>& vec)
+        : CudaMemoryManager<T>(vec.size()),
+          allocate_host_memory_in_advance(true),
+          using_unified_memory_(false) {
         allocate();
-
-        // Copy data from the vector to the host memory
         std::copy(vec.begin(), vec.end(), this->host_ptr_);
-
     }
 
-
-    /**
-     * @brief Allocates memory on the device.
-     */
     void allocate() override {
-        if(allocate_host_memory_in_advance){
-            cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
-            if(!this->host_ptr_){
-                THROW_EXCEPTION("Failed to allocate host memory.");
+        cudaError_t err;
+
+        if (allocate_host_memory_in_advance) {
+            err = cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
+            if (err != cudaSuccess) {
+                std::string error_msg = "Failed to allocate host memory: " + std::string(cudaGetErrorString(err));
+                THROW_EXCEPTION(error_msg);
             }
         }
-        cudaMalloc(&this->device_ptr_, this->size_ * sizeof(T));
-        if (!this->device_ptr_) {
-            THROW_EXCEPTION("Failed to allocate device memory.");
+
+        err = cudaMalloc(&this->device_ptr_, this->size_ * sizeof(T));
+        if (err != cudaSuccess) {
+            std::cerr << "Warning: cudaMalloc failed (" << cudaGetErrorString(err)
+                      << "), falling back to unified memory." << std::endl;
+
+            // fallback to unified memory
+            err = cudaMallocManaged(&this->device_ptr_, this->size_ * sizeof(T));
+            if (err != cudaSuccess) {
+                std::string error_msg = "Failed to allocate unified memory: " + std::string(cudaGetErrorString(err));
+                THROW_EXCEPTION(error_msg);
+            }
+
+            using_unified_memory_ = true;
+
+            // if host_ptr_ not already allocated, use unified memory pointer
+            if (!this->host_ptr_) {
+                this->host_ptr_ = this->device_ptr_;
+            }
+        } else {
+            using_unified_memory_ = false;
         }
     }
 
-    /**
-     * @brief Copies data from the host memory to the device memory.
-     * @details If the device memory is not allocated, it will be allocated.
-     */
     void toDevice() override {
         if (!this->device_ptr_) {
             allocate();
         }
-        cudaMemcpy(this->device_ptr_, this->host_ptr_, this->size_ * sizeof(T), cudaMemcpyHostToDevice);
+        if (!using_unified_memory_ && this->device_ptr_ && this->host_ptr_) {
+            cudaMemcpy(this->device_ptr_, this->host_ptr_, this->size_ * sizeof(T), cudaMemcpyHostToDevice);
+        }
     }
 
-    /**
-     * @brief Copies data from the device memory to the host memory. If the host memory is not allocated, it will be allocated.
-     */
     void toHost() override {
         if (!this->host_ptr_) {
-            cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
+            if (using_unified_memory_) {
+                this->host_ptr_ = this->device_ptr_;
+            } else {
+                cudaError_t err = cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
+                if (err != cudaSuccess) {
+                    std::string error_msg = "Failed to allocate host memory: " + std::string(cudaGetErrorString(err));
+                    THROW_EXCEPTION(error_msg);
+                }
+            }
         }
-        cudaMemcpy(this->host_ptr_, this->device_ptr_, this->size_ * sizeof(T), cudaMemcpyDeviceToHost);
+        if (!using_unified_memory_ && this->device_ptr_ && this->host_ptr_) {
+            cudaMemcpy(this->host_ptr_, this->device_ptr_, this->size_ * sizeof(T), cudaMemcpyDeviceToHost);
+        }
     }
 
-    /**
-     * @brief Accesses the element at the given index.
-     */
     T& operator[](size_t index) {
         if (index >= this->size_) {
             THROW_EXCEPTION("Index out of bounds");
@@ -204,9 +207,6 @@ public:
         return this->host_ptr_[index];
     }
 
-    /**
-     * @brief Const version of the element access operator.
-     */ 
     const T& operator[](size_t index) const {
         if (index >= this->size_) {
             THROW_EXCEPTION("Index out of bounds");
@@ -214,9 +214,18 @@ public:
         return this->host_ptr_[index];
     }
 
+    /**
+     * @brief Whether unified memory was used for allocation.
+     */
+    bool is_using_unified_memory() const {
+        return using_unified_memory_;
+    }
+
 private:
-    bool allocate_host_memory_in_advance; ///< Allocate host memory in advance
+    bool allocate_host_memory_in_advance;
+    bool using_unified_memory_;
 };
+
 
 
 /**

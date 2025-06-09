@@ -84,6 +84,10 @@ void computeFockMatrix_Direct_RHF(const real_t* d_density_matrix, const real_t* 
 size_t makeShellPairTypeInfo(const std::vector<ShellTypeInfo>& shell_type_infos, std::vector<ShellPairTypeInfo>& shell_pair_type_infos);
 void computeSchwarzUpperBounds(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors, real_t* d_upper_bound_factors, const bool verbose);
 
+void computeMullikenPopulation_RHF(const real_t* d_density_matrix, const real_t* overlap_matrix, real_t* mulliken_population_basis, const int num_basis);
+void computeMullikenPopulation_UHF(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* overlap_matrix, real_t* mulliken_population_basis, const int num_basis);
+
+
 /**
  * @brief class for managing cuSOLVER.
  * @details This class provides methods for eigenvalue decomposition using cuSOLVER.

@@ -290,7 +290,7 @@ inline overlap_kinect_kernel_t get_overlap_kinetic_kernel(int a, int b){
         else if(a==1 && b==3) return overlap_kinetic_MDpf;
         else if(a==2 && b==3) return overlap_kinetic_MDdf;
         else if(a==3 && b==3) return overlap_kinetic_MDff;
-        else throw std::runtime_error("Invalid shell type");
+        else THROW_EXCEPTION("Only up to f-orbitals are supported in MD method for overlap and kinetic integrals");
     }
     else{
         if(a==0 && b==0)      return overlap_kinetic_OSss;
@@ -303,7 +303,7 @@ inline overlap_kinect_kernel_t get_overlap_kinetic_kernel(int a, int b){
         else if(a==1 && b==3) return overlap_kinetic_OSpf;
         else if(a==2 && b==3) return overlap_kinetic_OSdf;
         else if(a==3 && b==3) return overlap_kinetic_OSff;
-        else throw std::runtime_error("Invalid shell type");
+        else THROW_EXCEPTION("Only up to f-orbitals are supported in OS method for overlap and kinetic integrals");
     }
 }
 
@@ -321,7 +321,7 @@ inline nuclear_attraction_kernel_t get_nuclear_attraction_kernel(int a, int b){
         else if(a==1 && b==3) return nuclear_attraction_MDpf;
         else if(a==2 && b==3) return nuclear_attraction_MDdf;
         else if(a==3 && b==3) return nuclear_attraction_MDff;
-        else throw std::runtime_error("Invalid shell type");
+        else THROW_EXCEPTION("Only up to f-orbitals are supported in MD method for nuclear attraction integrals");
     }
     else{
         if(a==0 && b==0)      return nuclear_attraction_OSss;
@@ -334,7 +334,7 @@ inline nuclear_attraction_kernel_t get_nuclear_attraction_kernel(int a, int b){
         else if(a==1 && b==3) return nuclear_attraction_OSpf;
         else if(a==2 && b==3) return nuclear_attraction_OSdf;
         else if(a==3 && b==3) return nuclear_attraction_OSff;
-        else throw std::runtime_error("Invalid shell type");
+        else THROW_EXCEPTION("Only up to f-orbitals are supported in OS method for nuclear attraction integrals");
     }
 
 }
