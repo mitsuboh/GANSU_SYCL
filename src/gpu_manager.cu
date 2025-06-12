@@ -19,6 +19,9 @@
 #include "int2e.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
 
+#include <vector>    // std::vector
+#include <tuple>     // std::tuple
+#include <algorithm> // std::reverse
 
 namespace gansu::gpu{
 
@@ -340,7 +343,7 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
 
     
     // make multi stream
-    int N = (shell_type_count)*(shell_type_count+1) /2;
+    const int N = (shell_type_count)*(shell_type_count+1) /2;
     std::vector<cudaStream_t> streams(N);
     std::vector<cudaStream_t> V_streams(N);
 
@@ -424,6 +427,7 @@ size_t makeShellPairTypeInfo(const std::vector<ShellTypeInfo>& shell_type_infos,
     return num_primitive_shell_pairs;
 }
 
+/*
 void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) {
 
     // compute the electron repulsion integrals
@@ -477,7 +481,78 @@ void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const 
         }
     }
 }
+*/
+void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) {
 
+    // compute the electron repulsion integrals
+    const int threads_per_block = 256; // the number of threads per block
+    const int shell_type_count = shell_type_infos.size();
+
+    // Call the kernel functions from (ss|ss),... (e.g. (ss|ss), (ss|sp), (ss|pp), (sp|sp), (sp|pp), (pp|pp) for s and p shells)
+
+    // list shell-quadruples for sorted shell-type (s0, s1, s2, s3)
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    // reverse the order of the shell_quadruples to make it sorted by (s0, s1, s2, s3)
+    std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+
+    // make multi stream
+    const int num_kernels = shell_quadruples.size();
+    std::vector<cudaStream_t> streams(num_kernels);
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int stream_id = 0;
+    for(const auto& quadruple: shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
+        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
+        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket; // equal to the number of threads
+        const int num_blocks = (num_braket + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+        const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
+        const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
+
+        gpu::get_eri_kernel(s0, s1, s2, s3)<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_eri_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, num_braket, schwarz_screening_threshold, d_schwarz_upper_bound_factors, num_basis, d_boys_grid, head_bra, head_ket);
+    
+        if(verbose){
+            std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2) << shell_type_to_shell_name(s3) << "): ";
+            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s3) << "|=" << shell_s1.count << ", ";
+            std::cout << "|bra|= " << num_bra << ", " ;
+            std::cout << "|ket|= " << num_ket << ", " ;
+            std::cout << "|braket|= " << num_braket << ", " ;
+            std::cout << "num_blocks: " << num_blocks << std::endl;
+        }
+    }
+
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+}
 
 
 
