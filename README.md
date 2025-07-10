@@ -114,6 +114,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 | `doc/html/` | Contains the Doxygen-generated documentation |
 | `include/` | Contains the header files |
 | `parameter_recipe/` | Contains the parameter recipes for convenience |
+| `script/` | Script files |
 | `src/` | Contains the source files |
 | `src/boys/` | Contains a precomputed file for the Boys function |
 | `test/` | Contains the test files |
