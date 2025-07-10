@@ -223,7 +223,7 @@ You may obtain a copy of the license in the LICENSE file
 located in the root directory of this source tree or at:
 https://opensource.org/licenses/BSD-3-Clause
 
-## Related Papers
+## Publications
   1. Satoki Tsuji, Yasuaki Ito, Haruto Fujii, Nobuya Yokogawa, Kanta Suzuki, Koji Nakano, Victor Parque, Akihiko Kasagi, GPU-Accelerated Fock Matrix Computation with Efficient Reduction, Applied Sciences, vol. 15, no. 9, 4779, April 2025. ([DOI](https://doi.org/10.3390/app15094779))
   1. Haruto Fujii, Yasuaki Ito, Nobuya Yokogawa, Kanta Suzuki, Satoki Tsuji, Koji Nakano, Victor Parque, Akihiko Kasagi, Efficient GPU Implementation of the McMurchie-Davidson Method for Shell-Based ERI Computations, Applied Sciences, vol. 15, no. 5, 2572, February 2025. ([DOI](https://doi.org/10.3390/app15052572))
   1. Satoki Tsuji, Yasuaki Ito, Koji Nakano, Akihiko Kasagi, GPU Acceleration of the Boys Function Evaluation in Computational Quantum Chemistry, Concurrency and Computation: Practice and Experience, vol. 37, no. 2, e8328, 2025. ([DOI](https://doi.org/10.1002/cpe.8328))
