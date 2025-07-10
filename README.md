@@ -16,6 +16,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
     * Restricted Hartree-Fock (RHF) 
     * Unrestricted Hartree-Fock (UHF)
     * Restricted Open-Shell Hartree-Fock (ROHF)
+    * RI approximation (Density Fitting) (RHF, UHF, ROHF)
 * Initial Guess
     * Core Hamiltonian (RHF, UHF, ROHF) 
     * Generalized Wolfsberg-Helmholz (GWH) (RHF, UHF, ROHF)
@@ -35,6 +36,8 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
       *  McMurchie-Davidson algorithm (s-, p-, d-, f-, g-, h-, and i-orbitals)
       *  Head-Godon-Pople algorithm (s- and p-orbitals)
       * Swartz Screening
+    * Electron repulsion integrals for density fitting (RI approximation)
+      * Head-Godon-Pople algorithm (s-, p-, and d-orbitals for basis functions, s-, p-, d-, f-, and g-orbitals for auxiliary basis functions)
     * Boys function
 * Charge analysis
     * Mulliken population analysis (RHF, UHF, ROHF)
@@ -52,13 +55,13 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 * Initial Guess
   * Random
   * Load the precomputed coefficients/Fock matrix
-* Density Fitting (RI approximation)
 * Direct SCF
 * Post-Hartree-Fock methods
   * Integral Transformation (AO -> MO)
   * Configuration Interaction (CI)
-  * Coupled Cluster (CC)
   * Moller-Plesset Perturbation Theory (MP)
+  * Coupled Cluster (CC)
+  * Equation-of-Motion Coupled Cluster (EOM-CC)
 * Density Functional Theory (DFT)
 * GPU implementation
   * Total spin (UHF)
@@ -86,6 +89,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 ```
 .
 ├─ basis/
+├─ auxiliary_basis/
 ├─ doc/
 │   └─ html/
 ├─ include/
@@ -104,7 +108,8 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 #### Description of the directories and files
 | File/Directory | Description |
 | --- | --- |
-| `basis/` | Contains the basis set files (e.g., sto-3g.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/) |
+| `basis/` | Contains the basis set files (e.g., sto-3g.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/), and the precomputed density matrix cache files (e.g., sto-3g.sad) for SAD |
+| `auxiliary_basis` | Contains the auxiliary basis set files (e.g., cc-pvdz-rifit.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/) |
 | `doc/` | Contains document materials |
 | `doc/html/` | Contains the Doxygen-generated documentation |
 | `include/` | Contains the header files |
@@ -114,6 +119,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 | `test/` | Contains the test files |
 | `xyz/` | Contains the XYZ files (e.g., H2O.xyz) |
 | `xyz/monatomic/` | Contains the XYZ files for monatomic molecules (e.g., H.xyz) |
+| `xyz/large_molecular/` | Contains the XYZ files for large molecules (e.g., fullerene.xyz). RI approximation (density fitting) is neccesary for them. |
 | `CMakeLists.txt` | CMake configuration file |
 | `LICENSE` | License file |
 | `Parameter.md` | Parameter overview and description |
@@ -141,6 +147,9 @@ make
 ./HF_main -x ../xyz/H2.xyz -g ../basis/sto-3g.gbs -m RHF
 ```
 
+> [!NOTE]
+> To enable support for higher angular momentum orbitals in the RI approximation, uncomment the relevant lines in CMakeLists.txt. Be aware that doing so may result in a substantially longer compilation time.
+
 ### Usage
 Usage
 ```
@@ -158,6 +167,7 @@ Short options:
 | `-p` | `--parameter_file` | Parameter recipe file |
 | `-x` | `--xyzfilename` | XYZ file |
 | `-g` | `--gbsfilename` | Gaussian basis set file |
+| `-ag` | `--auxiliary_gbsfilename` | Gaussian auxiliary basis set file |
 | `-c` | `--charge` | Charge of the molecule |
 
 #### Examples
@@ -188,12 +198,16 @@ gbsfilename = ../basis/sto-3g.gbs
 method = RHF
 convergence_method = OptimalDamping
 ```
-
-
-
 > [!NOTE]
 > Parameters in the recipe file are overwritten by the command-line options.
 
+
+##### Example 3: Fullerene (C60) molecule using RI approximation
+If the molecule is large, it is recommended to use the RI approximation (density fitting) to reduce the memory usage. The auxiliary basis set file is required for the RI approximation.
+
+``` bash
+./HF_main -x ../xyz/large_molecular/fullerene.xyz -g ../basis/sto-3g.gbs --eri_method ri -ag ../auxiliary_basis/cc-pvdz-rifit.gbs
+```
 
 
 ## License [![BSD 3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-orange)](https://opensource.org/licenses/BSD-3-Clause)
@@ -208,6 +222,16 @@ You may obtain a copy of the license in the LICENSE file
 located in the root directory of this source tree or at:
 https://opensource.org/licenses/BSD-3-Clause
 
+## Related Papers
+  1. Satoki Tsuji, Yasuaki Ito, Haruto Fujii, Nobuya Yokogawa, Kanta Suzuki, Koji Nakano, Victor Parque, Akihiko Kasagi, GPU-Accelerated Fock Matrix Computation with Efficient Reduction, Applied Sciences, vol. 15, no. 9, 4779, April 2025. ([DOI](https://doi.org/10.3390/app15094779))
+  1. Haruto Fujii, Yasuaki Ito, Nobuya Yokogawa, Kanta Suzuki, Satoki Tsuji, Koji Nakano, Victor Parque, Akihiko Kasagi, Efficient GPU Implementation of the McMurchie-Davidson Method for Shell-Based ERI Computations, Applied Sciences, vol. 15, no. 5, 2572, February 2025. ([DOI](https://doi.org/10.3390/app15052572))
+  1. Satoki Tsuji, Yasuaki Ito, Koji Nakano, Akihiko Kasagi, GPU Acceleration of the Boys Function Evaluation in Computational Quantum Chemistry, Concurrency and Computation: Practice and Experience, vol. 37, no. 2, e8328, 2025. ([DOI](https://doi.org/10.1002/cpe.8328))
+ 1. Kanta Suzuki, Yasuaki Ito, Haruto Fujii, Nobuya Yokogawa, Satoki Tsuji, Koji Nakano and Akihiko Kasagi, GPU Acceleration of Head-Gordon-Pople Algorithm, in Proc. of International Symposium on Computing and Networking, pp. 115-124, Naha, Okinawa, November 2024. ([DOI](https://doi.ieeecomputersociety.org/10.1109/CANDAR64496.2024.00021)) 
+ 1. Nobuya Yokogawa, Yasuaki Ito, Satoki Tsuji, Haruto Fujii, Kanta Suzuki, Koji Nakano and Akihiko Kasagi, Parallel GPU Computation of Nuclear Attraction Integrals in Quantum Chemistry, in Proc. of International Symposium on Computing and Networking Workshops, pp. 163-169, Naha, Okinawa, November 2024. ([DOI](https://doi.org/10.1109/CANDARW64572.2024.00033)) 
+ 1. Satoki Tsuji, Yasuaki Ito, Haruto Fujii, Nobuya Yokogawa, Kanta Suzuki, Koji Nakano and Akihiko Kasagi, Dynamic Screening of Two-Electron Repulsion Integrals in GPU Parallelization, in Proc. of International Symposium on Computing and Networking Workshops, pp. 211-217, Naha, Okinawa, November 2024.  ([DOI](https://doi.org/10.1109/CANDARW64572.2024.00041)) 
+ 1. Haruto Fujii, Yasuaki Ito, Nobuya Yokogawa, Kanta Suzuki, Satoki Tsuji, Koji Nakano, and Akihiko Kasagi, A GPU Implementation of McMurchie-Davidson Algorithm for Two-Electron Repulsion Integral Computation, in Proc. of 15th International Conference of Parallel Processing and Applied Mathematics (PPAM 2024), LNCS 15579, pp. 210-224, 2025. ([DOI](https://doi.org/10.1007/978-3-031-85697-6_14))
+ 1. Yasuaki Ito, Satoki Tsuji, Haruto Fujii, Kanta Suzuki, Nobuya Yokogawa, Koji Nakano, Akihiko Kasagi, Introduction to Computational Quantum Chemistry for Computer Scientists, in Proc. of International Parallel and Distributed Processing Symposium Workshops, pp. 273-282, May 2024. ([DOI](https://doi.ieeecomputersociety.org/10.1109/IPDPSW63119.2024.00066))
+ 1. Satoki Tsuji, Yasuaki Ito, Koji Nakano, Akihiko Kasagi, Efficient GPU-Accelerated Bulk Evaluation of the Boys Function for Quantum Chemistry, in Proc. of International Symposium on Computing and Networking Workshops, pp. 49-58, Matsue, Shimane, November 2023. ([DOI](https://doi.org/10.1109/CANDAR60563.2023.00014))
 
 ## Additional resources (Japanese)
 A series of articles explaining how to use GANSU in Japanese is available on Zenn:

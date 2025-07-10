@@ -51,6 +51,13 @@ int main(int argc, char* argv[]){
 
     hf->export_molden_file("output.molden"); // Export the molecular orbitals to a molden file
 
+    // Export the SAD density matrix to a file
+    if (parameters.contains("export_sad_cache")) {
+        std::cout << "Exporting SAD cache to 'temp_sad_cache.dat'..." << std::endl;
+        hf->generate_sad_cache("temp_sad_cache.dat");
+        std::cout << "SAD cache exported successfully." << std::endl;
+    }
+
 
     return 0;
 

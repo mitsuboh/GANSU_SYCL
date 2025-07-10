@@ -27,6 +27,7 @@
 
 #include "parameter_manager.hpp"
 #include "gpu_manager.hpp"
+#include "env.hpp" // display_env_info
 
 namespace gansu{
 
@@ -79,6 +80,7 @@ public:
         {
             gpu::cusolverManager cusolver;
             gpu::cublasManager cublas;
+            display_env_info();
         }
 
 

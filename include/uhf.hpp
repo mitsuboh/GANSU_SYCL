@@ -596,12 +596,15 @@ public:
             const auto& [density_matrix_alpha, density_matrix_beta] = cache[atomic_number];
             return {density_matrix_alpha.data(), density_matrix_beta.data()};
         }
-       
+
+        std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+
         ParameterManager parameters;
         parameters.set_default_values_to_unspecfied_parameters();
         parameters["gbsfilename"] = hf_.get_gbsfilename();
         parameters["initial_guess"] = "core"; // if "SAD" is used, the initial guess may be recursively called
-
+        parameters["eri_method"] = "stored"; // use stored ERI method for the monatomic molecule
+        
         ROHF atom_rohf(monatomic_molecule, parameters);
 
         atom_rohf.solve();
@@ -621,7 +624,7 @@ public:
     }
 
 
-
+/*
     void guess() override {
         // allocate and initialize the density matrices of alpha and beta spins
         std::unique_ptr<real_t[]> density_matrix_alpha(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
@@ -659,6 +662,46 @@ public:
         hf_.compute_density_matrix(); // compute the density matrix from the coefficient matrix
         hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
 
+    }
+*/
+
+    void guess() override {
+        // allocate and initialize the density matrices of alpha and beta spins
+        std::unique_ptr<real_t[]> density_matrix_alpha(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
+        std::unique_ptr<real_t[]> density_matrix_beta(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
+        memset(density_matrix_alpha.get(), 0, hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
+        memset(density_matrix_beta.get(), 0, hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
+
+
+        // solve ROHF for each atom to get the density matrix
+        for(int i=0; i<hf_.get_atoms().size(); i++){
+            const std::string element_name = atomic_number_to_element_name(hf_.get_atoms()[i].atomic_number);
+
+            std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+
+            int atom_num_basis;
+            auto [atom_density_matrix_alpha, atom_density_matrix_beta] = read_density_from_sad(element_name, hf_.get_gbsfilename(), atom_num_basis);
+
+            // copy the density matrix of the atom to the density matrix of the molecule in the corresponding diagonal block
+            for(size_t p=0; p < atom_num_basis; p++){
+                for(size_t q = 0; q < atom_num_basis; q++){
+                    size_t p_molecule = hf_.get_atom_to_basis_range()[i].start_index + p;
+                    size_t q_molecule = hf_.get_atom_to_basis_range()[i].start_index + q;
+                    density_matrix_alpha[p_molecule * hf_.get_num_basis() + q_molecule] = atom_density_matrix_alpha[p * atom_num_basis + q];
+                    density_matrix_beta[p_molecule * hf_.get_num_basis() + q_molecule]  = atom_density_matrix_beta [p * atom_num_basis + q];                }
+            }
+        }
+
+        cudaMemcpy(hf_.get_density_matrix_a().device_ptr(), density_matrix_alpha.get(), hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t), cudaMemcpyHostToDevice);
+        cudaMemcpy(hf_.get_density_matrix_b().device_ptr(), density_matrix_beta.get(), hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t), cudaMemcpyHostToDevice);
+
+        hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
+        hf_.compute_coefficient_matrix(); // compute the coefficient matrix from the density matrix
+        
+        break_symmetry();
+
+        hf_.compute_density_matrix(); // compute the density matrix from the coefficient matrix
+        hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
     }
 
 private:

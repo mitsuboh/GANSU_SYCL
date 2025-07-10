@@ -134,8 +134,8 @@ void RHF::guess_initial_fock_matrix(const real_t* density_matrix_a, const real_t
     }else if(initail_guess_method_ == "gwh"){ // Generalized Wolfsberg-Helmholz (GWH) method
         initial_guess = std::make_unique<InitialGuess_RHF_GWH>(*this);
     }else if(initail_guess_method_ == "sad"){ // Superposition of Atomic Densities (SAD) method
-        if(gbsfilename_ == ""){
-            throw std::runtime_error("If ``sad'' is set to ``initail_guess_method'', the basis set file should be provided by setting the file path to ``gbsfilename''.");
+        if(gbsfilename_.empty()){
+            THROW_EXCEPTION("The basis set file is not specified for SAD initial guess method. Please specify the basis set file name by -gbsfilename option.");
         }
         initial_guess = std::make_unique<InitialGuess_RHF_SAD>(*this);
     }else{

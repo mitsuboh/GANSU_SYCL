@@ -368,6 +368,39 @@ public:
      * @details Matrix must be allocated before calling this function, and the size of the matrix must be num_basis x num_basis.
      */
     virtual void export_density_matrix(real_t* density_matrix_a, real_t* density_martix_b, const int num_basis) = 0;
+
+    void generate_sad_cache(const std::string& sad_cache_filename) {
+        // This function is called after solving the HF equation
+        // to generate the SAD cache file for the SAD initial guess method.
+        // The SAD cache file is used to store the density matrices of the atoms.
+
+        std::ofstream sad_cache_file(sad_cache_filename);
+        if (!sad_cache_file.is_open()) {
+            throw std::runtime_error("Failed to open the SAD cache file: " + sad_cache_filename);
+        }
+        std::vector<double> density_matrix_alpha(num_basis * num_basis);
+        std::vector<double> density_matrix_beta(num_basis * num_basis);
+        export_density_matrix(density_matrix_alpha.data(), density_matrix_beta.data(), num_basis);
+
+
+        sad_cache_file << num_basis << std::endl; // write the number of basis functions
+        sad_cache_file << std::setprecision(10) << std::scientific;
+        // Write alpha matrix (row-major)
+        for (int i = 0; i < num_basis; ++i) {
+            for (int j = 0; j < num_basis; ++j) {
+                sad_cache_file << density_matrix_alpha[i * num_basis + j] << " ";
+            }
+            sad_cache_file << "\n";
+        }
+
+        // Write beta matrix (row-major)
+        for (int i = 0; i < num_basis; ++i) {
+            for (int j = 0; j < num_basis; ++j) {
+                sad_cache_file << density_matrix_beta[i * num_basis + j] << " ";
+            }
+            sad_cache_file << "\n";
+        }
+    }
 };
 
 

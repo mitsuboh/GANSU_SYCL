@@ -25,8 +25,18 @@
 #include <sstream>
 #include <cstring>
 #include <filesystem> // std::filesystem::path (C++17)
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <stdexcept>
+#include <iomanip>
+#include <unordered_map>
 
 namespace gansu{
+
+
+// protoype of functions
+std::pair<std::vector<double>, std::vector<double>> read_density_from_sad(const std::string& element, const std::string& basis_path, int& num_basis_out);
 
 /**
  * @brief Exception class

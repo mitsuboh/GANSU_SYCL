@@ -107,6 +107,7 @@ public:
     void precomputation() override;
 
     DeviceHostMemory<PrimitiveShell>& get_auxiliary_primitive_shells() { return auxiliary_primitive_shells_; } ///< Get the auxiliary primitive shells
+    int get_num_auxiliary_basis() { return num_auxiliary_basis_; }
 
     std::string get_algorithm_name() override { return "RI"; } ///< Get the algorithm name
 
@@ -120,6 +121,10 @@ protected:
     DeviceHostMemory<real_t> auxiliary_cgto_nomalization_factors_; ///< Normalization factors of the contracted Gauss functions
 
     DeviceHostMatrix<real_t> intermediate_matrix_B_; ///< intermediate matrix B (num_auxiliary_basis_ x (num_basis_x num_basis_))
+
+    // Suzuki.
+    // DeviceHostMemory<real_t> two_center_eri_;
+    // DeviceHostMemory<real_t> three_center_eri_;
 };
 
 

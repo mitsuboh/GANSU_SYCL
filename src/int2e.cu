@@ -37,12 +37,13 @@ namespace gansu::gpu{
 
 
 
-__device__ void ssss(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
-__device__ void sssp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
-__device__ void spsp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
-__device__ void sspp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
-__device__ void sppp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
-__device__ void pppp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const double* g_boys_grid);
+
+__device__ void ssss(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
+__device__ void sssp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
+__device__ void spsp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
+__device__ void sspp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
+__device__ void sppp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
+__device__ void pppp(double* g_int2e, const PrimitiveShell a, const PrimitiveShell b, const PrimitiveShell c, const PrimitiveShell d, const size_t i, const size_t j, const size_t k, const size_t l, const bool sym_bra, const bool sym_ket, const bool sym_braket, const int num_basis, const real_t* g_cgto_normalization_factors, const double* g_boys_grid);
 
 
 //* static
@@ -92,6 +93,7 @@ void ssss2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 
@@ -142,6 +144,7 @@ void sssp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 
@@ -192,6 +195,7 @@ void sspp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 
@@ -242,6 +246,7 @@ void spsp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 
@@ -291,6 +296,7 @@ void sppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 
@@ -340,15 +346,10 @@ void pppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
         i, j, k, l,
         is_bra_symmetric, is_ket_symmetric, is_braket_symmetric,
         num_basis,
+       g_cgto_normalization_factors, 
         g_boys_grid);
 }
 /**/
-
-
-
-
-
-
 
 
 
@@ -359,6 +360,7 @@ void ssss(double* g_int2e,
           const size_t i, const size_t j, const size_t k, const size_t l,
           const bool sym_bra, const bool sym_ket, const bool sym_braket,
           const int num_basis,
+          const real_t* g_cgto_normalization_factors,
           const double* g_boys_grid)
 {
     const double Rp[3] = {(a.exponent*a.coordinate.x + b.exponent*b.coordinate.x)/(a.exponent+b.exponent), (a.exponent*a.coordinate.y + b.exponent*b.coordinate.y)/(a.exponent+b.exponent), (a.exponent*a.coordinate.z + b.exponent*b.coordinate.z)/(a.exponent+b.exponent)};
@@ -373,7 +375,7 @@ void ssss(double* g_int2e,
           g_int2e, 
           i, j, k, l,
           num_basis,
-          sym_bra, sym_ket, sym_braket
+          sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
           );
 }
 
@@ -388,6 +390,7 @@ void sssp(double* g_int2e,
     const size_t i, const size_t j, const size_t k, const size_t l,
     const bool sym_bra, const bool sym_ket, const bool sym_braket,
     const int num_basis,
+    const real_t* g_cgto_normalization_factors,
     const double* g_boys_grid)
 {
     const double p = a.exponent+b.exponent;
@@ -408,19 +411,19 @@ void sssp(double* g_int2e,
     addToResult_case2(coefAndNorm * (((c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x))*Boys[0]
                         + ((Rp[0]-Rq[0])*p/(p + q))*Boys[1]),
              g_int2e, i, j, k, l, 
-             num_basis, sym_bra
+             num_basis, sym_bra, g_cgto_normalization_factors
              ); 
 
     addToResult_case2(coefAndNorm * (((c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y))*Boys[0]
                     + ((Rp[1]-Rq[1])*p/(p + q))*Boys[1]),
                     g_int2e, i, j, k, l+1, 
-                    num_basis, sym_bra
+                    num_basis, sym_bra, g_cgto_normalization_factors
              ); 
 
     addToResult_case2(coefAndNorm * (((c.coordinate.z - d.coordinate.z) + (Rq[2] - c.coordinate.z))*Boys[0]
                     + ((Rp[2]-Rq[2])*p/(p + q))*Boys[1]),
                     g_int2e, i, j, k, l+2, 
-             num_basis, sym_bra
+             num_basis, sym_bra, g_cgto_normalization_factors
              ); 
 
 }
@@ -436,6 +439,7 @@ void sspp(double* g_int2e,
     const size_t i, const size_t j, const size_t k, const size_t l,
     const bool sym_bra, const bool sym_ket, const bool sym_braket,
     const int num_basis,
+    const real_t* g_cgto_normalization_factors,
     const double* g_boys_grid)
 {
     double p = a.exponent+b.exponent;
@@ -456,55 +460,55 @@ void sspp(double* g_int2e,
     addToResult_case4(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x)) + 0.5/q) * Boys[0]
                                     + (p*((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q - 0.5)/(q*(p + q))) * Boys[1]
                                     + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(p*p)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+0, l+0, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+0, l+0, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[0] - c.coordinate.x)*((c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y))) * Boys[0]
                                     + (p*((Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y) + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1]))/(p + q)) * Boys[1]
                                     + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+0, l+1, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+0, l+1, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[0] - c.coordinate.x)*((c.coordinate.z - d.coordinate.z) + (Rq[2] - c.coordinate.z))) * Boys[0]
                                     + (p*((Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z) + (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2]))/(p + q)) * Boys[1]
                                     + ((Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+0, l+2, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+0, l+2, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x))) * Boys[0]
                                     + (p*((c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1]) + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1]))/(p + q)) * Boys[1]
                                     + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+1, l+0, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+1, l+0, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5/q) * Boys[0]
                                     + (p*((c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 0.5)/(q*(p + q))) * Boys[1]
                                     + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+1, l+1, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+1, l+1, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.z - d.coordinate.z) + (Rq[2] - c.coordinate.z))) * Boys[0]
                                     + (p*((Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z) + (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2]))/(p + q)) * Boys[1]
                                     + ((Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+1, l+2, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+1, l+2, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x))) * Boys[0]
                                     + (p*((c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2]) + (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2]))/(p + q)) * Boys[1]
                                     + ((Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+2, l+0, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+2, l+0, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y))) * Boys[0]
                                     + (p*((c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2]) + (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2]))/(p + q)) * Boys[1]
                                     + ((Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+2, l+1, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+2, l+1, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       ); 
 
     addToResult_case4(coefAndNorm * (((c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + ((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5/q) * Boys[0]
                                     + (p*((c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 0.5)/(q*(p + q))) * Boys[1]
                                     + (((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j, k+2, l+2, num_basis, sym_bra, sym_ket
+                      g_int2e, i, j, k+2, l+2, num_basis, sym_bra, sym_ket,g_cgto_normalization_factors
                       );                 
 }
 /**/
@@ -517,6 +521,7 @@ void spsp(double* g_int2e,
     const size_t i, const size_t j, const size_t k, const size_t l,
     const bool sym_bra, const bool sym_ket, const bool sym_braket,
     const int num_basis,
+    const real_t* g_cgto_normalization_factors,
     const double* g_boys_grid)
 {
     double p = a.exponent+b.exponent;
@@ -536,55 +541,55 @@ void spsp(double* g_int2e,
     addToResult_case5(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)) * Boys[0]
                                     + (0.5*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 1.0)/(p + q)) * Boys[1]
                                     + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p*q/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+0, k, l+0, num_basis, sym_braket
+                      g_int2e, i, j+0, k, l+0, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)) * Boys[0]
                                     + (((a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(p + q)) * Boys[1]
                                     + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+0, k, l+1, num_basis, sym_braket
+                      g_int2e, i, j+0, k, l+1, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)) * Boys[0]
                                     + (((a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
                                     + (-(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+0, k, l+2, num_basis, sym_braket
+                      g_int2e, i, j+0, k, l+2, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)) * Boys[0]
                                     + ((-(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(p + q)) * Boys[1]
                                     + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+1, k, l+0, num_basis, sym_braket
+                      g_int2e, i, j+1, k, l+0, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)) * Boys[0]
                                     + (0.5*(2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 1.0)/(p + q)) * Boys[1]
                                     + (-((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+1, k, l+1, num_basis, sym_braket
+                      g_int2e, i, j+1, k, l+1, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)) * Boys[0]
                                     + (((a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
                                     + (-(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+1, k, l+2, num_basis, sym_braket
+                      g_int2e, i, j+1, k, l+2, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)) * Boys[0]
                                     + ((-(c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(p + q)) * Boys[1]
                                     + (-(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+2, k, l+0, num_basis, sym_braket
+                      g_int2e, i, j+2, k, l+0, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)) * Boys[0]
                                     + ((-(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(p + q)) * Boys[1]
                                     + (-(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q/((p*p) + 2*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+2, k, l+1, num_basis, sym_braket
+                      g_int2e, i, j+2, k, l+1, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 
     addToResult_case5(coefAndNorm * (((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)) * Boys[0]
                                     + (0.5*(2.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 1.0)/(p + q)) * Boys[1]
                                     + (-((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q/((p*p) + 2.0*p*q + (q*q))) * Boys[2]),
-                      g_int2e, i, j+2, k, l+2, num_basis, sym_braket
+                      g_int2e, i, j+2, k, l+2, num_basis, sym_braket, g_cgto_normalization_factors
                       ); 
 }
 /**/
@@ -599,6 +604,7 @@ void sppp(double* g_int2e,
     const size_t i, const size_t j, const size_t k, const size_t l,
     const bool sym_bra, const bool sym_ket, const bool sym_braket,
     const int num_basis,
+    const real_t* g_cgto_normalization_factors,
     const double* g_boys_grid)
 {
     double p = a.exponent+b.exponent;
@@ -620,189 +626,189 @@ void sppp(double* g_int2e,
         + (0.25*(4.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*p*q + 8.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*p + 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p*q - 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(q*q) + 2.0*(c.coordinate.x - d.coordinate.x)*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*p*q - 2.0*(Rp[0] - a.coordinate.x)*p - 4.0*(Rp[0]-Rq[0])*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(q*q) - 2.0*(Rp[0]-Rq[0])*q + 4.0*(Rq[0] - c.coordinate.x)*q)/(q*(p + q))) * Boys[1]
         + ((Rp[0]-Rq[0])*p*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 3.0)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+0, l+0, num_basis, sym_ket
+        g_int2e, i, j+0, k+0, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*q + (c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q + (Rp[1]-Rq[1]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+0, l+1, num_basis, sym_ket
+        g_int2e, i, j+0, k+0, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[2] - c.coordinate.z)*q + (c.coordinate.z - d.coordinate.z) + (Rq[2] - c.coordinate.z))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q + (Rp[2]-Rq[2]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+0, l+2, num_basis, sym_ket
+        g_int2e, i, j+0, k+0, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*q + (Rq[1] - c.coordinate.y))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q + (Rp[1]-Rq[1]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+1, l+0, num_basis, sym_ket
+        g_int2e, i, j+0, k+1, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + (a.coordinate.x - b.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(a.coordinate.x - b.coordinate.x)/q + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(Rp[0] - a.coordinate.x)/q) * Boys[0]
         + (((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q - 0.5*(a.coordinate.x - b.coordinate.x)*p + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q - 0.5*(Rp[0] - a.coordinate.x)*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(q*q) - (Rp[0]-Rq[0])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) - 0.5*(Rp[0]-Rq[0])*q)/(q*(p + q))) * Boys[1]
         + (p*((a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + (Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 0.5*(Rp[0]-Rq[0]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+1, l+1, num_basis, sym_ket
+        g_int2e, i, j+0, k+1, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (((a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
         + (p*((a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+1, l+2, num_basis, sym_ket
+        g_int2e, i, j+0, k+1, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*p + 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[2] - c.coordinate.z)*q + (Rq[2] - c.coordinate.z))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q + (Rp[2]-Rq[2]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+2, l+0, num_basis, sym_ket
+        g_int2e, i, j+0, k+2, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
         + (((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
         + (p*((a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+2, l+1, num_basis, sym_ket
+        g_int2e, i, j+0, k+2, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.x - b.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.x - b.coordinate.x)/q + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(Rp[0] - a.coordinate.x)/q) * Boys[0]
         + (((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 0.5*(a.coordinate.x - b.coordinate.x)*p + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 0.5*(Rp[0] - a.coordinate.x)*p - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) - 0.5*(Rp[0]-Rq[0])*q)/(q*(p + q))) * Boys[1]
         + (p*((a.coordinate.x - b.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + (Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 0.5*(Rp[0]-Rq[0]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+0, k+2, l+2, num_basis, sym_ket
+        g_int2e, i, j+0, k+2, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.y - b.coordinate.y) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1] - a.coordinate.y) + 0.5*(a.coordinate.y - b.coordinate.y)/q + 0.5*(Rp[1] - a.coordinate.y)/q) * Boys[0]
         + (((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p*q + (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p*q - (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*p*q - ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1]-Rq[1])*(q*q) - 0.5*(a.coordinate.y - b.coordinate.y)*p - 0.5*(Rp[1] - a.coordinate.y)*p - 0.5*(Rp[1]-Rq[1])*q)/(q*(p + q))) * Boys[1]
         + (p*(-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q + 0.5*(Rp[1]-Rq[1]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+0, l+0, num_basis, sym_ket
+        g_int2e, i, j+1, k+0, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
         + (0.5*(2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p + 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + (Rq[0] - c.coordinate.x))/(p + q)) * Boys[1]
         + (p*(2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + (Rp[0]-Rq[0]) - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+0, l+1, num_basis, sym_ket
+        g_int2e, i, j+1, k+0, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (((Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
         + (p*((Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+0, l+2, num_basis, sym_ket
+        g_int2e, i, j+1, k+0, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
         + (0.5*(2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + (c.coordinate.x - d.coordinate.x) + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p + 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + (Rq[0] - c.coordinate.x))/(p + q)) * Boys[1]
         + (p*(-2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + (Rp[0]-Rq[0]) - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+1, l+0, num_basis, sym_ket
+        g_int2e, i, j+1, k+1, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + (a.coordinate.y - b.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(a.coordinate.y - b.coordinate.y)/q + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y) + (Rp[1] - a.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(Rp[1] - a.coordinate.y)/q) * Boys[0]
         + (0.25*(4.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 8.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q - 2.0*(a.coordinate.y - b.coordinate.y)*p + 4.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q - 4.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) + 2.0*(c.coordinate.y - d.coordinate.y)*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q - 2.0*(Rp[1] - a.coordinate.y)*p - 4.0*(Rp[1]-Rq[1])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) - 2.0*(Rp[1]-Rq[1])*q + 4.0*(Rq[1] - c.coordinate.y)*q)/(q*(p + q))) * Boys[1]
         + ((Rp[1]-Rq[1])*p*(2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 4.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 3.0)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+1, l+1, num_basis, sym_ket
+        g_int2e, i, j+1, k+1, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p + 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + 2.0*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*q - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*q + (c.coordinate.z - d.coordinate.z) + (Rq[2] - c.coordinate.z))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*q - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[2]-Rq[2]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+1, l+2, num_basis, sym_ket
+        g_int2e, i, j+1, k+1, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
         + (((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(p + q)) * Boys[1]
         + (p*(-(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+2, l+0, num_basis, sym_ket
+        g_int2e, i, j+1, k+2, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
         + (0.5*(2.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + 2.0*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*q + (Rq[2] - c.coordinate.z))/(p + q)) * Boys[1]
         + (p*(2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[2]-Rq[2]))/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+2, l+1, num_basis, sym_ket
+        g_int2e, i, j+1, k+2, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.y - b.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.y - b.coordinate.y)/q + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(Rp[1] - a.coordinate.y)/q) * Boys[0]
         + (((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 0.5*(a.coordinate.y - b.coordinate.y)*p + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 0.5*(Rp[1] - a.coordinate.y)*p - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[1]-Rq[1])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) - 0.5*(Rp[1]-Rq[1])*q)/(q*(p + q))) * Boys[1]
         + (p*((a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + (Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 0.5*(Rp[1]-Rq[1]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+1, k+2, l+2, num_basis, sym_ket
+        g_int2e, i, j+1, k+2, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.z - b.coordinate.z) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2] - a.coordinate.z) + 0.5*(a.coordinate.z - b.coordinate.z)/q + 0.5*(Rp[2] - a.coordinate.z)/q) * Boys[0]
         + (((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p*q + (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p*q - (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*p*q - ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2]-Rq[2])*(q*q) - 0.5*(a.coordinate.z - b.coordinate.z)*p - 0.5*(Rp[2] - a.coordinate.z)*p - 0.5*(Rp[2]-Rq[2])*q)/(q*(p + q))) * Boys[1]
         + (p*(-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q + 0.5*(Rp[2]-Rq[2]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+0, l+0, num_basis, sym_ket
+        g_int2e, i, j+2, k+0, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
         + (((Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*p + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p - (Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(p + q)) * Boys[1]
         + (p*(-(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+0, l+1, num_basis, sym_ket
+        g_int2e, i, j+2, k+0, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rq[0] - c.coordinate.x))/(p + q)) * Boys[1]
         + (p*(2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rp[0]-Rq[0]) - 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+0, l+2, num_basis, sym_ket
+        g_int2e, i, j+2, k+0, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
         + (((c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (c.coordinate.x - d.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(p + q)) * Boys[1]
         + (p*(-(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2*p*q + (q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3*(p*p)*q + 3*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+1, l+0, num_basis, sym_ket
+        g_int2e, i, j+2, k+1, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z) + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(a.coordinate.z - b.coordinate.z) + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2] - a.coordinate.z) + 0.5*(a.coordinate.z - b.coordinate.z)/q + 0.5*(Rp[2] - a.coordinate.z)/q) * Boys[0]
         + (((c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q + (c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q - (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q - ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2]-Rq[2])*(q*q) - 0.5*(a.coordinate.z - b.coordinate.z)*p - 0.5*(Rp[2] - a.coordinate.z)*p - 0.5*(Rp[2]-Rq[2])*q)/(q*(p + q))) * Boys[1]
         + (p*(-(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + 0.5*(Rp[2]-Rq[2]))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (-((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+1, l+1, num_basis, sym_ket
+        g_int2e, i, j+2, k+1, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rq[1] - c.coordinate.y))/(p + q)) * Boys[1]
         + (p*(2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rp[1]-Rq[1]) - 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+1, l+2, num_basis, sym_ket
+        g_int2e, i, j+2, k+1, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (c.coordinate.x - d.coordinate.x) + 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rq[0] - c.coordinate.x))/(p + q)) * Boys[1]
         + (p*(-2.0*(c.coordinate.x - d.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rp[0]-Rq[0]) - 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+2, l+0, num_basis, sym_ket
+        g_int2e, i, j+2, k+2, l+0, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
         + (0.5*(2.0*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (c.coordinate.y - d.coordinate.y) + 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + 2.0*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rq[1] - c.coordinate.y))/(p + q)) * Boys[1]
         + (p*(-2.0*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + (Rp[1]-Rq[1]) - 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+2, l+1, num_basis, sym_ket
+        g_int2e, i, j+2, k+2, l+1, num_basis, sym_ket , g_cgto_normalization_factors
     );
 
     addToResult_case3(coefAndNorm * (((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.z - b.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.z - b.coordinate.z)/q + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z) + (Rp[2] - a.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(Rp[2] - a.coordinate.z)/q) * Boys[0]
         + (0.25*(4.0*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 8.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.z - b.coordinate.z)*p + 4.0*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) + 2.0*(c.coordinate.z - d.coordinate.z)*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[2] - a.coordinate.z)*p - 4.0*(Rp[2]-Rq[2])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) - 2.0*(Rp[2]-Rq[2])*q + 4.0*(Rq[2] - c.coordinate.z)*q)/(q*(p + q))) * Boys[1]
         + ((Rp[2]-Rq[2])*p*(2.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 4.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 3.0)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (-((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*q/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]),
-        g_int2e, i, j+2, k+2, l+2, num_basis, sym_ket
+        g_int2e, i, j+2, k+2, l+2, num_basis, sym_ket , g_cgto_normalization_factors
     );
 }
 /**/
@@ -816,6 +822,7 @@ void pppp(double* g_int2e,
     const size_t i, const size_t j, const size_t k, const size_t l,
     const bool sym_bra, const bool sym_ket, const bool sym_braket,
     const int num_basis,
+    const real_t* g_cgto_normalization_factors,
     const double* g_boys_grid)
 {
     double p = a.exponent+b.exponent;
@@ -838,7 +845,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p*q + 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(p*p) - 32.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*p*q + 24.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 32.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p*q + 16.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(q*q) - 24.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 16.0*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(p*p) - 64.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*p*q + 48.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p + 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(q*q) + 8.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p + 8.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*q - 48.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 12.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p + 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q - 6.0)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.y - d.coordinate.y)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[1] - c.coordinate.y)*p + 0.5*(c.coordinate.y - d.coordinate.y) + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -846,7 +853,7 @@ void pppp(double* g_int2e,
         + ((2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*p*q - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(q*q) + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(q*q) - 3.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 3.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.z - d.coordinate.z)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[2] - c.coordinate.z)*p + 0.5*(c.coordinate.z - d.coordinate.z) + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -854,7 +861,7 @@ void pppp(double* g_int2e,
         + ((2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*p*q - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 3.0*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*p + (c.coordinate.x - d.coordinate.x)*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*p + 0.5*(c.coordinate.x - d.coordinate.x) + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[0] - c.coordinate.x)*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -862,7 +869,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p - 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 3.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)/q + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y) + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))/q + 0.5*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)/p + 0.5*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))/p + 0.25/(p*q)) * Boys[0]
@@ -870,7 +877,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) + 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*q - 0.5*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - (Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) - 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.z - d.coordinate.z)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[2] - c.coordinate.z)*p + 0.5*(c.coordinate.z - d.coordinate.z) + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -878,7 +885,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - 0.5*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 0.5*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - 0.5*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*p + (c.coordinate.x - d.coordinate.x)*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*p + 0.5*(c.coordinate.x - d.coordinate.x) + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[0] - c.coordinate.x)*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -886,7 +893,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p - 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 3.0*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*p + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.y - d.coordinate.y)*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rq[1] - c.coordinate.y)*p + 0.5*(c.coordinate.y - d.coordinate.y) + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -894,7 +901,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - 0.5*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 0.5*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - 0.5*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)/q + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))/q + 0.5*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)/p + 0.5*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))/p + 0.25/(p*q)) * Boys[0]
@@ -902,7 +909,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.x - b.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - (a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p + ((Rp[0] - a.coordinate.x)*(Rp[0] - a.coordinate.x))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*q - 0.5*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) - 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.y - b.coordinate.y)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1] - a.coordinate.y)*q + 0.5*(a.coordinate.y - b.coordinate.y) + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -910,7 +917,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*p*q - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*p*q + 2.0*(Rp[0]-Rq[0])*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1]-Rq[1])*(q*q) + 3.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p + 3.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*p + 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -918,7 +925,7 @@ void pppp(double* g_int2e,
         + ((16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(q*q) - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 8.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -926,7 +933,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + (a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
@@ -934,7 +941,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(p*p) + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (a.coordinate.y - b.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(a.coordinate.y - b.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (Rp[1] - a.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -942,7 +949,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*p*q + 3.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q - 4.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 4.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 3.0*(Rp[0]-Rq[0]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -950,7 +957,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
@@ -958,7 +965,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + (a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -966,7 +973,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.y - b.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.y - b.coordinate.y) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[1] - a.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -974,7 +981,7 @@ void pppp(double* g_int2e,
         + (((Rp[0] - a.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) + (Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p - (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.z - b.coordinate.z)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2] - a.coordinate.z)*q + 0.5*(a.coordinate.z - b.coordinate.z) + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -982,7 +989,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*p*q - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2]-Rq[2])*(q*q) + 3.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + 3.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*p + 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -990,7 +997,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -998,7 +1005,7 @@ void pppp(double* g_int2e,
         + ((16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1006,7 +1013,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*q + (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*q + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(a.coordinate.z - b.coordinate.z)*q + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2] - a.coordinate.z)*q + 0.5*(a.coordinate.z - b.coordinate.z) + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -1014,7 +1021,7 @@ void pppp(double* g_int2e,
         + ((-(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(p*p) + (Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 0.5*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2]-Rq[2])*(q*q) + 0.5*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + 0.5*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p - (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1022,7 +1029,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1030,7 +1037,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1038,7 +1045,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[0] - a.coordinate.x)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.z - b.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.z - b.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[2] - a.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -1046,7 +1053,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0] - a.coordinate.x)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 4.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[0]-Rq[0]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+0, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+0, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*q + (a.coordinate.x - b.coordinate.x)*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*q + (Rp[0] - a.coordinate.x)*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1054,7 +1061,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(p*p) - 4.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*p*q + 2.0*(Rp[0]-Rq[0])*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1]-Rq[1])*(q*q) + 3.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*p + 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1062,7 +1069,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(q*q) - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q - 8.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1070,7 +1077,7 @@ void pppp(double* g_int2e,
         + ((2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
@@ -1078,7 +1085,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (a.coordinate.x - b.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (Rp[0] - a.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1086,7 +1093,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 4.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*p*q + 3.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*p*q + 3.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 4.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 3.0*(Rp[0]-Rq[0]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1094,7 +1101,7 @@ void pppp(double* g_int2e,
         + ((2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
@@ -1102,7 +1109,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1110,7 +1117,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.x - b.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[0] - a.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1118,7 +1125,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.x - b.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p + (Rp[0] - a.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y)) + 0.5*(c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)/p + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y)) + 0.5*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))/p + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)/q + 0.5*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))/q + 0.25/(p*q)) * Boys[0]
@@ -1126,7 +1133,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q - 0.5*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(p*p) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(p*p) + 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p*q - 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q - (Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(q*q) + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + (Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p + (c.coordinate.y - d.coordinate.y)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(c.coordinate.y - d.coordinate.y) + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rq[1] - c.coordinate.y)*p + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -1134,7 +1141,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*p*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p - 4.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p*q - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q + 2.0*(Rp[0]-Rq[0])*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[1]-Rq[1])*(p*p) - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(q*q) - 4.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(q*q) - 3.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 3.0*(Rp[0]-Rq[0]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(c.coordinate.z - d.coordinate.z)*p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rq[2] - c.coordinate.z)*p + 0.5*(c.coordinate.z - d.coordinate.z) + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -1142,7 +1149,7 @@ void pppp(double* g_int2e,
         + (((Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q - 0.5*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q + 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 0.5*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(q*q) + (Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*(q*q) - 0.5*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*q + (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q - 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + (Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (c.coordinate.x - d.coordinate.x)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (Rq[0] - c.coordinate.x)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -1150,7 +1157,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(q*q) - 3.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[1]-Rq[1])*(p*p) - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q - 4.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(q*q) - 3.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 4.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 3.0*(Rp[0]-Rq[0]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)/q + (c.coordinate.y - d.coordinate.y)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rq[1] - c.coordinate.y) + 0.5*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)/p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y)) + 0.5*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))/q + 0.5*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))/p + 0.25/(p*q)) * Boys[0]
@@ -1158,7 +1165,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 32.0*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*p*q + 24.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 32.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q + 16.0*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(q*q) - 24.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 16.0*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p) - 64.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*p*q + 48.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(q*q) + 8.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p + 8.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 48.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 12.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + 4.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 6.0)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*p + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(c.coordinate.z - d.coordinate.z)*p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rq[2] - c.coordinate.z)*p + 0.5*(c.coordinate.z - d.coordinate.z) + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -1166,7 +1173,7 @@ void pppp(double* g_int2e,
         + ((2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*p*q - 4.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(q*q) + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 3.0*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*q + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (c.coordinate.x - d.coordinate.x)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (Rq[0] - c.coordinate.x)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -1174,7 +1181,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*(q*q) - 0.5*(c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(p*p) - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 0.5*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*(q*q) - 0.5*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q - 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + (Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*p + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*p + (c.coordinate.y - d.coordinate.y)*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*p + 0.5*(c.coordinate.y - d.coordinate.y) + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rq[1] - c.coordinate.y)*p + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -1182,7 +1189,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - 4.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*(q*q) - (c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*p*q - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(Rq[2] - c.coordinate.z)*(q*q) + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 3.0*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[2] - c.coordinate.z)*q + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)/q + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z) + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))/q + 0.5*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)/p + 0.5*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))/p + 0.25/(p*q)) * Boys[0]
@@ -1190,7 +1197,7 @@ void pppp(double* g_int2e,
         + (((a.coordinate.y - b.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - (a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p + ((Rp[1] - a.coordinate.y)*(Rp[1] - a.coordinate.y))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*(q*q) + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*q - 0.5*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - (Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) - 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.z - b.coordinate.z)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2] - a.coordinate.z)*q + 0.5*(a.coordinate.z - b.coordinate.z) + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -1198,7 +1205,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(p*p) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) + 0.5*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 0.5*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + 0.5*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1206,7 +1213,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1214,7 +1221,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1222,7 +1229,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*q + (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*q + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(a.coordinate.z - b.coordinate.z)*q + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2] - a.coordinate.z)*q + 0.5*(a.coordinate.z - b.coordinate.z) + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -1230,7 +1237,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p*q - 2.0*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(p*p) + 2.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - 4.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*p*q - 4.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[1]-Rq[1])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2]-Rq[2])*(q*q) + 3.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + 3.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 4.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z) + (Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1238,7 +1245,7 @@ void pppp(double* g_int2e,
         + ((16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 8.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z) + (Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1246,7 +1253,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z) + (Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z))) * Boys[0]
@@ -1254,7 +1261,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(p*p) + 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 8.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[1] - a.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.z - b.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.z - b.coordinate.z) + (c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[2] - a.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[2] - a.coordinate.z))/q) * Boys[0]
@@ -1262,7 +1269,7 @@ void pppp(double* g_int2e,
         + ((2.0*(Rp[1] - a.coordinate.y)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 2.0*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p - 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 4.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+1, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+1, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*q + (a.coordinate.x - b.coordinate.x)*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*q + (Rp[0] - a.coordinate.x)*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1270,7 +1277,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0] - a.coordinate.x)*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 4.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[2]-Rq[2])*(q*q) + 3.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[0]-Rq[0])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*p + 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1278,7 +1285,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1286,7 +1293,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q - 8.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
@@ -1294,7 +1301,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) + 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p - (Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (a.coordinate.x - b.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (Rp[0] - a.coordinate.x)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1302,7 +1309,7 @@ void pppp(double* g_int2e,
         + ((-(a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 0.5*(a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p - (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + (Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 0.5*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2]-Rq[2])*(q*q) + 0.5*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*(-(a.coordinate.x - b.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p - (Rp[0] - a.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*p + (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 0.5*(Rp[0]-Rq[0])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.x - b.coordinate.x)*(Rq[2] - c.coordinate.z) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z) + (Rp[0] - a.coordinate.x)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1310,7 +1317,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x) + (a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x) + (c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x) + (Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x))) * Boys[0]
@@ -1318,7 +1325,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.x - d.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(a.coordinate.x - b.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*p - 16.0*(Rp[0] - a.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0] - a.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y) + (Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y) + (Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1326,7 +1333,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(a.coordinate.x - b.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*p - 2.0*(Rp[0] - a.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0] - a.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.x - b.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.x - b.coordinate.x) + (Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[0] - a.coordinate.x)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[0] - a.coordinate.x))/q) * Boys[0]
@@ -1334,7 +1341,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.x - b.coordinate.x)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(a.coordinate.x - b.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(a.coordinate.x - b.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(a.coordinate.x - b.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0] - a.coordinate.x)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[0] - a.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(Rp[0] - a.coordinate.x)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(a.coordinate.x - b.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0] - a.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 4.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[0]-Rq[0]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+0, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.y - b.coordinate.y)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1] - a.coordinate.y)*q + 0.5*(a.coordinate.y - b.coordinate.y) + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -1342,7 +1349,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p*q - (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - (c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[2] - a.coordinate.z)*(p*p) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) + 0.5*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p + 0.5*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p + 0.5*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 0.5*(Rp[1]-Rq[1])*(Rp[2]-Rq[2]))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1350,7 +1357,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1358,7 +1365,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
@@ -1366,7 +1373,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - (Rp[0]-Rq[0])*(Rp[2]-Rq[2]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (a.coordinate.y - b.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(a.coordinate.y - b.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*q + (Rp[1] - a.coordinate.y)*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*q + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -1374,7 +1381,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q + 2.0*(a.coordinate.y - b.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.y - d.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p*q + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(q*q) - (c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[1] - a.coordinate.y)*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*p*q + (Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - 4.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*p*q + 2.0*(Rp[1]-Rq[1])*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(Rp[2]-Rq[2])*(q*q) + 3.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[1]-Rq[1])*p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*p + 4.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q - 3.0*(Rp[2]-Rq[2]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (a.coordinate.y - b.coordinate.y)*(Rq[2] - c.coordinate.z) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z) + (Rp[1] - a.coordinate.y)*(Rq[2] - c.coordinate.z))) * Boys[0]
@@ -1382,7 +1389,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(q*q) - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q - 8.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y) + (Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y) + (Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y))) * Boys[0]
@@ -1390,7 +1397,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*p + 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + (p*q*(2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y) + (a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y) + (c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y) + (Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y))) * Boys[0]
@@ -1398,7 +1405,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(a.coordinate.y - b.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 16.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 8.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*p - 16.0*(Rp[1] - a.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 16.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p*q - 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 16.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - 8.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + 8.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 8.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 4.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[1] - a.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rp[2] - a.coordinate.z)*((a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (a.coordinate.y - b.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(a.coordinate.y - b.coordinate.y) + (Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)*q + (Rp[1] - a.coordinate.y)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*q + 0.5*(Rp[1] - a.coordinate.y))/q) * Boys[0]
@@ -1406,7 +1413,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(a.coordinate.y - b.coordinate.y)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(a.coordinate.y - b.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(a.coordinate.y - b.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1] - a.coordinate.y)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rp[1] - a.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 4.0*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 3.0*(Rp[1] - a.coordinate.y)*(Rp[2]-Rq[2])*p - 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*(q*q) - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*q - 2.0*(Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(a.coordinate.y - b.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p - 2.0*(Rp[1] - a.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 4.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[1]-Rq[1]))/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+1, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z) + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z)) + 0.5*(c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)/p + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z) + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z)) + 0.5*((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))/p + 0.5*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)/q + 0.5*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))/q + 0.25/(p*q)) * Boys[0]
@@ -1414,7 +1421,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*q + (c.coordinate.x - d.coordinate.x)*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(p*p) + ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(p*p) + 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*p - 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - (Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*q + ((Rq[0] - c.coordinate.x)*(Rq[0] - c.coordinate.x))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) + 0.5*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + (Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*(Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 0.5*((Rp[0]-Rq[0])*(Rp[0]-Rq[0])) + 2.0*(Rp[0]-Rq[0])*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[0]-Rq[0])*(Rp[0]-Rq[0]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+0, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (c.coordinate.y - d.coordinate.y)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (Rq[1] - c.coordinate.y)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -1422,7 +1429,7 @@ void pppp(double* g_int2e,
         + ((-(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*q + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(p*p) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(p*p) + 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q + (Rq[0] - c.coordinate.x)*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q + (Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((Rp[0]-Rq[0])*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+0, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[0] - c.coordinate.x)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + (c.coordinate.z - d.coordinate.z)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.z - d.coordinate.z) + ((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rq[2] - c.coordinate.z)*p + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -1430,7 +1437,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p - 4.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - (Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*q + 2.0*(Rp[0]-Rq[0])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) - 4.0*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[0]-Rq[0]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+0, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (c.coordinate.x - d.coordinate.x)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (Rq[0] - c.coordinate.x)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -1438,7 +1445,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*q + (c.coordinate.x - d.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(p*p) + (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(p*p) + 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*p - (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*q - (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*q + (Rq[0] - c.coordinate.x)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q))/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.x - d.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - (Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*(Rp[0]-Rq[0])*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 0.5*(Rp[0]-Rq[0])*(Rp[1]-Rq[1]) + (Rp[0]-Rq[0])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + (Rq[0] - c.coordinate.x)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+1, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z) + (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z)) + 0.5*(c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)/p + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z) + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z)) + 0.5*((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))/p + 0.5*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)/q + 0.5*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))/q + 0.25/(p*q)) * Boys[0]
@@ -1446,7 +1453,7 @@ void pppp(double* g_int2e,
         + ((-(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 2.0*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - 0.5*(c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*q + (c.coordinate.y - d.coordinate.y)*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(p*p) + ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(p*p) + 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*p - 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p*q - 4.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - (Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*q + ((Rq[1] - c.coordinate.y)*(Rq[1] - c.coordinate.y))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) + 0.5*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + (Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q + 0.25)/((p*p) + 2.0*p*q + (q*q))) * Boys[2]
         + (p*q*((c.coordinate.y - d.coordinate.y)*(Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - ((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 2.0*((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p - 0.5*((Rp[1]-Rq[1])*(Rp[1]-Rq[1])) + 2.0*(Rp[1]-Rq[1])*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 0.5*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])))/((p*p*p) + 3.0*(p*p)*q + 3.0*p*(q*q) + (q*q*q))) * Boys[3]
         + (((Rp[1]-Rq[1])*(Rp[1]-Rq[1]))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+1, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[1] - c.coordinate.y)*((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z)*p + (c.coordinate.z - d.coordinate.z)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.z - d.coordinate.z) + ((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rq[2] - c.coordinate.z)*p + 0.5*(Rq[2] - c.coordinate.z))/p) * Boys[0]
@@ -1454,7 +1461,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*p*q + 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p - 4.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p*q - (Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*q + 2.0*(Rp[1]-Rq[1])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - 2.0*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[1] - c.coordinate.y)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(q*q) - 4.0*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(-2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1]-Rq[1])*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[1]-Rq[1]) + 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+1, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (c.coordinate.x - d.coordinate.x)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.x - d.coordinate.x) + (Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (Rq[0] - c.coordinate.x)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(Rq[0] - c.coordinate.x))/p) * Boys[0]
@@ -1462,7 +1469,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.x - d.coordinate.x)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 4.0*(c.coordinate.x - d.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(c.coordinate.x - d.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(c.coordinate.x - d.coordinate.x)*(Rp[2]-Rq[2])*q + 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*p + 2.0*(Rp[0]-Rq[0])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 2.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*p + (Rp[0]-Rq[0])*(Rp[2]-Rq[2])*p - (Rp[0]-Rq[0])*(Rq[2] - c.coordinate.z)*q - 2.0*(Rq[0] - c.coordinate.x)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 4.0*(Rq[0] - c.coordinate.x)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rq[0] - c.coordinate.x)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(2.0*(c.coordinate.x - d.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[0]-Rq[0])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 4.0*(Rp[0]-Rq[0])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[0]-Rq[0])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[0]-Rq[0]) + 2.0*(Rq[0] - c.coordinate.x)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[0]-Rq[0])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+2, l+0, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((Rq[2] - c.coordinate.z)*((c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (c.coordinate.y - d.coordinate.y)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(c.coordinate.y - d.coordinate.y) + (Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*p + (Rq[1] - c.coordinate.y)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*p + 0.5*(Rq[1] - c.coordinate.y))/p) * Boys[0]
@@ -1470,7 +1477,7 @@ void pppp(double* g_int2e,
         + ((-2.0*(c.coordinate.y - d.coordinate.y)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 4.0*(c.coordinate.y - d.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(c.coordinate.y - d.coordinate.y)*(Rp[2]-Rq[2])*q + 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(p*p) - 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + (Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*p + 2.0*(Rp[1]-Rq[1])*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rp[2]-Rq[2])*(p*p) - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*p*q + 2.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*p + (Rp[1]-Rq[1])*(Rp[2]-Rq[2])*p - (Rp[1]-Rq[1])*(Rq[2] - c.coordinate.z)*q - 2.0*(Rq[1] - c.coordinate.y)*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q - 4.0*(Rq[1] - c.coordinate.y)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 3.0*(Rq[1] - c.coordinate.y)*(Rp[2]-Rq[2])*q)/(2.0*(p*p) + 4.0*p*q + 2.0*(q*q))) * Boys[2]
         + ((Rp[2]-Rq[2])*p*q*(2.0*(c.coordinate.y - d.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 2.0*(Rp[1]-Rq[1])*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 4.0*(Rp[1]-Rq[1])*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(Rp[1]-Rq[1])*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 3.0*(Rp[1]-Rq[1]) + 2.0*(Rq[1] - c.coordinate.y)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + ((Rp[1]-Rq[1])*((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+2, l+1, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 
     addToResult_case1(coefAndNorm * (((a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*(Rq[2] - c.coordinate.z) + (a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)/q + (c.coordinate.z - d.coordinate.z)*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*(Rq[2] - c.coordinate.z) + 0.5*(c.coordinate.z - d.coordinate.z)*(Rq[2] - c.coordinate.z)/p + ((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z)) + 0.5*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))/q + 0.5*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))/p + 0.25/(p*q)) * Boys[0]
@@ -1478,7 +1485,7 @@ void pppp(double* g_int2e,
         + ((-16.0*(a.coordinate.z - b.coordinate.z)*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 16.0*(a.coordinate.z - b.coordinate.z)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 32.0*(a.coordinate.z - b.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 24.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p - 32.0*(c.coordinate.z - d.coordinate.z)*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q + 16.0*(c.coordinate.z - d.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*(q*q) - 24.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q + 16.0*((Rp[2] - a.coordinate.z)*(Rp[2] - a.coordinate.z))*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p) - 64.0*(Rp[2] - a.coordinate.z)*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(Rq[2] - c.coordinate.z)*p*q + 48.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 16.0*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*((Rq[2] - c.coordinate.z)*(Rq[2] - c.coordinate.z))*(q*q) + 8.0*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p + 8.0*((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*q - 48.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q + 12.0)/(16.0*(p*p) + 32.0*p*q + 16.0*(q*q))) * Boys[2]
         + (((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q*(-2.0*(a.coordinate.z - b.coordinate.z)*(Rp[2]-Rq[2])*p + 2.0*(c.coordinate.z - d.coordinate.z)*(Rp[2]-Rq[2])*q - 4.0*(Rp[2] - a.coordinate.z)*(Rp[2]-Rq[2])*p + 4.0*(Rp[2]-Rq[2])*(Rq[2] - c.coordinate.z)*q - 6.0)/(2.0*(p*p*p) + 6.0*(p*p)*q + 6.0*p*(q*q) + 2.0*(q*q*q))) * Boys[3]
         + (((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]),
-        g_int2e, i+2, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket
+        g_int2e, i+2, j+2, k+2, l+2, num_basis, sym_bra, sym_ket, sym_braket, g_cgto_normalization_factors
     );
 }
 /**/
@@ -1636,248 +1643,7 @@ void pppp(double* g_int2e,
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
 
-__global__ void UTM_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
-    const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
-    const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
-    const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
-{
-    // 通し番号indexの計算
-    const size_t id = blockIdx.x * blockDim.x + threadIdx.x;
-
-
-    if (id >= num_threads) return;
-
-    const double size_Rmid=1377;
-
-    //使い捨ての中間体R_mid
-    double R_mid[3*1377];
-
-    //解を格納する配列R
-    double R[2925];
-
-    //thread内で結果を保持するメモリ
-    double thread_val=0.0;
-    
-    // Compute 4D index from thread id
-    const size_t2 abcd = index1to2(id, true);
-    const size_t2 ab = index1to2(abcd.x, shell_s0.start_index == shell_s1.start_index, shell_s1.count);
-    const size_t2 cd = index1to2(abcd.y, shell_s2.start_index == shell_s3.start_index, shell_s3.count);
-
-    // Task-wise Schwarz screening
-    if (g_upper_bound_factors[head_bra + abcd.x] * g_upper_bound_factors[head_ket + abcd.y] < swartz_screening_threshold) {
-        return;
-    }
-
-    // Obtain primitive shells [ab|cd]
-    const size_t primitive_index_a = ab.x+shell_s0.start_index;
-    const size_t primitive_index_b = ab.y+shell_s1.start_index;
-    const size_t primitive_index_c = cd.x+shell_s2.start_index;
-    const size_t primitive_index_d = cd.y+shell_s3.start_index;
-
-    const PrimitiveShell a = g_shell[primitive_index_a];
-    const PrimitiveShell b = g_shell[primitive_index_b];
-    const PrimitiveShell c = g_shell[primitive_index_c];
-    const PrimitiveShell d = g_shell[primitive_index_d];
-        
-    // Obtain basis index (ij|kl)
-    const size_t size_a = a.basis_index;
-    const size_t size_b = b.basis_index;
-    const size_t size_c = c.basis_index;
-    const size_t size_d = d.basis_index;
-
-    bool is_bra_symmetric = (primitive_index_a == primitive_index_b);
-    bool is_ket_symmetric = (primitive_index_c == primitive_index_d);
-    bool is_braket_symmetric = (primitive_index_a == primitive_index_c && primitive_index_b == primitive_index_d);
-    
-    //使用データを取得，レジスタに書き込み
-
-    //指数部
-    const double alpha = a.exponent;
-    const double beta  = b.exponent;
-    const double gamma = c.exponent;
-    const double delta = d.exponent;
-    const double p = alpha+beta;
-    const double q = gamma+delta;
-    const double xi = p*q / (p+q);
-
-    //係数部
-    const double coef_a = a.coefficient;
-    const double coef_b = b.coefficient;
-    const double coef_c = c.coefficient;
-    const double coef_d = d.coefficient;
-
-    //座標
-    const double pos_A[3] = {a.coordinate.x, a.coordinate.y, a.coordinate.z};
-    const double pos_B[3] = {b.coordinate.x, b.coordinate.y, b.coordinate.z};
-    const double pos_C[3] = {c.coordinate.x, c.coordinate.y, c.coordinate.z};
-    const double pos_D[3] = {d.coordinate.x, d.coordinate.y, d.coordinate.z};
-
-    const double pos_P[3] = {(alpha*pos_A[0]+beta*pos_B[0])/(alpha+beta), (alpha*pos_A[1]+beta*pos_B[1])/(alpha+beta), (alpha*pos_A[2]+beta*pos_B[2])/(alpha+beta)};
-    const double pos_Q[3] = {(gamma*pos_C[0]+delta*pos_D[0])/(gamma+delta), (gamma*pos_C[1]+delta*pos_D[1])/(gamma+delta), (gamma*pos_C[2]+delta*pos_D[2])/(gamma+delta)};
-
-    //角運動量の総和
-    const int orbital_A = a.shell_type;
-    const int orbital_B = b.shell_type;
-    const int orbital_C = c.shell_type;
-    const int orbital_D = d.shell_type;
-
-    //軌道間距離の二乗
-    const double dist = ((pos_P[0]-pos_Q[0])*(pos_P[0]-pos_Q[0]) + (pos_P[1]-pos_Q[1])*(pos_P[1]-pos_Q[1]) + (pos_P[2]-pos_Q[2])*(pos_P[2]-pos_Q[2]));
-
-
-    const int K=orbital_A + orbital_B + orbital_C + orbital_D;
-    
-    double Boys[25];
-    getIncrementalBoys(K, xi*dist, g_boys_grid, Boys);
-
-    //Boys関数の値を計算(Single)
-    for(int i=0; i <= K; i++){
-        Boys[i] *= (right2left_binary_woif((-2*xi), i));
-    }
-
-    //各ERIを計算
-    //事前計算⇒実際のERI計算の順に実行
-    //p軌道の場合lmn_aが0:px, 1:py, 2:pz軌道のように対応付け
-    //d以上はconstant配列のloop_to_angを参照
-
-    
-    
-    double Norm_A, Norm_B, Norm_C, Norm_D;
-    double Norm;
-
-    int t,u,v,tau,nu,phi;
-    int t_max;
-    int u_max;
-    int v_max;
-    int tau_max;
-    int nu_max;
-    int phi_max;
-
-    int tid=0;
-    
-    int iter_max;
-
-    // 方位量子数l,m,nの値をループ変数から導出
-    for(int lmn_a=0; lmn_a<comb_max(orbital_A); lmn_a++){
-        int l1=loop_to_ang[orbital_A][lmn_a][0]; int m1=loop_to_ang[orbital_A][lmn_a][1]; int n1=loop_to_ang[orbital_A][lmn_a][2];
-        Norm_A = calcNorm(alpha, l1, m1, n1);
-        for(int lmn_b=0; lmn_b<comb_max(orbital_B); lmn_b++){                  
-            int l2=loop_to_ang[orbital_B][lmn_b][0]; int m2=loop_to_ang[orbital_B][lmn_b][1]; int n2=loop_to_ang[orbital_B][lmn_b][2];
-            Norm_B = calcNorm(beta, l2, m2, n2);
-            for(int lmn_c=0; lmn_c<comb_max(orbital_C); lmn_c++){
-                int l3=loop_to_ang[orbital_C][lmn_c][0]; int m3=loop_to_ang[orbital_C][lmn_c][1]; int n3=loop_to_ang[orbital_C][lmn_c][2];
-                Norm_C = calcNorm(gamma, l3, m3, n3);
-                for(int lmn_d=0; lmn_d<comb_max(orbital_D); lmn_d++){
-                    int l4=loop_to_ang[orbital_D][lmn_d][0]; int m4=loop_to_ang[orbital_D][lmn_d][1]; int n4=loop_to_ang[orbital_D][lmn_d][2];
-                    Norm_D = calcNorm(delta, l4, m4, n4);
-                    Norm = Norm_A * Norm_B * Norm_C * Norm_D;
-                    // 前回のループの計算結果をクリア
-                    thread_val=0.0;
-                    // 事前計算部
-                    //初期値：Boysとして計算済
-                    //Step 0: Boys関数評価
-                    R[0]=Boys[0];
-                    for(int i=0; i <= K; i++){
-                        R_mid[i]=Boys[i];
-                    }
-                    
-                    // ループ変数の設定
-                    t_max = l1+l2+1;
-                    u_max = m1+m2+1;
-                    v_max = n1+n2+1;
-                    tau_max = l3+l4+1;
-                    nu_max = m3+m4+1;
-                    phi_max = n3+n4+1;
-
-                    for(int k=1; k <= K; k++){//Step 1~Kの計算
-                        // t+u+v=kとなる全ペアに対して適切な計算
-                        // 0~K-kまでそれぞれ必要⇒ループでやる
-        
-        
-                        for(int z=0; z<=(K+1)*comb_max(k); z++){
-                        
-                            int i = z/comb_max(k);
-        
-                            if(i <= K-k){
-                                t=tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][0];
-                                u=tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][1];
-                                v=tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][2];
-
-        
-                                if((t <= (t_max+tau_max-2)) && (u <= (u_max+nu_max-2)) && (v <= (v_max+phi_max-2))){
-                                    if(t >= 1){
-                                        R_mid[calc_Idx_Rmid(k,u,v,i,comb_max(k),size_Rmid)] = (pos_P[0] - pos_Q[0])*R_mid[calc_Idx_Rmid(k-1,u,v,i+1,comb_max(k-1),size_Rmid)] + (t-1)*R_mid[calc_Idx_Rmid(k-2,u,v,i+1,comb_max(k-2),size_Rmid)];
-                                    }
-                                    else if(u >= 1){
-                                        R_mid[calc_Idx_Rmid(k,u,v,i,comb_max(k),size_Rmid)] = (pos_P[1] - pos_Q[1])*R_mid[calc_Idx_Rmid(k-1,u-1,v,i+1,comb_max(k-1),size_Rmid)] + (u-1)*R_mid[calc_Idx_Rmid(k-2,u-2,v,i+1,comb_max(k-2),size_Rmid)];
-                                    }
-                                    else{
-                                        R_mid[calc_Idx_Rmid(k,u,v,i,comb_max(k),size_Rmid)] = (pos_P[2] - pos_Q[2])*R_mid[calc_Idx_Rmid(k-1,u,v-1,i+1,comb_max(k-1),size_Rmid)] + (v-1)*R_mid[calc_Idx_Rmid(k-2,u,v-2,i+1,comb_max(k-2),size_Rmid)];
-                                    }
-                                }
-                            }
-                        }//step kの全計算が終了
-        
-
-                        //必要な結果を配列Rに書き込み
-                        for(int i=0; i<=comb_max(k); i++){
-                            R[static_cast<int>(k*(k+1)*(k+2)/6) + i] = R_mid[(k%3)*static_cast<int>(size_Rmid) + i];
-
-                        }
-
-                    }
-                    //事前計算完了
-                    
-
-                    // ERI計算部
-                    iter_max=t_max*u_max*v_max*tau_max*nu_max*phi_max + 1;
-                    for(int i=0; i<iter_max; i++){
-                        // MD法6重ループを管理する6変数を各Threadに割り当て
-                        tid=i;
-                        phi = tid % phi_max;
-                        tid /= phi_max;
-                        nu = tid % nu_max;
-                        tid /= nu_max;
-                        tau = tid % tau_max;
-                        tid /= tau_max;
-                        v = tid % v_max;
-                        tid /= v_max;
-                        u = tid % u_max;
-                        tid /= u_max;
-                        t=tid;
-
-
-                        double my_val = 0.0;
-
-                        ////特定の(t,u,v,tau,nu,phi)に対応する結果をmy_valとして持つ
-                        if(t <= t_max-1 && u<=u_max-1 && v<=v_max-1 && tau<=tau_max-1 && nu<=nu_max-1 && phi<=phi_max-1){
-                            int k=t+u+v+tau+nu+phi;
-                            my_val = MD_Et_NonRecursion(l1, l2, t, alpha, beta, (pos_A[0]-pos_B[0])) * MD_Et_NonRecursion(m1, m2, u, alpha, beta, (pos_A[1]-pos_B[1])) * MD_Et_NonRecursion(n1, n2, v, alpha, beta, (pos_A[2]-pos_B[2])) * MD_Et_NonRecursion(l3, l4, tau, gamma, delta, (pos_C[0]-pos_D[0])) * MD_Et_NonRecursion(m3, m4, nu, gamma, delta, (pos_C[1]-pos_D[1])) * MD_Et_NonRecursion(n3, n4, phi, gamma, delta, (pos_C[2]-pos_D[2])) * (1 - 2*((tau+nu+phi)&1)) * R[k*(k+1)*(k+2)/6 + calc_Idx_Rmid(k,u+nu,v+phi,0,0,0)];
-                            // thread_valに足しこんでMD法の結果を得る
-                            thread_val += my_val*2 * M_PI_2_5 /(p*q * sqrt((p+q)))  *coef_a*coef_b*coef_c*coef_d;
-                        } 
-                    }
-
-                    // 書き込み部
-
-                    // Global Memoryへ書き込み
-                    // 汎用カーネルでは全要素判定(case1)
-                    addToResult_case1(
-                        Norm*thread_val,
-                        g_int2e,
-                        size_a+lmn_a, size_b+lmn_b, size_c+lmn_c, size_d+lmn_d,
-                        num_basis,
-                        is_bra_symmetric, is_ket_symmetric, is_braket_symmetric
-                    );
-                }
-            }
-        }
-    }
-    return;
-}
-
-
-__global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+__global__ void MD_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
@@ -1906,7 +1672,8 @@ __global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const 
     }else{
         ket_size = shell_s2.count*shell_s3.count;
     }
-    const size_t2 abcd = index1to2(id, false, ket_size);
+    // const size_t2 abcd = index1to2(id, false, ket_size);
+    const size_t2 abcd = index1to2(id, (shell_s0.start_index == shell_s2.start_index && shell_s1.start_index == shell_s3.start_index), ket_size);
     const size_t2 ab = index1to2(abcd.x, shell_s0.start_index == shell_s1.start_index, shell_s1.count);
     const size_t2 cd = index1to2(abcd.y, shell_s2.start_index == shell_s3.start_index, shell_s3.count);
 
@@ -2004,19 +1771,72 @@ __global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const 
     
     int iter_max;
 
+
     // 方位量子数l,m,nの値をループ変数から導出
     for(int lmn_a=0; lmn_a<comb_max(orbital_A); lmn_a++){
         int l1=loop_to_ang[orbital_A][lmn_a][0]; int m1=loop_to_ang[orbital_A][lmn_a][1]; int n1=loop_to_ang[orbital_A][lmn_a][2];
         Norm_A = calcNorm(alpha, l1, m1, n1);
+
+        // normに球面調和に関わるマジックナンバーをかける
+        if (l1 + m1 + n1 == 2){ //d-type
+            Norm_A *= (l1 == 2 || m1 == 2 || n1 == 2) ?  //dxx or dyy or dzz?
+                      D_NORMALIZATION_CONSTANT_2_INV :
+                      D_NORMALIZATION_CONSTANT_1_INV;
+        } else if (l1 + m1 + n1 == 3) {
+            Norm_A *= (l1 == 3 || m1 == 3 || n1 == 3) ?
+                    F_NORMALIZATION_CONSTANT_3_INV : (l1 == 2 || m1 == 2 || n1 == 2) ?
+                    F_NORMALIZATION_CONSTANT_2_INV : 
+                    F_NORMALIZATION_CONSTANT_1_INV;
+        }
+
         for(int lmn_b=0; lmn_b<comb_max(orbital_B); lmn_b++){                  
             int l2=loop_to_ang[orbital_B][lmn_b][0]; int m2=loop_to_ang[orbital_B][lmn_b][1]; int n2=loop_to_ang[orbital_B][lmn_b][2];
             Norm_B = calcNorm(beta, l2, m2, n2);
+
+            // normに球面調和に関わるマジックナンバーをかける
+            if (l2 + m2 + n2 == 2){ //d-type
+                Norm_B *= (l2 == 2 || m2 == 2 || n2 == 2) ?  //dxx or dyy or dzz?
+                        D_NORMALIZATION_CONSTANT_2_INV :
+                        D_NORMALIZATION_CONSTANT_1_INV;
+            } else if (l2 + m2 + n2 == 3) {
+                Norm_B *= (l2 == 3 || m2 == 3 || n2 == 3) ?
+                        F_NORMALIZATION_CONSTANT_3_INV : (l2 == 2 || m2 == 2 || n2 == 2) ?
+                        F_NORMALIZATION_CONSTANT_2_INV : 
+                        F_NORMALIZATION_CONSTANT_1_INV;
+            }
+
             for(int lmn_c=0; lmn_c<comb_max(orbital_C); lmn_c++){
                 int l3=loop_to_ang[orbital_C][lmn_c][0]; int m3=loop_to_ang[orbital_C][lmn_c][1]; int n3=loop_to_ang[orbital_C][lmn_c][2];
                 Norm_C = calcNorm(gamma, l3, m3, n3);
+
+                // normに球面調和に関わるマジックナンバーをかける
+                if (l3 + m3 + n3 == 2){ //d-type
+                    Norm_C *= (l3 == 2 || m3 == 2 || n3 == 2) ?  //dxx or dyy or dzz?
+                            D_NORMALIZATION_CONSTANT_2_INV :
+                            D_NORMALIZATION_CONSTANT_1_INV;
+                } else if (l3 + m3 + n3 == 3) {
+                    Norm_C *= (l3 == 3 || m3 == 3 || n3 == 3) ?
+                            F_NORMALIZATION_CONSTANT_3_INV : (l3 == 2 || m3 == 2 || n3 == 2) ?
+                            F_NORMALIZATION_CONSTANT_2_INV : 
+                            F_NORMALIZATION_CONSTANT_1_INV;
+                }
+
                 for(int lmn_d=0; lmn_d<comb_max(orbital_D); lmn_d++){
                     int l4=loop_to_ang[orbital_D][lmn_d][0]; int m4=loop_to_ang[orbital_D][lmn_d][1]; int n4=loop_to_ang[orbital_D][lmn_d][2];
                     Norm_D = calcNorm(delta, l4, m4, n4);
+                    
+                    // normに球面調和に関わるマジックナンバーをかける
+                    if (l4 + m4 + n4 == 2){ //d-type
+                            Norm_D *= (l4 == 2 || m4 == 2 || n4 == 2) ?  //dxx or dyy or dzz?
+                                    D_NORMALIZATION_CONSTANT_2_INV :
+                                    D_NORMALIZATION_CONSTANT_1_INV;
+                    } else if (l4 + m4 + n4 == 3) {
+                        Norm_D *= (l4 == 3 || m4 == 3 || n4 == 3) ?
+                                F_NORMALIZATION_CONSTANT_3_INV : (l4 == 2 || m4 == 2 || n4 == 2) ?
+                                F_NORMALIZATION_CONSTANT_2_INV : 
+                                F_NORMALIZATION_CONSTANT_1_INV;
+                    }
+
                     Norm = Norm_A * Norm_B * Norm_C * Norm_D;
                     // 前回のループの計算結果をクリア
                     thread_val=0.0;
@@ -2103,6 +1923,10 @@ __global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const 
                         } 
                     }
 
+
+                    
+
+
                     // 書き込み部
 
                     // Global Memoryへ書き込み
@@ -2112,7 +1936,8 @@ __global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const 
                         g_int2e,
                         size_a+lmn_a, size_b+lmn_b, size_c+lmn_c, size_d+lmn_d,
                         num_basis,
-                        is_bra_symmetric, is_ket_symmetric, is_braket_symmetric
+                        is_bra_symmetric, is_ket_symmetric, is_braket_symmetric, 
+                        g_cgto_normalization_factors
                     );
                 }
             }
@@ -2120,14 +1945,6 @@ __global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const 
     }
     return;
 }
-
-
-
-
-
-
-
-
 
 
 

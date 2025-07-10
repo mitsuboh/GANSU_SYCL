@@ -482,8 +482,8 @@ __global__ void computeRIIntermediateMatrixB_kernel(const double* d_three_center
     const size_t nu = id2 % num_basis;
 
     real_t sum = 0.0;
-    for (int q = 0; q < num_basis; q++) {
-        sum += d_three_center_eri[q*num_basis*num_basis + mu*num_basis + nu] * d_matrix_L[q*num_basis + p];
+    for (int q = 0; q < num_auxiliary_basis; q++) {
+        sum += d_three_center_eri[q*num_basis*num_basis + mu*num_basis + nu] * d_matrix_L[q*num_auxiliary_basis + p];
     }
     d_matrix_B[id] = sum;
 }

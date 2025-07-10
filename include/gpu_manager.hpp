@@ -49,7 +49,7 @@ void computeCoefficientMatrix(const real_t* d_fock_matrix, const real_t* d_trans
 //void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors, real_t* d_eri_matrix, const real_t schwarz_screening_threshold,  const int num_basis, const bool verbose=false);
 void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) ;
 void computeTwoCenterERIs(const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, const PrimitiveShell* d_auxiliary_primitive_shells, const real_t* d_auxiliary_cgto_nomalization_factors, real_t* d_two_center_eri, const int num_auxiliary_basis, const real_t* d_boys_grid, const bool verbose=false);
-void computeThreeCenterERIs(const std::vector<ShellTypeInfo>& shell_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_cgto_nomalization_factors, const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, const PrimitiveShell* d_auxiliary_primitive_shells, const real_t* d_auxiliary_cgto_nomalization_factors, real_t* d_three_center_eri, const int num_auxiliary_basis, const real_t* d_boys_grid,const bool verbose=false);
+void computeThreeCenterERIs(const std::vector<ShellTypeInfo>& shell_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_cgto_nomalization_factors, const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, const PrimitiveShell* d_auxiliary_primitive_shells, const real_t* d_auxiliary_cgto_nomalization_factors, real_t* d_three_center_eri, const int num_basis, const int num_auxiliary_basis, const real_t* d_boys_grid,const bool verbose=false);
 
 
 void computeDensityMatrix_RHF(const real_t* d_coefficient_matrix, real_t* d_density_matrix, const int num_electron, const int num_basis);
@@ -169,6 +169,85 @@ private:
     }
 };
 
+
+
+/**
+ * @brief Per-thread GPU handle manager for cuBLAS and cuSOLVER.
+ * @details Each thread has its own cuBLAS handle, cuSOLVER handle, and cuSOLVER advanced parameters.
+ * @note Thread-safe (thread-local). Handles are destroyed when the thread exits.
+ */
+class GPUHandle {
+public:
+    /**
+     * @brief Get thread-local cuBLAS handle.
+     */
+    static cublasHandle_t cublas() {
+        return instance().cublas_;
+    }
+
+    /**
+     * @brief Get thread-local cuSOLVER handle.
+     */
+    static cusolverDnHandle_t cusolver() {
+        return instance().cusolver_;
+    }
+
+    /**
+     * @brief Get thread-local cuSOLVER advanced parameters.
+     */
+    static cusolverDnParams_t cusolverParams() {
+        return instance().cusolver_params_;
+    }
+
+private:
+    cublasHandle_t cublas_ = nullptr;
+    cusolverDnHandle_t cusolver_ = nullptr;
+    cusolverDnParams_t cusolver_params_ = nullptr;
+
+    GPUHandle() {
+        // Create cuBLAS handle
+        if (cublasCreate(&cublas_) != CUBLAS_STATUS_SUCCESS) {
+            throw std::runtime_error("Failed to create cuBLAS handle");
+        }
+
+        // Create cuSOLVER handle
+        if (cusolverDnCreate(&cusolver_) != CUSOLVER_STATUS_SUCCESS) {
+            cublasDestroy(cublas_);
+            throw std::runtime_error("Failed to create cuSOLVER handle");
+        }
+
+        // Create cuSOLVER params
+        if (cusolverDnCreateParams(&cusolver_params_) != CUSOLVER_STATUS_SUCCESS) {
+            cusolverDnDestroy(cusolver_);
+            cublasDestroy(cublas_);
+            throw std::runtime_error("Failed to create cuSOLVER params");
+        }
+
+        // Link params to handle
+    //    if (cusolverDnSetAdvOptions(cusolver_, cusolver_params_) != CUSOLVER_STATUS_SUCCESS) {
+    //        cusolverDnDestroyParams(cusolver_params_);
+    //        cusolverDnDestroy(cusolver_);
+    //        cublasDestroy(cublas_);
+    //        throw std::runtime_error("Failed to set cuSOLVER advanced options");
+    //    }
+    }
+
+    ~GPUHandle() {
+        if (cusolver_params_) cusolverDnDestroyParams(cusolver_params_);
+        if (cusolver_) cusolverDnDestroy(cusolver_);
+        if (cublas_) cublasDestroy(cublas_);
+    }
+
+    // Disable copy and assignment
+    GPUHandle(const GPUHandle&) = delete;
+    GPUHandle& operator=(const GPUHandle&) = delete;
+
+    // Get thread-local instance
+    static GPUHandle& instance() {
+        thread_local GPUHandle instance;
+        return instance;
+    }
+};
 
 
 } // namespace gansu::gpu

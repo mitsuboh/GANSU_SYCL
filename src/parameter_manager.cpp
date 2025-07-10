@@ -59,7 +59,8 @@ ParameterManager::ParameterManager(bool set_default_values) {
         {"diis_include_transform", "0"},            // int(bool)
         {"rohf_parameter_name", "roothaan"},        // string
         {"geometry_optimization", "0"},             // int (bool)
-        {"geometry_optimization_method", "powell"}  // string
+        {"geometry_optimization_method", "powell"}, // string
+        {"export_sad_cache", "0"}                   // int (bool)
     };
 
 
@@ -70,6 +71,7 @@ ParameterManager::ParameterManager(bool set_default_values) {
         {"-p", "parameter_file"},
         {"-x", "xyzfilename"},
         {"-g", "gbsfilename"},
+        {"-ag", "auxiliary_gbsfilename"},
         {"-c", "charge"},
     };
 

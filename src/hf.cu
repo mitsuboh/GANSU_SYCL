@@ -406,7 +406,12 @@ void HF::report(){
     std::cout << "[Basis Set Summary]" << std::endl;
     std::cout << "Number of basis functions: " << num_basis << std::endl;
     std::cout << "Number of primitive basis functions: " << primitive_shells.size() << std::endl;
-
+    if(eri_method_->get_algorithm_name() == "RI"){
+        auto* ri_ptr = dynamic_cast<ERI_RI*>(eri_method_.get());
+        auto& auxiliary_primitive_shells = ri_ptr->get_auxiliary_primitive_shells(); // get the auxiliary basis set
+        std::cout << "Number of auxiliary basis functions: " << ri_ptr->get_num_auxiliary_basis() << std::endl;
+        std::cout << "Number of primitive auxiliary basis functions: " << auxiliary_primitive_shells.size() << std::endl;
+    }
 }
 
 

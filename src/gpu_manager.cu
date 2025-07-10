@@ -18,10 +18,13 @@
 #include "int1e.hpp"
 #include "int2e.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
+#include "int2c2e.hpp"
+#include "int3c2e.hpp"
 
 #include <vector>    // std::vector
 #include <tuple>     // std::tuple
 #include <algorithm> // std::reverse
+#include <fstream>
 
 namespace gansu::gpu{
 
@@ -43,16 +46,20 @@ namespace gansu::gpu{
  * @details Since the eigenvectors are stored in the same memory as the input matrix, the input matrix is copied to a temporary matrix before.
  */
 int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_eigenvectors, const int size) {
-    cusolverManager cusolver;
+    //cusolverManager cusolver;
+    cusolverDnHandle_t cusolverHandle = GPUHandle::cusolver();
+    cusolverDnParams_t cusolverParams = GPUHandle::cusolverParams();
 
     size_t workspaceInBytesOnDevice;
     size_t workspaceInBytesOnHost;
     real_t* d_workspace=nullptr;
     real_t* h_workspace=nullptr;
+
+    cudaError_t err;
     
     // Query the workspace sizes of the device and host memory
     cusolverDnXsyevd_bufferSize(
-        cusolver.cusolverHandle, cusolver.cusolverParams,
+        cusolverHandle, cusolverParams,
         CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_UPPER,
         size, CUDA_R_64F, d_eigenvalues, 
         size, CUDA_R_64F, d_workspace, 
@@ -60,23 +67,36 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
         &workspaceInBytesOnDevice, &workspaceInBytesOnHost
     );
     // workspace allocation
-    cudaMalloc(&d_workspace, workspaceInBytesOnDevice);
-    cudaMallocHost(&h_workspace, workspaceInBytesOnHost);
+    err = cudaMalloc(&d_workspace, workspaceInBytesOnDevice);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for workspace: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMallocHost(&h_workspace, workspaceInBytesOnHost);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate host memory for workspace: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // allocate return vale for the error status        
     int* d_info;
-    cudaMalloc(&d_info, sizeof(int));
+    err = cudaMalloc(&d_info, sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for error status: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // temporary matrix allocation for d_matrix since the eigenvectors will be stored in the same memory of d_matrix
     real_t* d_temp_matrix;
-    cudaMalloc(&d_temp_matrix, size * size * sizeof(real_t));
+    err = cudaMalloc(&d_temp_matrix, size * size * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+
     
     // copy the d_matrix since the eigenvectors will be stored in the same memory
     cudaMemcpy(d_temp_matrix, d_matrix, size * size * sizeof(real_t), cudaMemcpyDeviceToDevice);
     
     // Perform eigenvalue decomposition
     cusolverDnXsyevd(
-        cusolver.cusolverHandle, cusolver.cusolverParams,
+        cusolverHandle, cusolverParams,
         CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_UPPER,
         size, CUDA_R_64F, d_temp_matrix, 
         size, CUDA_R_64F, d_eigenvalues, 
@@ -123,7 +143,8 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
  * @details If the flag initialize_C_to_zero is true, the matrix C is initialized to zero before the computation.
  */
  void matrixMatrixProduct(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size, const bool transpose_A, const bool transpose_B, const bool accumulate){
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
 
     const double alpha = 1.0;
     const double beta = 0.0;
@@ -136,7 +157,7 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
     const cublasOperation_t transB = (transpose_B) ? CUBLAS_OP_T : CUBLAS_OP_N;
 
     cublasDgemm(
-        cublas.cublasHandle, 
+        cublasHandle, 
         transB, transA, 
         size, size, size, 
         &alpha, 
@@ -159,13 +180,14 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
  * @details The matrix weighted sum is computed as \f$ C = \alpha A + \beta B \f$.
  */
 void weightedMatrixSum(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const double weight_A, const double weight_B, const int size) {
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
 
     const double alpha = weight_A;
     const double beta = weight_B;
 
     cublasDgeam(
-        cublas.cublasHandle, 
+        cublasHandle, 
         CUBLAS_OP_N, CUBLAS_OP_N, 
         size, size, 
         &alpha, d_matrix_A, size, 
@@ -208,11 +230,12 @@ void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, doubl
  * @details The inner product is computed as \f$ result = \sum_{i=1}^{size} A_i B_i \f$.
  */
 double innerProduct(const double* d_vector_A, const double* d_vector_B, const int size) {
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
 
     double result;
     cublasDdot(
-        cublas.cublasHandle, 
+        cublasHandle, 
         size, 
         d_vector_A, 1, 
         d_vector_B, 1, 
@@ -257,12 +280,13 @@ void invertSqrtElements(real_t* d_vectors, const size_t size) {
  * @details This function creates a diagonal matrix, in which the diagonal elements are the elements of the vector.
  */
 void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size) {
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
 
     // Set the matrix to zero
     cudaMemset(d_matrix, 0, size * size * sizeof(real_t));
     // Set the diagonal elements to the eigenvalues
-    cublasDcopy(cublas.cublasHandle, size, d_vector, 1, d_matrix, size+1);
+    cublasDcopy(cublasHandle, size, d_vector, 1, d_matrix, size+1);
 }
 
 /**
@@ -276,8 +300,14 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
         THROW_EXCEPTION("Too many basis functions.");
     }
 
+    cudaError_t err;
+
     double* d_trace;
-    cudaMalloc(&d_trace, sizeof(real_t));
+    err = cudaMalloc(&d_trace, sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for trace: ") + std::string(cudaGetErrorString(err)));
+    }
+
     real_t h_trace = 0.0;
     
     getMatrixTrace<<<1, size>>>(d_matrix, d_trace, size);
@@ -573,13 +603,26 @@ void computeCoefficientMatrix(const real_t* d_fock_matrix, const real_t* d_trans
     real_t* d_tempEigenvectors = nullptr;
     real_t* d_tempEigenvalues = nullptr; // if d_orbital_energies is nullptr, the eigenvalues are stored in d_tempEigenvalues
 
+    cudaError_t err;
 
-    cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempSymFockMatrix, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempEigenvectors, num_basis * num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempSymFockMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary symmetrized Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempEigenvectors, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary eigenvectors: ") + std::string(cudaGetErrorString(err)));
+    }
 
     if (d_orbital_energies == nullptr){
-        cudaMalloc(&d_tempEigenvalues, num_basis * sizeof(real_t));
+        err = cudaMalloc(&d_tempEigenvalues, num_basis * sizeof(real_t));
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary eigenvalues: ") + std::string(cudaGetErrorString(err)));
+        }
     } else {
         d_tempEigenvalues = d_orbital_energies;
     }
@@ -762,11 +805,29 @@ void computeFockMatrix_ROHF(const real_t* d_density_matrix_closed, const real_t*
     real_t* d_temp_R_MO = nullptr; /// unified Fock matrix R_MO
     real_t* d_temp_matrix1 = nullptr;
     real_t* d_temp_matrix2 = nullptr;
-    cudaMalloc(&d_temp_F_MO_closed, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_F_MO_open, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_R_MO, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_matrix1, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_matrix2, num_basis * num_basis * sizeof(real_t));
+
+    cudaError_t err;
+
+    err = cudaMalloc(&d_temp_F_MO_closed, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary Fock matrix for closed-shell orbitals: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_F_MO_open, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary Fock matrix for open-shell orbitals: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_R_MO, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary unified Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_matrix1, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix 1: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_matrix2, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix 2: ") + std::string(cudaGetErrorString(err)));
+    }
 
 
     { // compute the Fock matrices for the closed- and open-shell orbitals
@@ -905,9 +966,21 @@ real_t computeOptimalDampingFactor_RHF(const real_t* d_fock_matrix, const real_t
     real_t* d_tempDiffFockMatrix = nullptr;
     real_t* d_tempDiffDensityMatrix = nullptr;
     real_t* d_tempMatrix = nullptr;
-    cudaMalloc(&d_tempDiffFockMatrix, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempDiffDensityMatrix, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+
+    cudaError_t err;
+
+    err = cudaMalloc(&d_tempDiffFockMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary difference Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempDiffDensityMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary difference density matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // calculate the difference between the Fock matrices
     // \f$ F_{\mathrm{diff}} = F_{\mathrm{new}} - F_{\mathrm{old}}  \f$
@@ -978,7 +1051,13 @@ real_t computeOptimalDampingFactor_RHF(const real_t* d_fock_matrix, const real_t
  */
 void damping(real_t* d_matrix_old, real_t* d_matrix_new, const real_t alpha, int num_basis) {
     real_t* d_tempMatrix;
-    cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+
+    cudaError_t err;
+
+    err = cudaMalloc(&d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     weightedMatrixSum(d_matrix_old, d_matrix_new, d_tempMatrix, 1.0-alpha, alpha, num_basis);
 
@@ -1005,10 +1084,20 @@ void computeDIISErrorMatrix(const real_t* d_overlap_matrix, const real_t* d_tran
     real_t* d_tempSPF;
     real_t* d_tempMatrix1;
 
+    cudaError_t err;
 
-    cudaMalloc(&d_tempFPS, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempSPF, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_tempMatrix1, num_basis * num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_tempFPS, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary FPS matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempSPF, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary SPF matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_tempMatrix1, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix 1: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // tempFPS = FPS
     matrixMatrixProduct(d_fock_matrix, d_density_matrix, d_tempMatrix1, num_basis, false, false);
@@ -1056,8 +1145,16 @@ void computeFockMatrixDIIS(real_t* d_error_matrices, real_t* d_fock_matrices, re
     // Create the DIIS matrix
     real_t* d_DIIS_matrix;
     real_t* h_DIIS_matrix = new real_t[num_size * num_size];
+    if (h_DIIS_matrix == nullptr) {
+        THROW_EXCEPTION("Failed to allocate host memory for DIIS matrix.");
+    }
 
-    cudaMalloc(&d_DIIS_matrix, num_size * num_size * sizeof(real_t));
+    cudaError_t err;
+
+    err = cudaMalloc(&d_DIIS_matrix, num_size * num_size * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for DIIS matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     for (int i = 0; i < num_prev; i++){
         for (int j = i; j < num_prev; j++){
@@ -1076,8 +1173,14 @@ void computeFockMatrixDIIS(real_t* d_error_matrices, real_t* d_fock_matrices, re
     
     // Create the right-hand side vector
     real_t* h_DIIS_rhs = new real_t[num_size];
+    if (h_DIIS_rhs == nullptr) {
+        THROW_EXCEPTION("Failed to allocate host memory for DIIS right-hand side vector.");
+    }
     real_t* d_DIIS_rhs;
-    cudaMalloc(&d_DIIS_rhs, num_size * sizeof(real_t));
+    err = cudaMalloc(&d_DIIS_rhs, num_size * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for DIIS right-hand side vector: ") + std::string(cudaGetErrorString(err)));
+    }
 
     for (int i = 0; i < num_prev; i++){
         h_DIIS_rhs[i] = 0.0;
@@ -1096,13 +1199,22 @@ void computeFockMatrixDIIS(real_t* d_error_matrices, real_t* d_fock_matrices, re
 
     // allocate the workspace
     real_t* d_work;
-    cudaMalloc(&d_work, work_size * sizeof(real_t));
+    err = cudaMalloc(&d_work, work_size * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for workspace: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // pivot array and info
     int* d_pivot = nullptr;
     int* d_info = nullptr;
-    cudaMalloc(&d_pivot, num_size * sizeof(int));
-    cudaMalloc(&d_info, sizeof(int));
+    err = cudaMalloc(&d_pivot, num_size * sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for pivot array: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_info, sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for info array: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // LU factorization
     cusolverDnDgetrf(cusolver.cusolverHandle, num_size, num_size, d_DIIS_matrix, num_size, d_work, d_pivot, d_info);
@@ -1148,10 +1260,15 @@ void computeFockMatrixDIIS(real_t* d_error_matrices, real_t* d_fock_matrices, re
  void computeInitialCoefficientMatrix_GWH(const real_t* d_core_hamiltonian_matrix, const real_t* d_overlap_matrix, const real_t* d_transform_matrix, real_t* d_coefficient_matrix, const int num_basis) {
     const real_t cx = 1.75;
 
+    cudaError_t err;
+
     // allocate temporary memory
     real_t* d_temp_FockMatrix = nullptr;
     real_t* h_temp_FockMatrix = new real_t[num_basis * num_basis];
-    cudaMalloc(&d_temp_FockMatrix, num_basis * num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_temp_FockMatrix, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Compute the initial Fock matrix
     size_t threads_per_block = 256;
@@ -1177,25 +1294,40 @@ void computeFockMatrixDIIS(real_t* d_error_matrices, real_t* d_fock_matrices, re
  * @param N The size of the matrix (number of rows/columns).
  */
 void invertMatrix(double* d_A, const int N) {
-    cusolverManager cusolver;
+    //cusolverManager cusolver;
+    cusolverDnHandle_t cusolverHandle = GPUHandle::cusolver();
 
     int *d_ipiv, *d_info;
     double *d_work;
     int lwork;
+
+    cudaError_t err;
     
-    cudaMalloc(&d_ipiv, N * sizeof(int));
-    cudaMalloc(&d_info, sizeof(int));
+    err = cudaMalloc(&d_ipiv, N * sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for pivot array: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_info, sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for info array: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Get workspace size for LU decomposition
-    cusolverDnDgetrf_bufferSize(cusolver.cusolverHandle, N, N, d_A, N, &lwork);
-    cudaMalloc(&d_work, lwork * sizeof(double));
+    cusolverDnDgetrf_bufferSize(cusolverHandle, N, N, d_A, N, &lwork);
+    err = cudaMalloc(&d_work, lwork * sizeof(double));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for workspace: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Perform LU decomposition
-    cusolverDnDgetrf(cusolver.cusolverHandle, N, N, d_A, N, d_work, d_ipiv, d_info);
+    cusolverDnDgetrf(cusolverHandle, N, N, d_A, N, d_work, d_ipiv, d_info);
 
     // Allocate and initialize an identity matrix on the device
     double *d_I;
-    cudaMalloc(&d_I, N * N * sizeof(double));
+    err = cudaMalloc(&d_I, N * N * sizeof(double));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for identity matrix: ") + std::string(cudaGetErrorString(err)));
+    }
     cudaMemset(d_I, 0, N * N * sizeof(double));
     for (int i = 0; i < N; i++) {
         double one = 1.0;
@@ -1203,7 +1335,7 @@ void invertMatrix(double* d_A, const int N) {
     }
 
     // Solve for the inverse using the LU decomposition
-    cusolverDnDgetrs(cusolver.cusolverHandle, CUBLAS_OP_N, N, N, d_A, N, d_ipiv, d_I, N, d_info);
+    cusolverDnDgetrs(cusolverHandle, CUBLAS_OP_N, N, N, d_A, N, d_ipiv, d_I, N, d_info);
 
     // Copy the result back to d_A (overwrite original matrix with its inverse)
     cudaMemcpy(d_A, d_I, N * N * sizeof(double), cudaMemcpyDeviceToDevice);
@@ -1216,6 +1348,8 @@ void invertMatrix(double* d_A, const int N) {
 }
 
 
+
+
 /**
  * @brief Performs Cholesky decomposition on an N x N symmetric positive definite matrix in device memory.
  *
@@ -1226,21 +1360,30 @@ void invertMatrix(double* d_A, const int N) {
  * @param N The size of the matrix (number of rows/columns).
  */
 void choleskyDecomposition(double* d_A, const int N) {
-    cusolverManager cusolver;
+    //cusolverManager cusolver;
+    cusolverDnHandle_t cusolverHandle = GPUHandle::cusolver();
 
     int *d_info;
     double *d_work;
     int lwork;
 
+    cudaError_t err;
+
     // Allocate device memory for error info
-    cudaMalloc(&d_info, sizeof(int));
+    err = cudaMalloc(&d_info, sizeof(int));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for info array: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Get workspace size
-    cusolverDnDpotrf_bufferSize(cusolver.cusolverHandle, CUBLAS_FILL_MODE_UPPER, N, d_A, N, &lwork);
-    cudaMalloc(&d_work, lwork * sizeof(double));
+    cusolverDnDpotrf_bufferSize(cusolverHandle, CUBLAS_FILL_MODE_UPPER, N, d_A, N, &lwork);
+    err = cudaMalloc(&d_work, lwork * sizeof(double));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for workspace: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Perform Cholesky decomposition (A -> L, overwriting lower triangular part)
-    cusolverDnDpotrf(cusolver.cusolverHandle, CUBLAS_FILL_MODE_UPPER, N, d_A, N, d_work, lwork, d_info);
+    cusolverDnDpotrf(cusolverHandle, CUBLAS_FILL_MODE_UPPER, N, d_A, N, d_work, lwork, d_info);
 
     // Set zero to the upper triangular part
     const int num_threads = 256;
@@ -1254,6 +1397,86 @@ void choleskyDecomposition(double* d_A, const int N) {
     cudaFree(d_info);
 }
 
+
+
+/**
+ * @brief Solve the equation AX = B for X, where A is a lower triangular matrix.
+ * The input matrix B is overwritten with the result X. 
+ * @param d_A Pointer to the row x row lower triangular matrix in device memory.
+ * @param d_B Pointer to the row x col matrix in device memory (input/output).
+ * @param row The number of rows.
+ * @param row The number of columns.
+ */
+void solve_lower_triangular(double* d_A, double* d_B, int row, int col){
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+
+    // 転置
+    transposeMatrixInPlace(d_A, row);
+
+    cudaError_t err;
+
+    double *d_tmp;
+    err = cudaMalloc((void**)&d_tmp, sizeof(double) * row * col);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+
+
+    const double alpha = 1.0;
+    const double beta = 0.0; //これ必要
+
+    cublasDgeam(
+        cublasHandle,
+        CUBLAS_OP_T,
+        CUBLAS_OP_N,
+        row, col,
+        &alpha,
+        d_B, col,
+        &beta,
+        nullptr, (row >= col) ? row : col,
+        d_tmp, row
+    );
+
+    // // Solve A * X = B → X overwrites B
+    cublasDtrsm(
+        cublasHandle,
+        CUBLAS_SIDE_LEFT,        
+        CUBLAS_FILL_MODE_LOWER, 
+        CUBLAS_OP_N,            
+        CUBLAS_DIAG_NON_UNIT,   
+        row,                   
+        col,                   
+        &alpha,
+        d_A, row,                  
+        d_tmp, row                  
+    );
+
+    cublasDgeam(
+        cublasHandle,
+        CUBLAS_OP_T,
+        CUBLAS_OP_N,
+        col, row,
+        &alpha,
+        d_tmp, row,
+        &beta,
+        nullptr, (row >= col) ? row : col,
+        d_B, col
+    );
+
+    cudaFree(d_tmp);
+}
+
+
+inline void writeMatrixToFile(std::string filename, double* array, size_t size) {
+    std::ofstream outFile(filename);
+    if (!outFile) 
+        throw std::runtime_error("ファイルを書き込み用に開けませんでした");
+    
+    for (size_t i = 0; i < size; i++) {
+        outFile << std::fixed << std::setprecision(15) << array[i] << "\n";
+    }
+}
 
 /**
  * @brief Compute the intermediate matrix B for the RI approximation.
@@ -1286,9 +1509,15 @@ void compute_RI_IntermediateMatrixB(
     const real_t* d_boys_grid, 
     const bool verbose) 
 {
+    cudaError_t err;
+
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;
-    cudaMalloc(&d_two_center_eri, num_auxiliary_basis * num_auxiliary_basis * sizeof(real_t));
+    err = cudaMalloc(&d_two_center_eri, num_auxiliary_basis * num_auxiliary_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for two-center ERIs: ") + std::string(cudaGetErrorString(err)));
+    }
+    cudaMemset(d_two_center_eri, 0.0, num_auxiliary_basis * num_auxiliary_basis * sizeof(real_t));
 
     // Compute the two-center ERIs of the auxiliary basis functions
     computeTwoCenterERIs(
@@ -1299,16 +1528,27 @@ void compute_RI_IntermediateMatrixB(
         num_auxiliary_basis,
         d_boys_grid,
         verbose);
-    
-    // Compute the inverse of the two-center ERI matrix (it is overwritten with its inverse)
-    invertMatrix(d_two_center_eri, num_auxiliary_basis);
+        // cudaDeviceSynchronize();
+        // int nTotal = num_auxiliary_basis * num_auxiliary_basis;
+        // double *h_res_2c2e = new double[nTotal];
+        // cudaMemcpy(h_res_2c2e, d_two_center_eri, sizeof(double)*nTotal, cudaMemcpyDeviceToHost);
+        // writeMatrixToFile("2cGANSU.txt", h_res_2c2e, nTotal);
+        // delete[] h_res_2c2e;
+
+
+    // // Compute the inverse of the two-center ERI matrix (it is overwritten with its inverse)
+    // invertMatrix(d_two_center_eri, num_auxiliary_basis);
 
     // Cholesky decomposition of the inverse of the two-center ERI matrix (it is overwritten with the result)
     choleskyDecomposition(d_two_center_eri, num_auxiliary_basis);
 
     // Allocate device memory for the three-center ERIs
     real_t* d_three_center_eri;
-    cudaMalloc(&d_three_center_eri, num_basis * num_basis * num_auxiliary_basis * sizeof(real_t));
+    err = cudaMalloc(&d_three_center_eri, num_basis * num_basis * num_auxiliary_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for three-center ERIs: ") + std::string(cudaGetErrorString(err)));
+    }
+    cudaMemset(d_three_center_eri, 0.0, num_basis * num_basis * num_auxiliary_basis * sizeof(real_t));
 
     // Compute the three-center ERIs of the auxiliary basis functions and the basis functions
     computeThreeCenterERIs(
@@ -1319,18 +1559,31 @@ void compute_RI_IntermediateMatrixB(
         d_auxiliary_primitive_shells, 
         d_auxiliary_cgto_nomalization_factors, 
         d_three_center_eri, 
+        num_basis,
         num_auxiliary_basis,
         d_boys_grid,
         verbose);
 
-
+        // cudaDeviceSynchronize();
+        // nTotal = num_basis * num_basis * num_auxiliary_basis;
+        // double *h_res_3c2e = new double[nTotal];
+        // cudaMemcpy(h_res_3c2e, d_three_center_eri, sizeof(double)*nTotal, cudaMemcpyDeviceToHost);
+        // writeMatrixToFile("3cGANSU.txt", h_res_3c2e, nTotal);
+        // delete[] h_res_3c2e;
+    
     // Compute the intermediate matrix B
-    computeIntermediateMatrixB(
-        d_three_center_eri, 
-        d_two_center_eri, 
-        d_intermediate_matrix_B, 
-        num_basis, 
-        num_auxiliary_basis);
+    solve_lower_triangular(d_two_center_eri, d_three_center_eri, num_auxiliary_basis, num_basis*num_basis);
+    cudaMemcpy(d_intermediate_matrix_B, d_three_center_eri, sizeof(real_t) * num_auxiliary_basis*num_basis*num_basis, cudaMemcpyDeviceToDevice);
+
+    // computeIntermediateMatrixB(
+    //     d_three_center_eri, 
+    //     d_two_center_eri, 
+    //     d_intermediate_matrix_B, 
+    //     num_basis, 
+    //     num_auxiliary_basis);
+
+    cudaFree(d_two_center_eri);
+    cudaFree(d_three_center_eri);
 
 }
 
@@ -1347,15 +1600,16 @@ void computeIntermediateMatrixB(
     const int num_threads = 256;
     const int num_blocks = (num_auxiliary_basis * num_basis * num_basis + num_threads - 1) / num_threads;
     computeRIIntermediateMatrixB_kernel<<<num_blocks, num_threads>>>(d_three_center_eri, d_two_center_eri, d_intermediate_matrix_B, num_basis, num_auxiliary_basis);
-
-
 }
 
 
 
 
 void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix, const int num_basis, const int num_auxiliary_basis){
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+    cudaError_t err;
 
     // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
     const int num_threads = 256;
@@ -1363,17 +1617,23 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
 
     ////////////////////////////////// compute J-matrix //////////////////////////////////
     real_t* d_J = nullptr;
-    cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
+    err = cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for J matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
 
     // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
     real_t* d_W = nullptr;
-    cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+    err = cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for W vector: ") + std::string(cudaGetErrorString(err)));
+    }
 
     double alpha = 1.0;
     double beta = 0.0;
 
-    cublasDgemv(cublas.cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
+    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
 
     // J = sum(W[i] * B[i])
     weighted_sum_matrices_kernel<<<num_blocks, num_threads>>>(d_J, d_intermediate_matrix_B, d_W, num_basis, num_auxiliary_basis);
@@ -1384,11 +1644,17 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
 
     ////////////////////////////////// compute K-matrix //////////////////////////////////
     real_t* d_K = nullptr;
-    cudaMalloc(&d_K, sizeof(real_t)*num_basis*num_basis);
+    err = cudaMalloc(&d_K, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for K matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // T^p = B^p D^T
     real_t* d_T = nullptr;
-    cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    err = cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for T matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Note: cublasDgemmBatched shoul be used?
     for(int p=0; p<num_auxiliary_basis; p++){
@@ -1398,7 +1664,10 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
 
     // V^p = B^p (T^p)^T
     real_t* d_V = nullptr;
-    cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    err = cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for V matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Note: cublasDgemmBatched shoul be used?
     for(int p=0; p<num_auxiliary_basis; p++){
@@ -1426,7 +1695,10 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
 }
 
 void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, const int num_basis, const int num_auxiliary_basis){
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+    cudaError_t err;
 
     // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
     const int num_threads = 256;
@@ -1435,20 +1707,29 @@ void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_
     ////////////////////////////////// compute J-matrix //////////////////////////////////
     real_t* d_J = nullptr;
     real_t* d_density_matrix = nullptr;
-    cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
-    cudaMalloc(&d_density_matrix, sizeof(real_t)*num_basis*num_basis);
+    err = cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for J matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_density_matrix, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for density matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // D = D_a + D_b
     matrixAddition(d_density_matrix_a, d_density_matrix_b, d_density_matrix, num_basis);
 
     // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
     real_t* d_W = nullptr;
-    cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+    err = cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for W vector: ") + std::string(cudaGetErrorString(err)));
+    }
 
     double alpha = 1.0;
     double beta = 0.0;
 
-    cublasDgemv(cublas.cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
+    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
 
     // J = sum(W[i] * B[i])
     weighted_sum_matrices_kernel<<<num_blocks, num_threads>>>(d_J, d_intermediate_matrix_B, d_W, num_basis, num_auxiliary_basis);
@@ -1461,12 +1742,21 @@ void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_
     ////////////////////////////////// compute K-matrix //////////////////////////////////
     real_t* d_T = nullptr;
     real_t* d_V = nullptr;
-    cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
-    cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    err = cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for T matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for V matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     ////////////// compute Ka-matrix //////////////
     real_t* d_Ka = nullptr;
-    cudaMalloc(&d_Ka, sizeof(real_t)*num_basis*num_basis);
+    err = cudaMalloc(&d_Ka, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for Ka matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // T^p = B^p Da^T
     // Note: cublasDgemmBatched should be used?
@@ -1485,7 +1775,10 @@ void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_
 
     ////////////// compute Kb-matrix //////////////
     real_t* d_Kb = nullptr;
-    cudaMalloc(&d_Kb, sizeof(real_t)*num_basis*num_basis);
+    err = cudaMalloc(&d_Kb, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for Kb matrix: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // T^p = B^p Da^T
     // Note: cublasDgemmBatched should be used?
@@ -1526,17 +1819,36 @@ void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_
 
 
 void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real_t* d_density_matrix_open, const real_t* d_core_hamiltonian_matrix, const real_t* d_coefficient_matrix, const real_t* d_overlap_matrix, const real_t* d_intermediate_matrix_B, const ROHF_ParameterSet ROH_parameters, real_t* d_fock_matrix_closed, real_t* d_fock_matrix_open, real_t* d_fock_matrix, const int num_closed, const int num_open, const int num_basis, const int num_auxiliary_basis){
-    cublasManager cublas;
+    //cublasManager cublas;
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+    cudaError_t err;
+
     real_t* d_temp_F_MO_closed = nullptr; // Fock matrix for the closed-shell MO 
     real_t* d_temp_F_MO_open = nullptr; // Fock matrix for the open-shell MO
     real_t* d_temp_R_MO = nullptr; /// unified Fock matrix R_MO
     real_t* d_temp_matrix1 = nullptr;
     real_t* d_temp_matrix2 = nullptr;
-    cudaMalloc(&d_temp_F_MO_closed, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_F_MO_open, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_R_MO, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_matrix1, num_basis * num_basis * sizeof(real_t));
-    cudaMalloc(&d_temp_matrix2, num_basis * num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_temp_F_MO_closed, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for closed-shell Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_F_MO_open, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for open-shell Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_R_MO, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for unified Fock matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_matrix1, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix 1: ") + std::string(cudaGetErrorString(err)));
+    }
+    err = cudaMalloc(&d_temp_matrix2, num_basis * num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for temporary matrix 2: ") + std::string(cudaGetErrorString(err)));
+    }
 
     {// compute the Fock matrices for the closed- and open-shell orbitals using RI approximation
 
@@ -1547,20 +1859,29 @@ void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real
         ////////////////////////////////// compute J-matrix //////////////////////////////////
         real_t* d_J = nullptr;
         real_t* d_density_matrix = nullptr;
-        cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
-        cudaMalloc(&d_density_matrix, sizeof(real_t)*num_basis*num_basis);
+        err = cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for J matrix: ") + std::string(cudaGetErrorString(err)));
+        }
+        err = cudaMalloc(&d_density_matrix, sizeof(real_t)*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for density matrix: ") + std::string(cudaGetErrorString(err)));
+        }
 
         // D = D_closed + D_open
         matrixAddition(d_density_matrix_closed, d_density_matrix_open, d_density_matrix, num_basis);
 
         // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
         real_t* d_W = nullptr;
-        cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+        err = cudaMalloc(&d_W, sizeof(real_t)*num_auxiliary_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for W vector: ") + std::string(cudaGetErrorString(err)));
+        }
 
         double alpha = 1.0;
         double beta = 0.0;
 
-        cublasDgemv(cublas.cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
+        cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
 
         // J = sum(W[i] * B[i])
         weighted_sum_matrices_kernel<<<num_blocks, num_threads>>>(d_J, d_intermediate_matrix_B, d_W, num_basis, num_auxiliary_basis);
@@ -1572,12 +1893,21 @@ void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real
         ////////////////////////////////// compute Kclosed-matrix //////////////////////////////////
         real_t* d_T = nullptr;
         real_t* d_V = nullptr;
-        cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
-        cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+        err = cudaMalloc(&d_T, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for T matrix: ") + std::string(cudaGetErrorString(err)));
+        }
+        err = cudaMalloc(&d_V, sizeof(real_t)*num_auxiliary_basis*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for V matrix: ") + std::string(cudaGetErrorString(err)));
+        }
 
         ////////////// compute Kclosed-matrix //////////////
         real_t* d_Kclosed = nullptr;
-        cudaMalloc(&d_Kclosed, sizeof(real_t)*num_basis*num_basis);
+        err = cudaMalloc(&d_Kclosed, sizeof(real_t)*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for Kclosed matrix: ") + std::string(cudaGetErrorString(err)));
+        }
 
         // T^p = B^p Da^T
         // Note: cublasDgemmBatched should be used?
@@ -1597,7 +1927,10 @@ void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real
     
         ////////////// compute Kopen-matrix //////////////
         real_t* d_Kopen = nullptr;
-        cudaMalloc(&d_Kopen, sizeof(real_t)*num_basis*num_basis);
+        err = cudaMalloc(&d_Kopen, sizeof(real_t)*num_basis*num_basis);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to allocate device memory for Kopen matrix: ") + std::string(cudaGetErrorString(err)));
+        }
 
         // D = 0.5*D_closed + D_open
         weightedMatrixSum(d_density_matrix_closed, d_density_matrix_open, d_density_matrix, 0.5, 1.0, num_basis);
@@ -1677,7 +2010,7 @@ void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real
 
 }
 
-
+/*
 void computeTwoCenterERIs(
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
     const PrimitiveShell* d_auxiliary_primitive_shells, 
@@ -1688,8 +2021,159 @@ void computeTwoCenterERIs(
     const bool verbose)
 {
     // ここに２中心積分を計算するコードを書く    
-    THROW_EXCEPTION("Not implemented yet.");
+    const int threads_per_block = 128;
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+    for (int s0 = 0; s0 < auxiliary_shell_type_count; s0++) {
+        for (int s1 = s0; s1 < auxiliary_shell_type_count; s1++) {
+            const ShellTypeInfo shell_s0 = auxiliary_shell_type_infos[s0];
+            const ShellTypeInfo shell_s1 = auxiliary_shell_type_infos[s1];
+
+            // printf("(%d--%d)\n",shell_s0.start_index, shell_s1.start_index);
+
+            const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
+            const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+            // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
+            gpu::get_2center_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_two_center_eri, d_auxiliary_primitive_shells, 
+                                                                                d_auxiliary_cgto_nomalization_factors, 
+                                                                                shell_s0, shell_s1, 
+                                                                                num_shell_pairs, num_auxiliary_basis, 
+                                                                                d_boys_grid);
+        
+            if(verbose){
+                std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
+                std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+                std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+                std::cout << "|[a|b]|=" << num_shell_pairs << ", ";
+                std::cout << "num_blocks: " << num_blocks << std::endl;
+            }
+
+        }
+    }
 }
+*/
+void computeTwoCenterERIs(
+    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
+    const PrimitiveShell* d_auxiliary_primitive_shells, 
+    const real_t* d_auxiliary_cgto_nomalization_factors, 
+    real_t* d_two_center_eri, 
+    const int num_auxiliary_basis,
+    const real_t* d_boys_grid,
+    const bool verbose)
+{
+    // ここに２中心積分を計算するコードを書く    
+    const int threads_per_block = 128;
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+
+    std::vector<std::pair<int, int>> shell_pairs;
+
+    // a <= b の2つ組を作る
+    for (int a = 0; a < auxiliary_shell_type_count; ++a) {
+        for (int b = a; b < auxiliary_shell_type_count; ++b) {
+            shell_pairs.emplace_back(a, b);
+        }
+    }
+
+    // (a + b) の降順にソート
+    std::sort(shell_pairs.begin(), shell_pairs.end(),
+        [](const auto& lhs, const auto& rhs) {
+            return (lhs.first + lhs.second) > (rhs.first + rhs.second);  // 降順
+        });
+
+    // make multi stream
+    const int num_kernels = shell_pairs.size();
+    std::vector<cudaStream_t> streams(num_kernels);
+
+    // for-loop for sorted shell-type (s0, s1)
+    int stream_id = 0;
+    for(const auto& pair: shell_pairs) {
+        int s0, s1;
+        std::tie(s0, s1) = pair;
+
+        const ShellTypeInfo shell_s0 = auxiliary_shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = auxiliary_shell_type_infos[s1];
+
+        const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
+        const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+        // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
+        gpu::get_2center_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_two_center_eri, d_auxiliary_primitive_shells, 
+                                                                            d_auxiliary_cgto_nomalization_factors, 
+                                                                            shell_s0, shell_s1, 
+                                                                            num_shell_pairs, num_auxiliary_basis, 
+                                                                            d_boys_grid);
+    
+        if(verbose){
+            std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
+            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+            std::cout << "|[a|b]|=" << num_shell_pairs << ", ";
+            std::cout << "num_blocks: " << num_blocks << std::endl;
+        }
+    }
+
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+}
+
+/*
+void computeThreeCenterERIs(
+    const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const PrimitiveShell* d_primitive_shells, 
+    const real_t* d_cgto_nomalization_factors, 
+    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
+    const PrimitiveShell* d_auxiliary_primitive_shells, 
+    const real_t* d_auxiliary_cgto_nomalization_factors, 
+    real_t* d_three_center_eri, 
+    const int num_basis,
+    const int num_auxiliary_basis,
+    const real_t* d_boys_grid,
+    const bool verbose)
+{
+    // ここに３中心積分を計算するコードを書く
+    const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+    for (int s0 = 0; s0 < shell_type_count; s0++) {
+        for (int s1 = s0; s1 < shell_type_count; s1++) {
+            for(int s2 = 0; s2 < auxiliary_shell_type_count; s2++){
+
+                const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+                const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+                const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
+
+                const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
+                const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
+                
+                gpu::get_3center_kernel(s0, s1, s2)<<<num_blocks, threads_per_block>>>(d_three_center_eri, d_primitive_shells, d_auxiliary_primitive_shells, 
+                                                                                       d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
+                                                                                       shell_s0, shell_s1, shell_s2, 
+                                                                                       num_tasks, num_basis, num_auxiliary_basis,
+                                                                                       d_boys_grid);
+            
+                if(verbose){
+                    std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2)<< "): ";
+                    std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+                    std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+                    std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s2.count << ", ";
+                    std::cout << "|[ab|c]|=" << num_tasks << ", ";
+                    std::cout << "num_blocks: " << num_blocks << std::endl;
+                }
+
+            }
+
+        }
+    }
+}
+    */
 
 
 void computeThreeCenterERIs(
@@ -1700,12 +2184,77 @@ void computeThreeCenterERIs(
     const PrimitiveShell* d_auxiliary_primitive_shells, 
     const real_t* d_auxiliary_cgto_nomalization_factors, 
     real_t* d_three_center_eri, 
+    const int num_basis,
     const int num_auxiliary_basis,
     const real_t* d_boys_grid,
     const bool verbose)
 {
-    // ここに３中心積分を計算するコードを書く
-    THROW_EXCEPTION("Not implemented yet.");
+    const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+
+    // Call the kernel functions from (ss|s),... (e.g. (ss|s), (ss|p), (sp|s), (sp|p), (pp|s), (pp|p) for s and p shells)
+
+    // list shell-triples for sorted shell-type (s0, s1, s2)
+    std::vector<std::tuple<int, int, int>> shell_triples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < auxiliary_shell_type_count; ++c) {
+                shell_triples.emplace_back(a, b, c);
+            }
+        }
+    }
+    // sort by sum (a + b + c) in descending order
+    std::sort(shell_triples.begin(), shell_triples.end(),
+        [](const auto& lhs, const auto& rhs) {
+            int sum_lhs = std::get<0>(lhs) + std::get<1>(lhs) + std::get<2>(lhs);
+            int sum_rhs = std::get<0>(rhs) + std::get<1>(rhs) + std::get<2>(rhs);
+            return sum_lhs > sum_rhs;  // 降順
+        });
+
+
+    // make multi stream
+    const int num_kernels = shell_triples.size();
+    std::vector<cudaStream_t> streams(num_kernels);
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int stream_id = 0;
+    for(const auto& triple: shell_triples) {
+        int s0, s1, s2;
+        std::tie(s0, s1, s2) = triple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
+
+        const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
+        const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
+        
+        gpu::get_3center_kernel(s0, s1, s2)<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_three_center_eri, d_primitive_shells, d_auxiliary_primitive_shells, 
+                                                                                d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
+                                                                                shell_s0, shell_s1, shell_s2, 
+                                                                                num_tasks, num_basis, num_auxiliary_basis,
+                                                                                d_boys_grid);
+    
+        if(verbose){
+            std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2)<< "): ";
+            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s2.count << ", ";
+            std::cout << "|[ab|c]|=" << num_tasks << ", ";
+            std::cout << "num_blocks: " << num_blocks << std::endl;
+        }
+
+    }
+
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
 }
 
 /**
@@ -1771,8 +2320,13 @@ void computeMullikenPopulation_RHF(
     )
 {
 
+    cudaError_t err;
+
     real_t* d_mulliken_population = nullptr;
-    cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for Mulliken population: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Compute the diagonal elements of the product of the density matrix and the overlap matrix
     const size_t threads_per_block = 256;
@@ -1799,9 +2353,13 @@ void computeMullikenPopulation_UHF(
         const int num_basis
     )
 {
+    cudaError_t err;
 
     real_t* d_mulliken_population = nullptr;
-    cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+    err = cudaMalloc(&d_mulliken_population, num_basis * sizeof(real_t));
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for Mulliken population: ") + std::string(cudaGetErrorString(err)));
+    }
 
     // Compute the diagonal elements of the product of the density matrix and the overlap matrix
     const size_t threads_per_block = 256;

@@ -339,6 +339,10 @@ inline nuclear_attraction_kernel_t get_nuclear_attraction_kernel(int a, int b){
 
 }
 
+
+
+
+
 } // namespace gansu::gpu
 
 #endif

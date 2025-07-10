@@ -36,8 +36,7 @@ __global__ void sspp2e(double* g_int2e, const PrimitiveShell* g_shell, const rea
 __global__ void spsp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
 __global__ void sppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
 __global__ void pppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
-__global__ void UTM_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
-__global__ void RCT_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
+__global__ void MD_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, const size_t num_threads, const real_t schwarz_screening_threshold, const double* g_upper_bound_factors, const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket);
 
 __global__ void get_schwarz_upper_bound_factors_ss(const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors);
 __global__ void get_schwarz_upper_bound_factors_sp(const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors);
@@ -76,10 +75,7 @@ inline eri_kernel_t get_eri_kernel(int a, int b, int c, int d){
     else if (a == 0 && b == 1 && c == 0 && d == 1) return spsp2e;
     else if (a == 0 && b == 1 && c == 1 && d == 1) return sppp2e;
     else if (a == 1 && b == 1 && c == 1 && d == 1) return pppp2e;
-    else {
-        if (a == c && b == d) return UTM_1T1SP;
-        else return RCT_1T1SP;
-    }
+    else return MD_1T1SP;
 }
 
 inline schwarz_kernel_t get_schwarz_kernel(int a, int b)
@@ -227,6 +223,133 @@ void addToResult_case6(double res, double *g_G, int p, int q, int r, int s, int 
     atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
 }
 
+
+/* case1. 全てひっくり返すか判定([ss|ss], [pp|pp])　*/
+inline __device__
+void addToResult_case1(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    if(!sym_bra) atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+    if(!sym_ket) atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+    if(!sym_bra && !sym_ket) atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+    if(!sym_braket) {
+        atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        if(!sym_bra) atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+        if(!sym_ket) atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+        if(!sym_bra && !sym_ket) atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
+
+
+/* case2. bra側のみ判定 ([ss|sp]) */
+inline __device__
+void addToResult_case2(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+    if(!sym_bra) {
+        atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
+
+
+/* case3. ket側のみ判定 ([sp|pp]) */
+inline __device__
+void addToResult_case3(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_ket, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+    if(!sym_ket) {
+        atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
+
+
+/* case4. bra側ket側，それぞれ判定 ([ss|pp]) */
+inline __device__
+void addToResult_case4(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, const double* g_cgto_normalization_factors)
+{    
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+    if(!sym_bra) {
+        atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+    }
+    if(!sym_ket) {
+        atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+    }
+    if(!sym_bra && !sym_ket) {
+        atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
+
+
+/* case5. bra-ketを判定 ([sp|sp]) */
+inline __device__
+void addToResult_case5(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_braket, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+    if(!sym_braket) {
+        atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+        atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
+
+/* case6. 判定しない ([sp|sd]) */
+inline __device__
+void addToResult_case6(double res, double *g_G, int p, int q, int r, int s, int nao, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+    atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+}
+
+
+
+inline __device__
+void addToResult(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket, const double* g_cgto_normalization_factors)
+{
+    res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
+
+    atomicAdd(&g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    if(!sym_bra) atomicAdd(&g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+    if(!sym_ket) atomicAdd(&g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+    if(!sym_bra && !sym_ket) atomicAdd(&g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+    if(!sym_braket) {
+        atomicAdd(&g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        if(!sym_bra) atomicAdd(&g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+        if(!sym_ket) atomicAdd(&g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+        if(!sym_bra && !sym_ket) atomicAdd(&g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    }
+}
 
 
 

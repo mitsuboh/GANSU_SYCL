@@ -128,16 +128,12 @@ void UHF::precompute_eri_matrix(){
             initial_guess = std::make_unique<InitialGuess_UHF_Density>(*this, density_matrix_a, density_matrix_b);
         }
     }else if(initail_guess_method_ == "core"){ // core Hamiltonian matrix
-
         initial_guess = std::make_unique<InitialGuess_UHF_Core>(*this);
-
     }else if(initail_guess_method_ == "gwh"){ // Generalized Wolfsberg-Helmholz (GWH) method
-
         initial_guess = std::make_unique<InitialGuess_UHF_GWH>(*this);
-    
     }else if(initail_guess_method_ == "sad"){ // Superposition of Atomic Densities (SAD) method
-        if(gbsfilename_ == ""){
-            THROW_EXCEPTION("If ``sad'' is set to ``initail_guess_method'', the basis set file should be provided by setting the file path to ``gbsfilename''.");
+        if(gbsfilename_.empty()){
+            THROW_EXCEPTION("The basis set file is not specified for SAD initial guess method. Please specify the basis set file name by -gbsfilename option.");
         }
         initial_guess = std::make_unique<InitialGuess_UHF_SAD>(*this);
     }else{

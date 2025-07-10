@@ -127,15 +127,13 @@ class DeviceHostMemory : public CudaMemoryManager<T> {
 public:
     DeviceHostMemory(size_t size, bool allocate_host_memory_in_advance = false)
         : CudaMemoryManager<T>(size),
-          allocate_host_memory_in_advance(allocate_host_memory_in_advance),
-          using_unified_memory_(false) {
+          allocate_host_memory_in_advance(allocate_host_memory_in_advance) {
         allocate();
     }
 
     DeviceHostMemory(const std::vector<T>& vec)
         : CudaMemoryManager<T>(vec.size()),
-          allocate_host_memory_in_advance(true),
-          using_unified_memory_(false) {
+          allocate_host_memory_in_advance(true) {
         allocate();
         std::copy(vec.begin(), vec.end(), this->host_ptr_);
     }
@@ -153,24 +151,8 @@ public:
 
         err = cudaMalloc(&this->device_ptr_, this->size_ * sizeof(T));
         if (err != cudaSuccess) {
-            std::cerr << "Warning: cudaMalloc failed (" << cudaGetErrorString(err)
-                      << "), falling back to unified memory." << std::endl;
-
-            // fallback to unified memory
-            err = cudaMallocManaged(&this->device_ptr_, this->size_ * sizeof(T));
-            if (err != cudaSuccess) {
-                std::string error_msg = "Failed to allocate unified memory: " + std::string(cudaGetErrorString(err));
-                THROW_EXCEPTION(error_msg);
-            }
-
-            using_unified_memory_ = true;
-
-            // if host_ptr_ not already allocated, use unified memory pointer
-            if (!this->host_ptr_) {
-                this->host_ptr_ = this->device_ptr_;
-            }
-        } else {
-            using_unified_memory_ = false;
+            std::string error_msg = "Warning: cudaMalloc failed (" +std::string(cudaGetErrorString(err));
+            THROW_EXCEPTION(error_msg);
         }
     }
 
@@ -178,24 +160,20 @@ public:
         if (!this->device_ptr_) {
             allocate();
         }
-        if (!using_unified_memory_ && this->device_ptr_ && this->host_ptr_) {
+        if (this->device_ptr_ && this->host_ptr_) {
             cudaMemcpy(this->device_ptr_, this->host_ptr_, this->size_ * sizeof(T), cudaMemcpyHostToDevice);
         }
     }
 
     void toHost() override {
         if (!this->host_ptr_) {
-            if (using_unified_memory_) {
-                this->host_ptr_ = this->device_ptr_;
-            } else {
-                cudaError_t err = cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
-                if (err != cudaSuccess) {
-                    std::string error_msg = "Failed to allocate host memory: " + std::string(cudaGetErrorString(err));
-                    THROW_EXCEPTION(error_msg);
-                }
+            cudaError_t err = cudaMallocHost(&this->host_ptr_, this->size_ * sizeof(T));
+            if (err != cudaSuccess) {
+                std::string error_msg = "Failed to allocate host memory: " + std::string(cudaGetErrorString(err));
+                THROW_EXCEPTION(error_msg);
             }
         }
-        if (!using_unified_memory_ && this->device_ptr_ && this->host_ptr_) {
+        if (this->device_ptr_ && this->host_ptr_) {
             cudaMemcpy(this->host_ptr_, this->device_ptr_, this->size_ * sizeof(T), cudaMemcpyDeviceToHost);
         }
     }
@@ -214,16 +192,9 @@ public:
         return this->host_ptr_[index];
     }
 
-    /**
-     * @brief Whether unified memory was used for allocation.
-     */
-    bool is_using_unified_memory() const {
-        return using_unified_memory_;
-    }
 
 private:
     bool allocate_host_memory_in_advance;
-    bool using_unified_memory_;
 };
 
 

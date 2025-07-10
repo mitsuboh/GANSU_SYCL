@@ -11,10 +11,19 @@
 #  
 # SPDX-License-Identifier: BSD-3-Clause
 # 
-
-
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CUDA CXX)
+
+
+# Uncomment the following line to enable to support D-type basis functions for RI approximations (density fitting)
+# Note: Build time will take several hours (5-6 hours)
+#
+# add_definitions(-DCOMPUTE_D_BASIS)
+
+# Uncomment the following line to enable to support G-type auxiliary basis functions for RI approximations (density fitting)
+# Note: Build time will take one day or more
+# 
+# add_definitions(-DCOMPUTE_G_AUX)
 
 
 # set compute capability
@@ -31,6 +40,8 @@ include_directories(include)
 # Static libraries
 add_library(int1e STATIC src/int1e.cu)
 add_library(int2e STATIC src/int2e.cu)
+add_library(int2c2e STATIC src/int2c2e.cu)
+add_library(int3c2e STATIC src/int3c2e.cu)
 
 
 set(SOURCES
@@ -45,6 +56,7 @@ set(SOURCES
     src/profiler.cu
     src/parameter_manager.cpp
     src/eri.cu
+    src/utils.cpp
 )
 
 add_library(gansu STATIC ${SOURCES})
@@ -56,6 +68,8 @@ target_link_libraries(gansu
         ${CUDA_LIBRARIES}
         int1e
         int2e
+        int2c2e
+        int3c2e
     )
 
 
@@ -66,12 +80,10 @@ target_link_libraries(HF_main
         gansu
     )
 
-
-
-add_executable(GeometryOptimization src/GeometryOptimization.cu ${SOURCES})
-target_link_libraries(GeometryOptimization
-        gansu
-    )
+# add_executable(demo src/demo.cu ${SOURCES})
+# target_link_libraries(demo
+#         gansu
+#     )
 
 
 # add_executable(HF_main_no_profile src/HF_main.cu ${SOURCES})

@@ -49,6 +49,17 @@ __device__ double calc_Norms(double alpha, double beta, int ijk, int lmn){
 }
 
 
+/* PGTOの規格化定数を算出(2つのPGTOまとめて) */
+__device__ double calc_Norms(double alpha, double beta, int i, int j, int k, int l, int m, int n){
+    return pow(2.0, i+j+k+l+m+n) 
+        * pow(2.0/M_PI, 1.5)
+        * pow(alpha, (2.0*(i+j+k)+3.0)/4.0)
+        * pow(beta, (2.0*(l+m+n)+3.0)/4.0);
+}
+
+
+
+
 __global__ void Matrix_Symmetrization(double* matrix, int n){
     __shared__ double sh_mem[32][33];
 
@@ -71,6 +82,16 @@ __global__ void Matrix_Symmetrization(double* matrix, int n){
 __device__ int calc_result_index(int y, int x, int sumCGTO){
     return (y<=x) ? y*sumCGTO + x : x*sumCGTO + y;
 }
+
+
+// 該当箇所に排他的に加算する関数
+inline __device__ void AddToResult(double result, double *g_nucattr, int y, int x, int num_basis, bool is_symmetric, double* g_cgto_normalization_factors){
+    result *= g_cgto_normalization_factors[y] * g_cgto_normalization_factors[x];
+
+    atomicAdd(&g_nucattr[(y<=x) ? y*num_basis + x : x*num_basis + y], result);
+}
+
+
 
 // MD method
 #include "MD_kernel.txt"
