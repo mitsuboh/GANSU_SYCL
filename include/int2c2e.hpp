@@ -31,6 +31,19 @@
 #include <cuda.h>
  
 namespace gansu::gpu{
+
+
+    // 順序合わせたやつ
+__constant__ int loop_to_ang_RI[7][28][3] = {
+    {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{2, 0, 0}, {0, 2, 0}, {0, 0, 2}, {1, 1, 0}, {1, 0, 1}, {0, 1, 1}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{3,0,0}, {0,3,0}, {0,0,3}, {2,1,0}, {2,0,1}, {0,2,1}, {1,2,0}, {0,1,2}, {1,0,2}, {1,1,1}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{4, 0, 0}, {0, 4, 0}, {0, 0, 4}, {3,1,0}, {3,0,1}, {0,3,1}, {1,3,0}, {0,1,3}, {1,0,3}, {2,2,0}, {2,0,2}, {0,2,2}, {2,1,1}, {1,2,1}, {1,1,2}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{5, 0, 0}, {4, 1, 0}, {3, 2, 0}, {2, 3, 0}, {1, 4, 0}, {0, 5, 0}, {4, 0, 1}, {3, 1, 1}, {2, 2, 1}, {1, 3, 1}, {0, 4, 1}, {3, 0, 2}, {2, 1, 2}, {1, 2, 2}, {0, 3, 2}, {2, 0, 3}, {1, 1, 3}, {0, 2, 3}, {1, 0, 4}, {0, 1, 4}, {0, 0, 5}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{6, 0, 0}, {5, 1, 0}, {4, 2, 0}, {3, 3, 0}, {2, 4, 0}, {1, 5, 0}, {0, 6, 0}, {5, 0, 1}, {4, 1, 1}, {3, 2, 1}, {2, 3, 1}, {1, 4, 1}, {0, 5, 1}, {4, 0, 2}, {3, 1, 2}, {2, 2, 2}, {1, 3, 2}, {0, 4, 2}, {3, 0, 3}, {2, 1, 3}, {1, 2, 3}, {0, 3, 3}, {2, 0, 4}, {1, 1, 4}, {0, 2, 4}, {1, 0, 5}, {0, 1, 5}, {0, 0, 6}}
+};
+
  
     extern __global__ void calc_ss_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
     extern __global__ void calc_sp_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
@@ -47,6 +60,7 @@ namespace gansu::gpu{
     extern __global__ void calc_ff_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
     extern __global__ void calc_fg_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
     extern __global__ void calc_gg_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
+    extern __global__ void MD_int2c2e_1T1SP(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, int num_auxiliary_basis, const double* g_boys_grid);
 
 
     inline int calcIdx_triangular(int a, int b, int N){
@@ -60,11 +74,18 @@ namespace gansu::gpu{
                                                                       calc_dd_gpu, calc_df_gpu, calc_dg_gpu, 
                                                                                    calc_ff_gpu, calc_fg_gpu, 
                                                                                                 calc_gg_gpu};
-    
-        if (a < N_ORBITAL_TYPE_AUX && b < N_ORBITAL_TYPE_AUX)
+                                                                                        
+        if (a < N_ORBITAL_TYPE_AUX && b < N_ORBITAL_TYPE_AUX){
+#if !defined(COMPUTE_G_AUX)
+            if (a >= 4 || b >= 4){
+                // printf("Caution: calling generic int2c2e kernel.\n");
+                return MD_int2c2e_1T1SP;
+            }
+#endif
             return kernels[calcIdx_triangular(a,b,N_ORBITAL_TYPE_AUX)];
-        else 
-            throw std::runtime_error("Invalid call for 2center eri.");
+        } else { 
+            throw std::runtime_error("Invalid call for 2center eri.\n");
+        }
     }
 
 
@@ -80,6 +101,7 @@ namespace gansu::gpu{
 
     __device__ __inline__ void addToResult_2center(double res, double *g_result, int p, int r, int nAux, bool is_prim_id_not_equal, const real_t* d_auxiliary_cgto_nomalization_factors){
         res *= d_auxiliary_cgto_nomalization_factors[p] * d_auxiliary_cgto_nomalization_factors[r];
+        
         atomicAdd(&g_result[p*nAux + r], res);
         if(is_prim_id_not_equal) atomicAdd(&g_result[r*nAux + p], res);
     }

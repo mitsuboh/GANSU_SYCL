@@ -37,6 +37,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
       *  Head-Godon-Pople algorithm (s- and p-orbitals)
       * Swartz Screening
     * Electron repulsion integrals for density fitting (RI approximation)
+      * McMurchie-Davidson algorithm (s-, p-, d-, f-, and g-orbitals)
       * Head-Godon-Pople algorithm (s-, p-, and d-orbitals for basis functions, s-, p-, d-, f-, and g-orbitals for auxiliary basis functions)
     * Boys function
 * Charge analysis

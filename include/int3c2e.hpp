@@ -33,6 +33,8 @@
  #include "utils_cuda.hpp"
  #include "parameters.h"
  #include "compile_flag.hpp"
+
+
  #include <cuda.h>
   
  namespace gansu::gpu{
@@ -99,7 +101,7 @@
     /* (ss|s) */
     extern __global__ void calc_sss_gpu(real_t* g_result, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_nomalization_factors, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, int num_auxiliary_basis, const double* g_boys_grid);
  
-
+    extern __global__ void MD_int3c2e_1T1SP(real_t* g_result, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_nomalization_factors, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, int num_auxiliary_basis, const double* g_boys_grid);
 
     using eri_3center_kernel_t = void (*)(real_t*, const PrimitiveShell*, const PrimitiveShell*, const real_t*, const real_t*, ShellTypeInfo, ShellTypeInfo, ShellTypeInfo, int64_t, int, int, const double*);
     inline eri_3center_kernel_t get_3center_kernel(int a, int b, int c){
@@ -110,10 +112,24 @@
                                             calc_pds_gpu, calc_pdp_gpu, calc_pdd_gpu, calc_pdf_gpu, calc_pdg_gpu, 
                                             calc_dds_gpu, calc_ddp_gpu, calc_ddd_gpu, calc_ddf_gpu, calc_ddg_gpu};
     
-        if (a < N_ORBITAL_TYPE_BASIS && b < N_ORBITAL_TYPE_BASIS && c < N_ORBITAL_TYPE_AUX)
+
+        if (a < N_ORBITAL_TYPE_BASIS && b < N_ORBITAL_TYPE_BASIS && c < N_ORBITAL_TYPE_AUX){
+#if !defined(COMPUTE_D_BASIS)
+            if (a >= 2 || b >= 2){
+                // printf("Caution: calling generic int3c2e kernel.\n");
+                return MD_int3c2e_1T1SP;
+            }
+#endif
+#if !defined(COMPUTE_G_AUX)
+            if (c >= 4){
+                // printf("Caution: calling generic int3c2e kernel.\n");
+                return MD_int3c2e_1T1SP;
+            }
+#endif  
             return kernels[calcIdx_triangular(a, b, N_ORBITAL_TYPE_BASIS) * N_ORBITAL_TYPE_AUX + c];
-        else 
-            throw std::runtime_error("Invalid call for 3center eri.");
+        } else { 
+            throw std::runtime_error("Invalid call for 3center eri.\n");
+        }
     }
 
     

@@ -21,7 +21,7 @@
 /* Uncomment below if you would like to handle inputs including g-type auxiliary basis functions */
 //#define COMPUTE_G_AUX
 
-
+/*
 #if defined(COMPUTE_D_BASIS) && defined(COMPUTE_G_AUX)
 #pragma message("D-type auxiliary basis functions and G-type auxiliary basis functions for RI approximations (density fitting) are supported.")
 #pragma message("Build time will take one day or more. If you don't need them, please disable it in CMakeLists.txt.")
@@ -35,3 +35,4 @@
 #pragma message("D-type auxiliary basis functions and G-type auxiliary basis functions for RI approximations (density fitting) are not supported.")
 #pragma message("Build time will be short. If you need them, please enable it in CMakeLists.txt.")
 #endif
+*/

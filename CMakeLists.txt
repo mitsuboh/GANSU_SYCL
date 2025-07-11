@@ -43,7 +43,6 @@ add_library(int2e STATIC src/int2e.cu)
 add_library(int2c2e STATIC src/int2c2e.cu)
 add_library(int3c2e STATIC src/int3c2e.cu)
 
-
 set(SOURCES
     src/basis_set.cpp
     src/parseXYZ.cpp
