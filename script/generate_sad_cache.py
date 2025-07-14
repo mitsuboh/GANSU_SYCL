@@ -123,10 +123,20 @@ def generate_sad_cache_for(basis_path: str):
     sad_path = Path(basis_path).with_suffix(".sad")
     elements = extract_elements_from_basis_file(basis_path)
 
+#    for element in elements:
+#        if not cache_has_element(sad_path, element):
+#            alpha, beta, n = compute_sad_density_for(element, basis_path)
+#            append_density_to_file(sad_path, element, alpha, beta, n)
     for element in elements:
-        if not cache_has_element(sad_path, element):
+        if cache_has_element(sad_path, element):
+            continue
+
+        try:
             alpha, beta, n = compute_sad_density_for(element, basis_path)
             append_density_to_file(sad_path, element, alpha, beta, n)
+        except Exception as e:
+            print(f"[Warning] Skipped {element} due to error: {e}")
+        
 
     print(f"Generated: {sad_path}")
 

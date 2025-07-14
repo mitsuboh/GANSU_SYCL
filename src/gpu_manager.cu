@@ -2010,49 +2010,6 @@ void computeFockMatrix_RI_ROHF(const real_t* d_density_matrix_closed, const real
 
 }
 
-/*
-void computeTwoCenterERIs(
-    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
-    const PrimitiveShell* d_auxiliary_primitive_shells, 
-    const real_t* d_auxiliary_cgto_nomalization_factors, 
-    real_t* d_two_center_eri, 
-    const int num_auxiliary_basis,
-    const real_t* d_boys_grid,
-    const bool verbose)
-{
-    // ここに２中心積分を計算するコードを書く    
-    const int threads_per_block = 128;
-    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
-
-    for (int s0 = 0; s0 < auxiliary_shell_type_count; s0++) {
-        for (int s1 = s0; s1 < auxiliary_shell_type_count; s1++) {
-            const ShellTypeInfo shell_s0 = auxiliary_shell_type_infos[s0];
-            const ShellTypeInfo shell_s1 = auxiliary_shell_type_infos[s1];
-
-            // printf("(%d--%d)\n",shell_s0.start_index, shell_s1.start_index);
-
-            const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
-            const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
-
-            // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
-            gpu::get_2center_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_two_center_eri, d_auxiliary_primitive_shells, 
-                                                                                d_auxiliary_cgto_nomalization_factors, 
-                                                                                shell_s0, shell_s1, 
-                                                                                num_shell_pairs, num_auxiliary_basis, 
-                                                                                d_boys_grid);
-        
-            if(verbose){
-                std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
-                std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
-                std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
-                std::cout << "|[a|b]|=" << num_shell_pairs << ", ";
-                std::cout << "num_blocks: " << num_blocks << std::endl;
-            }
-
-        }
-    }
-}
-*/
 void computeTwoCenterERIs(
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
     const PrimitiveShell* d_auxiliary_primitive_shells, 
@@ -2123,57 +2080,6 @@ void computeTwoCenterERIs(
     }
 }
 
-/*
-void computeThreeCenterERIs(
-    const std::vector<ShellTypeInfo>& shell_type_infos, 
-    const PrimitiveShell* d_primitive_shells, 
-    const real_t* d_cgto_nomalization_factors, 
-    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
-    const PrimitiveShell* d_auxiliary_primitive_shells, 
-    const real_t* d_auxiliary_cgto_nomalization_factors, 
-    real_t* d_three_center_eri, 
-    const int num_basis,
-    const int num_auxiliary_basis,
-    const real_t* d_boys_grid,
-    const bool verbose)
-{
-    // ここに３中心積分を計算するコードを書く
-    const int threads_per_block = 128;
-    const int shell_type_count = shell_type_infos.size();
-    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
-
-    for (int s0 = 0; s0 < shell_type_count; s0++) {
-        for (int s1 = s0; s1 < shell_type_count; s1++) {
-            for(int s2 = 0; s2 < auxiliary_shell_type_count; s2++){
-
-                const ShellTypeInfo shell_s0 = shell_type_infos[s0];
-                const ShellTypeInfo shell_s1 = shell_type_infos[s1];
-                const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
-
-                const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
-                const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
-                
-                gpu::get_3center_kernel(s0, s1, s2)<<<num_blocks, threads_per_block>>>(d_three_center_eri, d_primitive_shells, d_auxiliary_primitive_shells, 
-                                                                                       d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
-                                                                                       shell_s0, shell_s1, shell_s2, 
-                                                                                       num_tasks, num_basis, num_auxiliary_basis,
-                                                                                       d_boys_grid);
-            
-                if(verbose){
-                    std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2)<< "): ";
-                    std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
-                    std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
-                    std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s2.count << ", ";
-                    std::cout << "|[ab|c]|=" << num_tasks << ", ";
-                    std::cout << "num_blocks: " << num_blocks << std::endl;
-                }
-
-            }
-
-        }
-    }
-}
-    */
 
 
 void computeThreeCenterERIs(
