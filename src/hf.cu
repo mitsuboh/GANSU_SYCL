@@ -132,21 +132,36 @@ void HF::compute_core_hamiltonian_matrix() {
         overlap_matrix.toHost();
         core_hamiltonian_matrix.toHost();
 
-        std::cout << "Overlap matrix:" << std::endl;
-        for(size_t i=0; i<num_basis; i++){
-            for(size_t j=0; j<num_basis; j++){
-                std::cout << overlap_matrix(i, j) << " "; 
+        std::cout << "=== Overlap Matrix ===" << std::endl;
+        std::cout << "[\n";
+        for (size_t i = 0; i < num_basis; i++) {
+            std::cout << "  [";
+            for (size_t j = 0; j < num_basis; j++) {
+                std::cout << std::right << std::setfill(' ')
+                        << std::setw(10) << std::fixed << std::setprecision(6) << overlap_matrix(i, j);
+                if (j != num_basis - 1) std::cout << ", ";
             }
-            std::cout << std::endl;
+            std::cout << "]";
+            if (i != num_basis - 1) std::cout << ",";
+            std::cout << "\n";
         }
+        std::cout << "]\n\n";
 
-        std::cout << "Core Hamiltonian matrix:" << std::endl;
-        for(size_t i=0; i<num_basis; i++){
-            for(size_t j=0; j<num_basis; j++){
-                std::cout << core_hamiltonian_matrix(i, j) << " ";
+        std::cout << "=== Core Hamiltonian Matrix ===" << std::endl;
+        std::cout << "[\n";
+        for (size_t i = 0; i < num_basis; i++) {
+            std::cout << "  [";
+            for (size_t j = 0; j < num_basis; j++) {
+                std::cout << std::right << std::setfill(' ')
+                        << std::setw(10) << std::fixed << std::setprecision(6) << core_hamiltonian_matrix(i, j);
+                if (j != num_basis - 1) std::cout << ", ";
             }
-            std::cout << std::endl;
+            std::cout << "]";
+            if (i != num_basis - 1) std::cout << ",";
+            std::cout << "\n";
         }
+        std::cout << "]\n\n";
+
     }
 
 }

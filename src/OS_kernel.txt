@@ -16,10 +16,10 @@
 // OS_kernel
 // ----- (s|s) kernel -----
 __global__
-void overlap_kinetic_OSss(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSss(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -37,7 +37,7 @@ void overlap_kinetic_OSss(double* g_overlap, double* g_kinetic,
 	const int val = ((i == j) && (ab.y != ab.x)) ? 2 : 1;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 0) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 0) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -52,10 +52,10 @@ void overlap_kinetic_OSss(double* g_overlap, double* g_kinetic,
 
 // ----- (s|p) kernel -----
 __global__
-void overlap_kinetic_OSsp(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSsp(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -71,7 +71,7 @@ void overlap_kinetic_OSsp(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 1) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 1) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -96,10 +96,10 @@ void overlap_kinetic_OSsp(double* g_overlap, double* g_kinetic,
 
 // ----- (p|p) kernel -----
 __global__
-void overlap_kinetic_OSpp(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSpp(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -117,7 +117,7 @@ void overlap_kinetic_OSpp(double* g_overlap, double* g_kinetic,
 	const int val = ((i == j) && (ab.y != ab.x)) ? 2 : 1;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 1) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 1) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -174,10 +174,10 @@ void overlap_kinetic_OSpp(double* g_overlap, double* g_kinetic,
 
 // ----- (s|d) kernel -----
 __global__
-void overlap_kinetic_OSsd(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSsd(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -193,7 +193,7 @@ void overlap_kinetic_OSsd(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -233,10 +233,10 @@ void overlap_kinetic_OSsd(double* g_overlap, double* g_kinetic,
 
 // ----- (p|d) kernel -----
 __global__
-void overlap_kinetic_OSpd(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSpd(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -252,7 +252,7 @@ void overlap_kinetic_OSpd(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -352,10 +352,10 @@ void overlap_kinetic_OSpd(double* g_overlap, double* g_kinetic,
 
 // ----- (d|d) kernel -----
 __global__
-void overlap_kinetic_OSdd(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSdd(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -373,7 +373,7 @@ void overlap_kinetic_OSdd(double* g_overlap, double* g_kinetic,
 	const int val = ((i == j) && (ab.y != ab.x)) ? 2 : 1;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 2) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -565,10 +565,10 @@ void overlap_kinetic_OSdd(double* g_overlap, double* g_kinetic,
 
 // ----- (s|f) kernel -----
 __global__
-void overlap_kinetic_OSsf(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSsf(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -584,7 +584,7 @@ void overlap_kinetic_OSsf(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -644,10 +644,10 @@ void overlap_kinetic_OSsf(double* g_overlap, double* g_kinetic,
 
 // ----- (p|f) kernel -----
 __global__
-void overlap_kinetic_OSpf(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSpf(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -663,7 +663,7 @@ void overlap_kinetic_OSpf(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -826,10 +826,10 @@ void overlap_kinetic_OSpf(double* g_overlap, double* g_kinetic,
 
 // ----- (d|f) kernel -----
 __global__
-void overlap_kinetic_OSdf(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSdf(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -845,7 +845,7 @@ void overlap_kinetic_OSdf(double* g_overlap, double* g_kinetic,
 	size_t j = b.basis_index;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -1156,10 +1156,10 @@ void overlap_kinetic_OSdf(double* g_overlap, double* g_kinetic,
 
 // ----- (f|f) kernel -----
 __global__
-void overlap_kinetic_OSff(double* g_overlap, double* g_kinetic, 
-                        PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                        size_t num_threads,
-                        int num_basis)
+void overlap_kinetic_OSff(real_t* g_overlap, real_t* g_kinetic, 
+                        const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                        const size_t num_threads,
+                        const int num_basis)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1177,7 +1177,7 @@ void overlap_kinetic_OSff(double* g_overlap, double* g_kinetic,
 	const int val = ((i == j) && (ab.y != ab.x)) ? 2 : 1;
 
 	const double p = a.exponent + b.exponent;
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 3, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 3, 3) * pow((M_PI/p), 1.5) * exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double s = 0;
 	double k = 0;
@@ -1694,11 +1694,11 @@ void overlap_kinetic_OSff(double* g_overlap, double* g_kinetic,
 
 
 // ----- (s|s) kernel -----
-__global__
-void nuclear_attraction_OSss(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSss(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1719,12 +1719,12 @@ void nuclear_attraction_OSss(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	const double3 P = make_double3((a.exponent*a.coordinate.x + b.exponent*b.coordinate.x)/p, (a.exponent*a.coordinate.y + b.exponent*b.coordinate.y)/p, (a.exponent*a.coordinate.z + b.exponent*b.coordinate.z)/p);
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 0) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 0) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result = 0;
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		result += g_atom[nuc].atomic_number * getSingleBoys(0, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid);
+		result += g_atom[nuc].atomic_number * getSingleBoys(0, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid);
 	}
 
 	atomicAdd(&g_nucattr[calc_result_index(i+0, j+0, num_basis)], -1.0 * coefandNorm * g_cgto_normalization_factors[i]*g_cgto_normalization_factors[j] * result*val);
@@ -1732,11 +1732,11 @@ void nuclear_attraction_OSss(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (s|p) kernel -----
-__global__
-void nuclear_attraction_OSsp(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSsp(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1757,12 +1757,12 @@ void nuclear_attraction_OSsp(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[2];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 1) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 1) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[3] = {0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(1, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(1, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * (Boys[0]*(P.x-b.coordinate.x) - Boys[1]*(P.x-g_atom[nuc].coordinate.x));
 		result[1] += g_atom[nuc].atomic_number * (Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y));
 		result[2] += g_atom[nuc].atomic_number * (Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z));
@@ -1775,11 +1775,11 @@ void nuclear_attraction_OSsp(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (p|p) kernel -----
-__global__
-void nuclear_attraction_OSpp(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */,
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSpp(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1802,12 +1802,12 @@ void nuclear_attraction_OSpp(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	const double3 P = make_double3((a.exponent*a.coordinate.x + b.exponent*b.coordinate.x)/p, (a.exponent*a.coordinate.y + b.exponent*b.coordinate.y)/p, (a.exponent*a.coordinate.z + b.exponent*b.coordinate.z)/p);
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 1) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 1) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[9] = {0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(2, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(2, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((0.5*Boys[0] - 0.5*Boys[1] + p*((P.x-a.coordinate.x)*(Boys[0]*(P.x-b.coordinate.x) - Boys[1]*(P.x-g_atom[nuc].coordinate.x)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[1]*(P.x-b.coordinate.x) - Boys[2]*(P.x-g_atom[nuc].coordinate.x))))/p);
 		result[1] += g_atom[nuc].atomic_number * ((P.x-a.coordinate.x)*(Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)));
 		result[2] += g_atom[nuc].atomic_number * ((P.x-a.coordinate.x)*(Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)));
@@ -1833,11 +1833,11 @@ void nuclear_attraction_OSpp(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (s|d) kernel -----
-__global__
-void nuclear_attraction_OSsd(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSsd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1858,12 +1858,12 @@ void nuclear_attraction_OSsd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[3];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[6] = {0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(2, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(2, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((0.5*Boys[0] - 0.5*Boys[1] + p*((P.x-b.coordinate.x)*(Boys[0]*(P.x-b.coordinate.x) - Boys[1]*(P.x-g_atom[nuc].coordinate.x)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[1]*(P.x-b.coordinate.x) - Boys[2]*(P.x-g_atom[nuc].coordinate.x))))/p);
 		result[1] += g_atom[nuc].atomic_number * ((0.5*Boys[0] - 0.5*Boys[1] + p*((P.y-b.coordinate.y)*(Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y))))/p);
 		result[2] += g_atom[nuc].atomic_number * ((0.5*Boys[0] - 0.5*Boys[1] + p*((P.z-b.coordinate.z)*(Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z))))/p);
@@ -1882,11 +1882,11 @@ void nuclear_attraction_OSsd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (p|d) kernel -----
-__global__
-void nuclear_attraction_OSpd(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSpd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1907,12 +1907,12 @@ void nuclear_attraction_OSpd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[4];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[18] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(3, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(3, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((Boys[0]*(P.x-b.coordinate.x) - Boys[1]*(P.x-b.coordinate.x) - Boys[1]*(P.x-g_atom[nuc].coordinate.x) + Boys[2]*(P.x-g_atom[nuc].coordinate.x) + (P.x-a.coordinate.x)*(0.5*Boys[0] - 0.5*Boys[1] + p*((P.x-b.coordinate.x)*(Boys[0]*(P.x-b.coordinate.x) - Boys[1]*(P.x-g_atom[nuc].coordinate.x)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[1]*(P.x-b.coordinate.x) - Boys[2]*(P.x-g_atom[nuc].coordinate.x)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.x-b.coordinate.x)*(Boys[1]*(P.x-b.coordinate.x) - Boys[2]*(P.x-g_atom[nuc].coordinate.x)) - (P.x-g_atom[nuc].coordinate.x)*(Boys[2]*(P.x-b.coordinate.x) - Boys[3]*(P.x-g_atom[nuc].coordinate.x)))))/p);
 		result[1] += g_atom[nuc].atomic_number * (((P.x-a.coordinate.x)*(0.5*Boys[0] - 0.5*Boys[1] + p*((P.y-b.coordinate.y)*(Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.y-b.coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[2]*(P.y-b.coordinate.y) - Boys[3]*(P.y-g_atom[nuc].coordinate.y)))))/p);
 		result[2] += g_atom[nuc].atomic_number * (((P.x-a.coordinate.x)*(0.5*Boys[0] - 0.5*Boys[1] + p*((P.z-b.coordinate.z)*(Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.z-b.coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[2]*(P.z-b.coordinate.z) - Boys[3]*(P.z-g_atom[nuc].coordinate.z)))))/p);
@@ -1955,11 +1955,11 @@ void nuclear_attraction_OSpd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (d|d) kernel -----
-__global__
-void nuclear_attraction_OSdd(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */,
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSdd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -1982,12 +1982,12 @@ void nuclear_attraction_OSdd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[5];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 2) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[36] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(4, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(4, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((0.75*Boys[0] - 1.5*Boys[1] + 0.75*Boys[2] + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 2*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 2*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4*Boys[2]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 2*Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 2*Boys[3]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))) + p*(0.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)) + 2.0*Boys[0]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) + 0.5*Boys[0]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 0.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)) - 2.0*Boys[1]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) - 3.0*Boys[1]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 0.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 3.0*Boys[1]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))))/(p*p));
 		result[1] += g_atom[nuc].atomic_number * ((0.25*Boys[0] - 0.5*Boys[1] + 0.25*Boys[2] + p*((P.x-a.coordinate.x)*((P.x-a.coordinate.x)*(0.5*Boys[0] - 0.5*Boys[1] + p*((P.y-b.coordinate.y)*(Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.y-b.coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[2]*(P.y-b.coordinate.y) - Boys[3]*(P.y-g_atom[nuc].coordinate.y))))) - (P.x-g_atom[nuc].coordinate.x)*((P.x-a.coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.y-b.coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[2]*(P.y-b.coordinate.y) - Boys[3]*(P.y-g_atom[nuc].coordinate.y)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[2] - 0.5*Boys[3] + p*((P.y-b.coordinate.y)*(Boys[2]*(P.y-b.coordinate.y) - Boys[3]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[3]*(P.y-b.coordinate.y) - Boys[4]*(P.y-g_atom[nuc].coordinate.y)))))) + 0.5*p*((P.y-b.coordinate.y)*(Boys[0]*(P.y-b.coordinate.y) - Boys[1]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-b.coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)) - (P.y-g_atom[nuc].coordinate.y)*(Boys[1]*(P.y-b.coordinate.y) - Boys[2]*(P.y-g_atom[nuc].coordinate.y)) + (P.y-g_atom[nuc].coordinate.y)*(Boys[2]*(P.y-b.coordinate.y) - Boys[3]*(P.y-g_atom[nuc].coordinate.y))))/(p*p));
 		result[2] += g_atom[nuc].atomic_number * ((0.25*Boys[0] - 0.5*Boys[1] + 0.25*Boys[2] + p*((P.x-a.coordinate.x)*((P.x-a.coordinate.x)*(0.5*Boys[0] - 0.5*Boys[1] + p*((P.z-b.coordinate.z)*(Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.z-b.coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[2]*(P.z-b.coordinate.z) - Boys[3]*(P.z-g_atom[nuc].coordinate.z))))) - (P.x-g_atom[nuc].coordinate.x)*((P.x-a.coordinate.x)*(0.5*Boys[1] - 0.5*Boys[2] + p*((P.z-b.coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[2]*(P.z-b.coordinate.z) - Boys[3]*(P.z-g_atom[nuc].coordinate.z)))) - (P.x-g_atom[nuc].coordinate.x)*(0.5*Boys[2] - 0.5*Boys[3] + p*((P.z-b.coordinate.z)*(Boys[2]*(P.z-b.coordinate.z) - Boys[3]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[3]*(P.z-b.coordinate.z) - Boys[4]*(P.z-g_atom[nuc].coordinate.z)))))) + 0.5*p*((P.z-b.coordinate.z)*(Boys[0]*(P.z-b.coordinate.z) - Boys[1]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-b.coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)) - (P.z-g_atom[nuc].coordinate.z)*(Boys[1]*(P.z-b.coordinate.z) - Boys[2]*(P.z-g_atom[nuc].coordinate.z)) + (P.z-g_atom[nuc].coordinate.z)*(Boys[2]*(P.z-b.coordinate.z) - Boys[3]*(P.z-g_atom[nuc].coordinate.z))))/(p*p));
@@ -2067,11 +2067,11 @@ void nuclear_attraction_OSdd(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (s|f) kernel -----
-__global__
-void nuclear_attraction_OSsf(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSsf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -2092,12 +2092,12 @@ void nuclear_attraction_OSsf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[4];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 0, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[10] = {0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(3, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(3, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.x-b.coordinate.x) - 1.5*Boys[1]*(P.x-b.coordinate.x) - 1.5*Boys[1]*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-g_atom[nuc].coordinate.x) + p*(Boys[0]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 3.0*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))))/p);
 		result[1] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.y-b.coordinate.y) - 1.5*Boys[1]*(P.y-b.coordinate.y) - 1.5*Boys[1]*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[2]*(P.y-g_atom[nuc].coordinate.y) + p*(Boys[0]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 3.0*Boys[1]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) + 3.0*Boys[2]*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - Boys[3]*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))))/p);
 		result[2] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.z-b.coordinate.z) - 1.5*Boys[1]*(P.z-b.coordinate.z) - 1.5*Boys[1]*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[2]*(P.z-g_atom[nuc].coordinate.z) + p*(Boys[0]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 3.0*Boys[1]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) + 3.0*Boys[2]*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - Boys[3]*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))))/p);
@@ -2124,11 +2124,11 @@ void nuclear_attraction_OSsf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (p|f) kernel -----
-__global__
-void nuclear_attraction_OSpf(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSpf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -2149,12 +2149,12 @@ void nuclear_attraction_OSpf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[5];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 1, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[30] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(4, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(4, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((0.75*Boys[0] - 1.5*Boys[1] + 0.75*Boys[2] + (p*p)*(Boys[0]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 3.0*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[3]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))) + p*(1.5*Boys[0]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) + 1.5*Boys[0]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 1.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 4.5*Boys[1]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 4.5*Boys[2]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))))/(p*p));
 		result[1] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[1]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-a.coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[2]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[3]*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + p*(Boys[0]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 3.0*Boys[1]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) - Boys[1]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 3.0*Boys[2]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - Boys[3]*(P.x-a.coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 3.0*Boys[3]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + Boys[4]*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))))/p);
 		result[2] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z) - 1.5*Boys[1]*(P.x-a.coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[1]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-a.coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[2]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[3]*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + p*(Boys[0]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 3.0*Boys[1]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) - Boys[1]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 3.0*Boys[2]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - Boys[3]*(P.x-a.coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 3.0*Boys[3]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + Boys[4]*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))))/p);
@@ -2221,11 +2221,11 @@ void nuclear_attraction_OSpf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (d|f) kernel -----
-__global__
-void nuclear_attraction_OSdf(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, 
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSdf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -2246,12 +2246,12 @@ void nuclear_attraction_OSdf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	double Boys[6];
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 2, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[60] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(5, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(5, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((1.5*Boys[0]*(P.x-a.coordinate.x) + 2.25*Boys[0]*(P.x-b.coordinate.x) - 3.0*Boys[1]*(P.x-a.coordinate.x) - 4.5*Boys[1]*(P.x-b.coordinate.x) - 3.75*Boys[1]*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*(P.x-a.coordinate.x) + 2.25*Boys[2]*(P.x-b.coordinate.x) + 7.5*Boys[2]*(P.x-g_atom[nuc].coordinate.x) - 3.75*Boys[3]*(P.x-g_atom[nuc].coordinate.x) + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - 2.0*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 6.0*Boys[2]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 6.0*Boys[3]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[3]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 2.0*Boys[4]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[4]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))) + p*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x) + 3.0*Boys[0]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) + 0.5*Boys[0]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - 3.0*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 9.0*Boys[1]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 0.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 4.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 9.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 6.0*Boys[2]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4.5*Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 9.0*Boys[2]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 6.0*Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 9.0*Boys[3]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 5.0*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 5.0*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))))/(p*p));
 		result[1] += g_atom[nuc].atomic_number * ((0.75*Boys[0]*(P.y-b.coordinate.y) - 1.5*Boys[1]*(P.y-b.coordinate.y) - 0.75*Boys[1]*(P.y-g_atom[nuc].coordinate.y) + 0.75*Boys[2]*(P.y-b.coordinate.y) + 1.5*Boys[2]*(P.y-g_atom[nuc].coordinate.y) - 0.75*Boys[3]*(P.y-g_atom[nuc].coordinate.y) + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) - 2.0*Boys[1]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 6.0*Boys[2]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + Boys[2]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 6.0*Boys[3]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 3.0*Boys[3]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 2.0*Boys[4]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 3.0*Boys[4]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))) + p*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y) + 0.5*Boys[0]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 3.0*Boys[1]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) - 0.5*Boys[1]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 1.5*Boys[1]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[2]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[2]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 1.5*Boys[2]*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 3.0*Boys[3]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[3]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 1.5*Boys[3]*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 1.5*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 0.5*Boys[3]*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 1.5*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 0.5*Boys[4]*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))))/(p*p));
 		result[2] += g_atom[nuc].atomic_number * ((0.75*Boys[0]*(P.z-b.coordinate.z) - 1.5*Boys[1]*(P.z-b.coordinate.z) - 0.75*Boys[1]*(P.z-g_atom[nuc].coordinate.z) + 0.75*Boys[2]*(P.z-b.coordinate.z) + 1.5*Boys[2]*(P.z-g_atom[nuc].coordinate.z) - 0.75*Boys[3]*(P.z-g_atom[nuc].coordinate.z) + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) - 2.0*Boys[1]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 6.0*Boys[2]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + Boys[2]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 6.0*Boys[3]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 3.0*Boys[3]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 2.0*Boys[4]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 3.0*Boys[4]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))) + p*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z) + 0.5*Boys[0]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 3.0*Boys[1]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) - 0.5*Boys[1]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 1.5*Boys[1]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[2]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[2]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 1.5*Boys[2]*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 3.0*Boys[3]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[3]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 1.5*Boys[3]*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 1.5*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 0.5*Boys[3]*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 1.5*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 0.5*Boys[4]*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))))/(p*p));
@@ -2378,11 +2378,11 @@ void nuclear_attraction_OSdf(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 
 // ----- (f|f) kernel -----
-__global__
-void nuclear_attraction_OSff(double* g_nucattr, PrimitiveShell *g_shell, real_t* g_cgto_normalization_factors, 
-                            Atom* g_atom, int num_atoms, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1 /* s0 == s1 */,
-                            size_t num_threads,
-                            int num_basis, double* g_boys_grid)
+__global__ 
+void nuclear_attraction_OSff(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+                           const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
+                           const size_t num_threads,
+                           const int num_basis, const real_t* g_boys_grid)
 {
 	const size_t id = threadIdx.x + blockIdx.x*blockDim.x;
 	if(id >= num_threads) return;
@@ -2405,12 +2405,12 @@ void nuclear_attraction_OSff(double* g_nucattr, PrimitiveShell *g_shell, real_t*
 
 	const double3 P = make_double3((a.exponent*a.coordinate.x + b.exponent*b.coordinate.x)/p, (a.exponent*a.coordinate.y + b.exponent*b.coordinate.y)/p, (a.exponent*a.coordinate.z + b.exponent*b.coordinate.z)/p);
 
-	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 3, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU2(a.coordinate, b.coordinate));
+	const double coefandNorm = a.coefficient * b.coefficient * calc_Norms(a.exponent, b.exponent, 3, 3) * ((2*M_PI)/p)* exp(-(a.exponent*b.exponent/p)*calc_dist_GPU(a.coordinate, b.coordinate));
 
 	double result[100] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	for(int nuc=0; nuc<num_atoms; nuc++){
-		getIncrementalBoys(6, p*calc_dist_GPU3(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
+		getIncrementalBoys(6, p*calc_dist_GPU(P, g_atom[nuc].coordinate), g_boys_grid, Boys);
 		result[0] += g_atom[nuc].atomic_number * ((1.875*Boys[0] - 5.625*Boys[1] + 5.625*Boys[2] - 1.875*Boys[3] + (p*p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 9.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[2]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 9.0*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 9.0*Boys[3]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[4]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 9.0*Boys[4]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[4]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[5]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 3.0*Boys[5]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + Boys[6]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))) + (p*p)*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x) + 4.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) + 1.5*Boys[0]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - 4.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 13.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 1.5*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 13.5*Boys[1]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) - 1.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 13.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 9.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 13.5*Boys[2]*(P.x-a.coordinate.x)*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 27.0*Boys[2]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 1.5*Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)*(P.x-b.coordinate.x))*(P.x-g_atom[nuc].coordinate.x) + 9.0*Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 9.0*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 27.0*Boys[3]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 15.0*Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 9.0*Boys[3]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 15.0*Boys[3]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 15.0*Boys[4]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 15.0*Boys[4]*(P.x-b.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 7.5*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 7.5*Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))) + p*(2.25*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)) + 6.75*Boys[0]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) + 2.25*Boys[0]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 4.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)) - 13.5*Boys[1]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) - 11.25*Boys[1]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 4.5*Boys[1]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) - 11.25*Boys[1]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)) + 6.75*Boys[2]*(P.x-a.coordinate.x)*(P.x-b.coordinate.x) + 22.5*Boys[2]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*((P.x-b.coordinate.x)*(P.x-b.coordinate.x)) + 22.5*Boys[2]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) + 11.25*Boys[2]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 11.25*Boys[3]*(P.x-a.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 11.25*Boys[3]*(P.x-b.coordinate.x)*(P.x-g_atom[nuc].coordinate.x) - 22.5*Boys[3]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 11.25*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))))/(p*p*p));
 		result[1] += g_atom[nuc].atomic_number * ((2.25*Boys[0]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y) - 4.5*Boys[1]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y) - 2.25*Boys[1]*(P.x-a.coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 2.25*Boys[1]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 4.5*Boys[2]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 2.25*Boys[3]*(P.x-a.coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 2.25*Boys[3]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) - 4.5*Boys[3]*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 2.25*Boys[4]*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 9.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 3.0*Boys[2]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 9.0*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 9.0*Boys[3]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - Boys[3]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[4]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 9.0*Boys[4]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 3.0*Boys[4]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 3.0*Boys[5]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 3.0*Boys[5]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + Boys[6]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))) + p*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y) + 1.5*Boys[0]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 4.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) - 1.5*Boys[1]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y)) - 4.5*Boys[1]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[1]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 4.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x) + 4.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) + 4.5*Boys[2]*(P.x-a.coordinate.x)*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.y-g_atom[nuc].coordinate.y) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 1.5*Boys[2]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x) + 4.5*Boys[2]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 4.5*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 4.5*Boys[3]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 4.5*Boys[3]*(P.x-a.coordinate.x)*(P.y-b.coordinate.y)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 4.5*Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[3]*(P.x-a.coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 4.5*Boys[3]*((P.y-b.coordinate.y)*(P.y-b.coordinate.y))*(P.x-g_atom[nuc].coordinate.x)*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[3]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 4.5*Boys[3]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 4.5*Boys[4]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[4]*(P.x-a.coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 1.5*Boys[4]*(P.y-b.coordinate.y)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4.5*Boys[4]*(P.y-b.coordinate.y)*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) + 1.5*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) + 1.5*Boys[4]*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)) - 1.5*Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.y-g_atom[nuc].coordinate.y) - 1.5*Boys[5]*(P.x-g_atom[nuc].coordinate.x)*((P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y)*(P.y-g_atom[nuc].coordinate.y))))/(p*p));
 		result[2] += g_atom[nuc].atomic_number * ((2.25*Boys[0]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z) - 4.5*Boys[1]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z) - 2.25*Boys[1]*(P.x-a.coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 2.25*Boys[1]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 4.5*Boys[2]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 2.25*Boys[2]*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 2.25*Boys[3]*(P.x-a.coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 2.25*Boys[3]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) - 4.5*Boys[3]*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 2.25*Boys[4]*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + (p*p)*(Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) - 3.0*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x) + 3.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 9.0*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 3.0*Boys[2]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 9.0*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 9.0*Boys[3]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - Boys[3]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 3.0*Boys[4]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 9.0*Boys[4]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 3.0*Boys[4]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 3.0*Boys[5]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 3.0*Boys[5]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + Boys[6]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))) + p*(1.5*Boys[0]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z) + 1.5*Boys[0]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z) - 1.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 4.5*Boys[1]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) - 1.5*Boys[1]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z)) - 4.5*Boys[1]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[1]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x) + 1.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 4.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x) + 4.5*Boys[2]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) + 4.5*Boys[2]*(P.x-a.coordinate.x)*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.z-g_atom[nuc].coordinate.z) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4.5*Boys[2]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 1.5*Boys[2]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x) + 4.5*Boys[2]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 4.5*Boys[3]*((P.x-a.coordinate.x)*(P.x-a.coordinate.x))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 4.5*Boys[3]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 4.5*Boys[3]*(P.x-a.coordinate.x)*(P.z-b.coordinate.z)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 4.5*Boys[3]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[3]*(P.x-a.coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 4.5*Boys[3]*((P.z-b.coordinate.z)*(P.z-b.coordinate.z))*(P.x-g_atom[nuc].coordinate.x)*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[3]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) - 4.5*Boys[3]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 4.5*Boys[4]*(P.x-a.coordinate.x)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[4]*(P.x-a.coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 1.5*Boys[4]*(P.z-b.coordinate.z)*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)) + 4.5*Boys[4]*(P.z-b.coordinate.z)*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) + 1.5*Boys[4]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) + 1.5*Boys[4]*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)) - 1.5*Boys[5]*((P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x)*(P.x-g_atom[nuc].coordinate.x))*(P.z-g_atom[nuc].coordinate.z) - 1.5*Boys[5]*(P.x-g_atom[nuc].coordinate.x)*((P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z)*(P.z-g_atom[nuc].coordinate.z))))/(p*p));

@@ -362,10 +362,14 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
     //         }
 
     //         // call the kernel functions
-    //         get_overlap_kinetic_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
-    //         get_nuclear_attraction_kernel(s0, s1)<<<num_blocks, threads_per_block>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
+    //         compute_kinetic_energy_integral<<<num_blocks, threads_per_block>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
+    //         compute_nuclear_attraction_integral<<<num_blocks, threads_per_block>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
     //     }
     // }
+
+    // // syncronize streams
+    // cudaDeviceSynchronize();
+
     // dim3 blocks(int((num_basis + 31) / 32), int((num_basis + 31) / 32));
     // dim3 threads(32,32);
     // Matrix_Symmetrization<<<blocks, threads>>>(d_overlap_matrix, num_basis);

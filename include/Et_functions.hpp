@@ -3001,4 +3001,14 @@ __device__ inline double MD_Et_NonRecursion(int i, int l, int t, double alpha, d
     return MD_EtArray[4*i*(10+i) + (i+l)*(i+l+1)/2 + t](alpha, beta, alpha+beta, dist, exp(-alpha*beta/(alpha+beta)*dist*dist));
 }
 
+
+// 1電子の計算で使用
+inline __device__ double Et_GPU(int i, int l, int t, double alpha, double beta, double dist){
+	if( i<0 || l<0 || t<0 || i+l<t){ // 範囲外の処理
+        return 0.0;
+    }else{
+		return MD_EtArray[4*i*(10+i) + (i+l)*(i+l+1)/2 + t](alpha, beta, alpha+beta, dist, 1.0);
+	}
+}
+
 }
