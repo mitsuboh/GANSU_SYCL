@@ -253,10 +253,10 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
  * @param d_vectors Device pointer to the vector.
  * @param size Number of the vector.
  */
-void invertSqrtElements(real_t* d_vectors, const size_t size) {
+void invertSqrtElements(real_t* d_vectors, const size_t size, const double threshold) {
     size_t blockSize = 256;
     size_t numBlocks = (size + blockSize - 1) / blockSize;
-    inverseSqrt_kernel<<<numBlocks, blockSize>>>(d_vectors, size);
+    inverseSqrt_kernel<<<numBlocks, blockSize>>>(d_vectors, size, threshold);
 }
 
 /**

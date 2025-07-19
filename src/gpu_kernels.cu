@@ -26,10 +26,15 @@ namespace gansu::gpu{
  * @details This function computes the inverse of the square root of each element of the input vector.
  *         The input vector is modified in place.
  */
- __global__ void inverseSqrt_kernel(real_t* d_eigenvalues, size_t size) {
+ __global__ void inverseSqrt_kernel(real_t* d_eigenvalues, const size_t size, const double threshold) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        d_eigenvalues[idx] = 1.0 / __dsqrt_rn(d_eigenvalues[idx]);
+        double value = d_eigenvalues[idx];
+        if (value < threshold) {
+            d_eigenvalues[idx] = 0.0; // Avoid division by zero
+        }else{
+            d_eigenvalues[idx] = 1.0 / __dsqrt_rn(value);
+        }
     }
 }
 

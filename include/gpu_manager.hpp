@@ -30,7 +30,7 @@ namespace gansu::gpu{
 
 
 // prototype declarations
-void invertSqrtElements(real_t* d_vectors, const size_t size);
+void invertSqrtElements(real_t* d_vectors, const size_t size, const double threshold=1e-6);
 void transposeMatrixInPlace(real_t* d_matrix, const int size);
 void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size);
 real_t computeMatrixTrace(const real_t* d_matrix, const int size);
