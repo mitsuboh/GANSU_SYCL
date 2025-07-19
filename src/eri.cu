@@ -122,6 +122,25 @@ void ERI_RI::precomputation() {
         boys_grid.device_ptr(), 
         verbose
         );
+    /*
+    if(1){
+        // copy the intermediate matrix B to the host memory
+        intermediate_matrix_B_.toHost();
+
+        std::cout << "Intermediate matrix B:" << std::endl;
+        for(int i=0; i<num_auxiliary_basis_; i++){
+            for(int j=0; j<num_basis_; j++){
+                for(int k=0; k<num_basis_; k++){
+                    auto value = intermediate_matrix_B_(i, j*num_basis_+k);
+                    if (std::isnan(value)) {
+                        std::cout << "NaN found at (" << i << "," << j << "): " << value << std::endl;
+                    }
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+    */
 }
 
 

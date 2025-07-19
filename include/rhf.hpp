@@ -563,6 +563,7 @@ public:
                 }
             }
         }
+        
 
         cudaMemcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(), hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t), cudaMemcpyHostToDevice);
         hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
@@ -651,6 +652,17 @@ public:
             num_basis_,
             num_auxiliary_basis_
         );
+
+        { // nan check
+            fock_matrix.toHost();
+            for(size_t i=0; i<num_basis_; i++){
+                for(size_t j=0; j<num_basis_; j++){
+                    if(std::isnan(fock_matrix(i, j))){
+                        THROW_EXCEPTION("Fock matrix contains NaN at (" + std::to_string(i) + ", " + std::to_string(j) + ")");
+                    }
+                }
+            }
+        }
 
         if(verbose){
             // copy the fock matrix to the host memory

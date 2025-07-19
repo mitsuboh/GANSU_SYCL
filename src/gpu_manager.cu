@@ -1610,6 +1610,31 @@ void computeIntermediateMatrixB(
 
 
 void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix, const int num_basis, const int num_auxiliary_basis){
+    /*
+    {
+        if (d_density_matrix == nullptr || d_core_hamiltonian_matrix == nullptr || d_intermediate_matrix_B == nullptr || d_fock_matrix == nullptr) {
+            THROW_EXCEPTION("Input matrices cannot be null.");
+        }
+        real_t* h_density_matrix = new real_t[num_basis * num_basis];
+        real_t* h_core_hamiltonian_matrix = new real_t[num_basis * num_basis];
+        cudaMemcpy(h_density_matrix, d_density_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_core_hamiltonian_matrix, d_core_hamiltonian_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToHost);
+        for (size_t i = 0; i < num_basis; i++) {
+            for (size_t j = 0; j < num_basis; j++) {
+                size_t index = i * num_basis + j;
+                if (std::isnan(h_density_matrix[index])) {
+                    THROW_EXCEPTION("Density matrices contain NaN values.");
+                }
+                if (std::isnan(h_core_hamiltonian_matrix[index])) {
+                    THROW_EXCEPTION("Core Hamiltonian matrices contain NaN values.");
+                }
+            }
+        }
+        delete[] h_density_matrix;
+        delete[] h_core_hamiltonian_matrix;
+    }
+    */    
+
     //cublasManager cublas;
     cublasHandle_t cublasHandle = GPUHandle::cublas();
 
@@ -1690,8 +1715,6 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
 
     // F = H + J - (1/2)*K
     computeFockMatrix_RI_RHF_kernel<<<num_blocks, num_threads>>>(d_core_hamiltonian_matrix, d_J, d_K, d_fock_matrix, num_basis);
-
-
 
     // free the memory
     cudaFree(d_J);
