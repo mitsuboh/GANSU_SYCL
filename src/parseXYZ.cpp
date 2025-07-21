@@ -66,25 +66,42 @@ std::vector<Atom> parseXYZ(const std::string& filename) {
         THROW_EXCEPTION("Failed to read comment line from file: " + filename);
     }
 
-    // Remaining lines: Atomic data
+    constexpr real_t duplicate_threshold = 1e-4; // in bohr, approx ~0.00005 Å
+
+    int line_index = 2; // start from line 3 (after count + comment)
     while (std::getline(file, line)) {
+        ++line_index;
+
         std::istringstream iss(line);
         std::string symbol;
         Coordinate coordinate;
 
-        // skip empty lines
-        if (line.empty()) {
-            continue;
-        }
+        if (line.empty()) continue;
 
         if (!(iss >> symbol >> coordinate.x >> coordinate.y >> coordinate.z)) {
-            THROW_EXCEPTION("Invalid line format in file: " + line);
+            THROW_EXCEPTION("Invalid line format in file at line " + std::to_string(line_index) + ": " + line);
         }
 
         // Convert angstrom to bohr
         coordinate.x = angstrom_to_bohr(coordinate.x);
         coordinate.y = angstrom_to_bohr(coordinate.y);
         coordinate.z = angstrom_to_bohr(coordinate.z);
+
+        // Check for duplicate coordinates
+        for (const auto& existing : atoms) {
+            real_t dx = coordinate.x - existing.coordinate.x;
+            real_t dy = coordinate.y - existing.coordinate.y;
+            real_t dz = coordinate.z - existing.coordinate.z;
+            real_t dist2 = dx*dx + dy*dy + dz*dz;
+
+            if (dist2 < duplicate_threshold * duplicate_threshold) {
+                THROW_EXCEPTION(
+                    "Detected overlapping atoms at line " + std::to_string(line_index) +
+                    " with near-identical coordinates to a previous atom.\n" +
+                    "Distance squared = " + std::to_string(dist2)
+                );
+            }
+        }
 
         Atom atom{
             .atomic_number = element_name_to_atomic_number(symbol),
@@ -94,7 +111,6 @@ std::vector<Atom> parseXYZ(const std::string& filename) {
         atoms.push_back(atom);
     }
 
-    // Verify that the number of atoms matches the declared count
     if (atoms.size() != static_cast<size_t>(atom_count)) {
         THROW_EXCEPTION("Atom count mismatch in file: " + filename);
     }
