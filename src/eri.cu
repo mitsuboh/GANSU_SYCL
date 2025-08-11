@@ -173,4 +173,31 @@ void ERI_Direct::precomputation() {
 }
 
 
+ERI_Hash::ERI_Hash(const HF& hf):
+    hf_(hf),
+    num_basis_(hf.get_num_basis())
+{
+    // ここでHash memoryの初期化をおこなう
+}
+
+void ERI_Hash::precomputation() {
+    const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
+    const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
+    const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
+    const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
+    const int verbose = hf_.get_verbose();
+
+    gpu::constructERIHash(
+        shell_type_infos,
+        shell_pair_type_infos,
+        primitive_shells.device_ptr(), 
+        boys_grid.device_ptr(), 
+        cgto_nomalization_factors.device_ptr(), 
+        // Hash memoryのポインタを渡す
+        verbose
+    );
+}
+
+
 } // namespace gansu

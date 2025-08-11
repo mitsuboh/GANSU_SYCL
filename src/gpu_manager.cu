@@ -342,39 +342,6 @@ void computeCoreHamiltonianMatrix(const std::vector<ShellTypeInfo>& shell_type_i
     cudaMemset(d_overlap_matrix, 0, sizeof(real_t)*num_basis*num_basis);
     cudaMemset(d_core_hamiltonian_matrix, 0, sizeof(real_t)*num_basis*num_basis);
 
-
-    // Call the kernel functions from (s0|s1),... (e.g. (s|s), (s|p), (s|d), (p|p), (p|d), (d|d) for s, p, d shells)
-    // for(int s0=0; s0<shell_type_count; s0++){ // s=0, p=1, d=2,...
-    //     for(int s1=s0; s1<shell_type_count; s1++){ // s=0, p=1, d=2,...
-    //         const ShellTypeInfo shell_s0 = shell_type_infos[s0];
-
-    //         const ShellTypeInfo shell_s1 = shell_type_infos[s1];
-
-    //         const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
-    //         const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
-
-    //         if(verbose){
-    //             std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
-    //             std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
-    //             std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
-    //             std::cout << "|[a|b]|=" << num_shell_pairs << ", ";
-    //             std::cout << "num_blocks: " << num_blocks << std::endl;
-    //         }
-
-    //         // call the kernel functions
-    //         compute_kinetic_energy_integral<<<num_blocks, threads_per_block>>>(d_overlap_matrix, d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, num_shell_pairs, num_basis);
-    //         compute_nuclear_attraction_integral<<<num_blocks, threads_per_block>>>(d_core_hamiltonian_matrix, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0, shell_s1, num_shell_pairs, num_basis, d_boys_grid);
-    //     }
-    // }
-
-    // // syncronize streams
-    // cudaDeviceSynchronize();
-
-    // dim3 blocks(int((num_basis + 31) / 32), int((num_basis + 31) / 32));
-    // dim3 threads(32,32);
-    // Matrix_Symmetrization<<<blocks, threads>>>(d_overlap_matrix, num_basis);
-    // Matrix_Symmetrization<<<blocks, threads>>>(d_core_hamiltonian_matrix, num_basis);
-
     
     // make multi stream
     const int N = (shell_type_count)*(shell_type_count+1) /2;
@@ -461,61 +428,6 @@ size_t makeShellPairTypeInfo(const std::vector<ShellTypeInfo>& shell_type_infos,
     return num_primitive_shell_pairs;
 }
 
-/*
-void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) {
-
-    // compute the electron repulsion integrals
-    const int threads_per_block = 256; // the number of threads per block
-    const int shell_type_count = shell_type_infos.size();
-
-    // Call the kernel functions from (ss|ss),... (e.g. (ss|ss), (ss|sp), (ss|pp), (sp|sp), (sp|pp), (pp|pp) for s and p shells)
-
-    //for(int s3=0; s3<shell_type_count; s3++){
-    //    for(int s2=0; s2<=s3; s2++){
-    //        for(int s1=0; s1<=s3; s1++){
-    //            const auto s0_max = (s3==s1) ? s2 : s1;
-    //            for(int s0=0; s0<=s0_max; s0++){
-
-    // for-loop for sorted shell-type (s0, s1, s2, s3)
-    for (int s0 = 0; s0 < shell_type_count; ++s0) {
-        for (int s1 = s0; s1 < shell_type_count; ++s1) {
-            for (int s2 = 0; s2 < shell_type_count; ++s2) {
-                for (int s3 = s2; s3 < shell_type_count; ++s3) {
-                    if (shell_type_count * s0 + s1 <= shell_type_count * s2 + s3) {
-
-                        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
-                        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
-                        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
-                        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
-
-                        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
-                        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
-                        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket; // equal to the number of threads
-                        const int num_blocks = (num_braket + threads_per_block - 1) / threads_per_block; // the number of blocks
-
-                        const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
-                        const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
-
-                        gpu::get_eri_kernel(s0, s1, s2, s3)<<<num_blocks, threads_per_block>>>(d_eri_matrix, d_primitive_shells, d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, num_braket, schwarz_screening_threshold, d_schwarz_upper_bound_factors, num_basis, d_boys_grid, head_bra, head_ket);
-                    
-                        if(verbose){
-                            std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2) << shell_type_to_shell_name(s3) << "): ";
-                            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
-                            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
-                            std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s1.count << ", ";
-                            std::cout << "|" << shell_type_to_shell_name(s3) << "|=" << shell_s1.count << ", ";
-                            std::cout << "|bra|= " << num_bra << ", " ;
-                            std::cout << "|ket|= " << num_ket << ", " ;
-                            std::cout << "|braket|= " << num_braket << ", " ;
-                            std::cout << "num_blocks: " << num_blocks << std::endl;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-*/
 void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) {
 
     // compute the electron repulsion integrals
@@ -1532,16 +1444,7 @@ void compute_RI_IntermediateMatrixB(
         num_auxiliary_basis,
         d_boys_grid,
         verbose);
-        // cudaDeviceSynchronize();
-        // int nTotal = num_auxiliary_basis * num_auxiliary_basis;
-        // double *h_res_2c2e = new double[nTotal];
-        // cudaMemcpy(h_res_2c2e, d_two_center_eri, sizeof(double)*nTotal, cudaMemcpyDeviceToHost);
-        // writeMatrixToFile("2cGANSU.txt", h_res_2c2e, nTotal);
-        // delete[] h_res_2c2e;
 
-
-    // // Compute the inverse of the two-center ERI matrix (it is overwritten with its inverse)
-    // invertMatrix(d_two_center_eri, num_auxiliary_basis);
 
     // Cholesky decomposition of the inverse of the two-center ERI matrix (it is overwritten with the result)
     choleskyDecomposition(d_two_center_eri, num_auxiliary_basis);
@@ -1568,23 +1471,11 @@ void compute_RI_IntermediateMatrixB(
         d_boys_grid,
         verbose);
 
-        // cudaDeviceSynchronize();
-        // nTotal = num_basis * num_basis * num_auxiliary_basis;
-        // double *h_res_3c2e = new double[nTotal];
-        // cudaMemcpy(h_res_3c2e, d_three_center_eri, sizeof(double)*nTotal, cudaMemcpyDeviceToHost);
-        // writeMatrixToFile("3cGANSU.txt", h_res_3c2e, nTotal);
-        // delete[] h_res_3c2e;
-    
+   
     // Compute the intermediate matrix B
     solve_lower_triangular(d_two_center_eri, d_three_center_eri, num_auxiliary_basis, num_basis*num_basis);
     cudaMemcpy(d_intermediate_matrix_B, d_three_center_eri, sizeof(real_t) * num_auxiliary_basis*num_basis*num_basis, cudaMemcpyDeviceToDevice);
 
-    // computeIntermediateMatrixB(
-    //     d_three_center_eri, 
-    //     d_two_center_eri, 
-    //     d_intermediate_matrix_B, 
-    //     num_basis, 
-    //     num_auxiliary_basis);
 
     cudaFree(d_two_center_eri);
     cudaFree(d_three_center_eri);
@@ -1610,31 +1501,6 @@ void computeIntermediateMatrixB(
 
 
 void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix, const int num_basis, const int num_auxiliary_basis){
-    /*
-    {
-        if (d_density_matrix == nullptr || d_core_hamiltonian_matrix == nullptr || d_intermediate_matrix_B == nullptr || d_fock_matrix == nullptr) {
-            THROW_EXCEPTION("Input matrices cannot be null.");
-        }
-        real_t* h_density_matrix = new real_t[num_basis * num_basis];
-        real_t* h_core_hamiltonian_matrix = new real_t[num_basis * num_basis];
-        cudaMemcpy(h_density_matrix, d_density_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToHost);
-        cudaMemcpy(h_core_hamiltonian_matrix, d_core_hamiltonian_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToHost);
-        for (size_t i = 0; i < num_basis; i++) {
-            for (size_t j = 0; j < num_basis; j++) {
-                size_t index = i * num_basis + j;
-                if (std::isnan(h_density_matrix[index])) {
-                    THROW_EXCEPTION("Density matrices contain NaN values.");
-                }
-                if (std::isnan(h_core_hamiltonian_matrix[index])) {
-                    THROW_EXCEPTION("Core Hamiltonian matrices contain NaN values.");
-                }
-            }
-        }
-        delete[] h_density_matrix;
-        delete[] h_core_hamiltonian_matrix;
-    }
-    */    
-
     //cublasManager cublas;
     cublasHandle_t cublasHandle = GPUHandle::cublas();
 
@@ -2311,5 +2177,44 @@ void computeMullikenPopulation_UHF(
     // Free the memory for the temporary matrix
     cudaFree(d_mulliken_population);
 }
+
+
+
+void constructERIHash(
+    const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+    const PrimitiveShell* d_primitive_shells, 
+    const real_t* d_boys_grid, 
+    const real_t* d_cgto_normalization_factors, 
+    // Hash memoryへのポインタ
+    const bool verbose)
+{
+    // ここにERIを計算してハッシュメモリに追加するコードを書く（GPUカーネルを呼ぶ）
+    //const int threads_per_block = 256; // the number of threads per block
+    // ...
+    // GPUカーネルはgpu_kernels.hppにプロトタイプ宣言、gpu_kernels.cuに実装を記述
+    //constructERIHash_kernel<<<1, threads_per_block>>>(shell_type_infos, shell_pair_type_infos, d_primitive_shells, d_cgto_normalization_factors, /* Hash memory へのポインタ, */ verbose);
+
+    THROW_EXCEPTION("Not implemented yet.");
+
+}
+
+
+void computeFockMatrix_Hash_RHF(
+    const real_t* d_density_matrix,
+    const real_t* d_core_hamiltonian_matrix,
+    // Hash memoryへのポインタ
+    real_t* d_fock_matrix,
+    const int num_basis,
+    const int verbose)
+{
+    // ここにERIハッシュを使ってFock行列を計算するコードを書く
+    // 
+    // computeFockMatrix_Hash_RHF_kernel<<<1, 256>>>(d_density_matrix, d_core_hamiltonian_matrix, /* Hash memory へのポインタ */, d_fock_matrix, num_basis);
+
+
+    THROW_EXCEPTION("Not implemented yet.");
+}
+
 
 } // namespace gansu::gpu

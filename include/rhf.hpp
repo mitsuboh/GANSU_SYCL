@@ -738,5 +738,44 @@ protected:
 
 
 
+class ERI_Hash_RHF : public ERI_Hash {
+public:
+    ERI_Hash_RHF(RHF& rhf): ERI_Hash(rhf), rhf_(rhf) {} ///< Constructor
+    ERI_Hash_RHF(const ERI_Hash_RHF&) = delete; ///< copy constructor is deleted
+    ~ERI_Hash_RHF() = default; ///< destructor
+
+    void compute_fock_matrix() override {
+        const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
+        const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
+        DeviceHostMatrix<real_t>& fock_matrix = rhf_.get_fock_matrix();
+        const int verbose = rhf_.get_verbose();
+
+        gpu::computeFockMatrix_Hash_RHF(
+            density_matrix.device_ptr(),
+            core_hamiltonian_matrix.device_ptr(),
+            // Hash memoryへのポインタ
+            fock_matrix.device_ptr(),
+            num_basis_,
+            verbose
+        );
+
+        if(verbose){
+            // copy the fock matrix to the host memory
+            fock_matrix.toHost();
+            std::cout << "Fock matrix:" << std::endl;
+            for(size_t i=0; i<num_basis_; i++){
+                for(size_t j=0; j<num_basis_; j++){
+                    std::cout << fock_matrix(i, j) << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+
+protected:
+    RHF& rhf_; ///< RHF
+};
+
+
 
 } // namespace gansu

@@ -152,5 +152,28 @@ protected:
 };
 
 
+/**
+ * @brief ERI_Hash class for the electron repulsion integrals (ERIs) using hash memory
+ */
+class ERI_Hash: public ERI {
+public:
+    
+    ERI_Hash(const HF& hf); ///< Constructor
+        
+    ERI_Hash(const ERI_Hash&) = delete; ///< copy constructor is deleted
+    virtual ~ERI_Hash() = default; ///< destructor
+        
+    void precomputation() override;
+
+    std::string get_algorithm_name() override { return "Hash"; } ///< Get the algorithm name
+    
+protected:
+    const HF& hf_; ///< HF. This excludes MOs.
+    const int num_basis_;
+
+    // ここにHash memoryを宣言
+    
+};
+
 
 } // namespace gansu
