@@ -79,6 +79,8 @@ RHF::RHF(const Molecular& molecular, const ParameterManager& parameters) :
         set_eri_method(std::make_unique<ERI_RI_RHF>(*this, auxiliary_molecular));
     }else if(eri_method == "direct"){
         set_eri_method(std::make_unique<ERI_Direct_RHF>(*this));
+    }else if(eri_method == "hash"){
+        set_eri_method(std::make_unique<ERI_Hash_RHF>(*this));
     }else{
         THROW_EXCEPTION("Invalid ERI method name: " + eri_method);
     }
