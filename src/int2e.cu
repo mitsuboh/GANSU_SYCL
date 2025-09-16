@@ -1777,65 +1777,65 @@ __global__ void MD_1T1SP(double* g_int2e, const PrimitiveShell* g_shell, const r
         int l1=loop_to_ang[orbital_A][lmn_a][0]; int m1=loop_to_ang[orbital_A][lmn_a][1]; int n1=loop_to_ang[orbital_A][lmn_a][2];
         Norm_A = calcNorm(alpha, l1, m1, n1);
 
-        // normに球面調和に関わるマジックナンバーをかける
-        if (l1 + m1 + n1 == 2){ //d-type
-            Norm_A *= (l1 == 2 || m1 == 2 || n1 == 2) ?  //dxx or dyy or dzz?
-                      D_NORMALIZATION_CONSTANT_2_INV :
-                      D_NORMALIZATION_CONSTANT_1_INV;
-        } else if (l1 + m1 + n1 == 3) {
-            Norm_A *= (l1 == 3 || m1 == 3 || n1 == 3) ?
-                    F_NORMALIZATION_CONSTANT_3_INV : (l1 == 2 || m1 == 2 || n1 == 2) ?
-                    F_NORMALIZATION_CONSTANT_2_INV : 
-                    F_NORMALIZATION_CONSTANT_1_INV;
-        }
+        // // normに球面調和に関わるマジックナンバーをかける
+        // if (l1 + m1 + n1 == 2){ //d-type
+        //     Norm_A *= (l1 == 2 || m1 == 2 || n1 == 2) ?  //dxx or dyy or dzz?
+        //               D_NORMALIZATION_CONSTANT_2_INV :
+        //               D_NORMALIZATION_CONSTANT_1_INV;
+        // } else if (l1 + m1 + n1 == 3) {
+        //     Norm_A *= (l1 == 3 || m1 == 3 || n1 == 3) ?
+        //             F_NORMALIZATION_CONSTANT_3_INV : (l1 == 2 || m1 == 2 || n1 == 2) ?
+        //             F_NORMALIZATION_CONSTANT_2_INV : 
+        //             F_NORMALIZATION_CONSTANT_1_INV;
+        // }
 
         for(int lmn_b=0; lmn_b<comb_max(orbital_B); lmn_b++){                  
             int l2=loop_to_ang[orbital_B][lmn_b][0]; int m2=loop_to_ang[orbital_B][lmn_b][1]; int n2=loop_to_ang[orbital_B][lmn_b][2];
             Norm_B = calcNorm(beta, l2, m2, n2);
 
-            // normに球面調和に関わるマジックナンバーをかける
-            if (l2 + m2 + n2 == 2){ //d-type
-                Norm_B *= (l2 == 2 || m2 == 2 || n2 == 2) ?  //dxx or dyy or dzz?
-                        D_NORMALIZATION_CONSTANT_2_INV :
-                        D_NORMALIZATION_CONSTANT_1_INV;
-            } else if (l2 + m2 + n2 == 3) {
-                Norm_B *= (l2 == 3 || m2 == 3 || n2 == 3) ?
-                        F_NORMALIZATION_CONSTANT_3_INV : (l2 == 2 || m2 == 2 || n2 == 2) ?
-                        F_NORMALIZATION_CONSTANT_2_INV : 
-                        F_NORMALIZATION_CONSTANT_1_INV;
-            }
+            // // normに球面調和に関わるマジックナンバーをかける
+            // if (l2 + m2 + n2 == 2){ //d-type
+            //     Norm_B *= (l2 == 2 || m2 == 2 || n2 == 2) ?  //dxx or dyy or dzz?
+            //             D_NORMALIZATION_CONSTANT_2_INV :
+            //             D_NORMALIZATION_CONSTANT_1_INV;
+            // } else if (l2 + m2 + n2 == 3) {
+            //     Norm_B *= (l2 == 3 || m2 == 3 || n2 == 3) ?
+            //             F_NORMALIZATION_CONSTANT_3_INV : (l2 == 2 || m2 == 2 || n2 == 2) ?
+            //             F_NORMALIZATION_CONSTANT_2_INV : 
+            //             F_NORMALIZATION_CONSTANT_1_INV;
+            // }
 
             for(int lmn_c=0; lmn_c<comb_max(orbital_C); lmn_c++){
                 int l3=loop_to_ang[orbital_C][lmn_c][0]; int m3=loop_to_ang[orbital_C][lmn_c][1]; int n3=loop_to_ang[orbital_C][lmn_c][2];
                 Norm_C = calcNorm(gamma, l3, m3, n3);
 
-                // normに球面調和に関わるマジックナンバーをかける
-                if (l3 + m3 + n3 == 2){ //d-type
-                    Norm_C *= (l3 == 2 || m3 == 2 || n3 == 2) ?  //dxx or dyy or dzz?
-                            D_NORMALIZATION_CONSTANT_2_INV :
-                            D_NORMALIZATION_CONSTANT_1_INV;
-                } else if (l3 + m3 + n3 == 3) {
-                    Norm_C *= (l3 == 3 || m3 == 3 || n3 == 3) ?
-                            F_NORMALIZATION_CONSTANT_3_INV : (l3 == 2 || m3 == 2 || n3 == 2) ?
-                            F_NORMALIZATION_CONSTANT_2_INV : 
-                            F_NORMALIZATION_CONSTANT_1_INV;
-                }
+                // // normに球面調和に関わるマジックナンバーをかける
+                // if (l3 + m3 + n3 == 2){ //d-type
+                //     Norm_C *= (l3 == 2 || m3 == 2 || n3 == 2) ?  //dxx or dyy or dzz?
+                //             D_NORMALIZATION_CONSTANT_2_INV :
+                //             D_NORMALIZATION_CONSTANT_1_INV;
+                // } else if (l3 + m3 + n3 == 3) {
+                //     Norm_C *= (l3 == 3 || m3 == 3 || n3 == 3) ?
+                //             F_NORMALIZATION_CONSTANT_3_INV : (l3 == 2 || m3 == 2 || n3 == 2) ?
+                //             F_NORMALIZATION_CONSTANT_2_INV : 
+                //             F_NORMALIZATION_CONSTANT_1_INV;
+                // }
 
                 for(int lmn_d=0; lmn_d<comb_max(orbital_D); lmn_d++){
                     int l4=loop_to_ang[orbital_D][lmn_d][0]; int m4=loop_to_ang[orbital_D][lmn_d][1]; int n4=loop_to_ang[orbital_D][lmn_d][2];
                     Norm_D = calcNorm(delta, l4, m4, n4);
                     
-                    // normに球面調和に関わるマジックナンバーをかける
-                    if (l4 + m4 + n4 == 2){ //d-type
-                            Norm_D *= (l4 == 2 || m4 == 2 || n4 == 2) ?  //dxx or dyy or dzz?
-                                    D_NORMALIZATION_CONSTANT_2_INV :
-                                    D_NORMALIZATION_CONSTANT_1_INV;
-                    } else if (l4 + m4 + n4 == 3) {
-                        Norm_D *= (l4 == 3 || m4 == 3 || n4 == 3) ?
-                                F_NORMALIZATION_CONSTANT_3_INV : (l4 == 2 || m4 == 2 || n4 == 2) ?
-                                F_NORMALIZATION_CONSTANT_2_INV : 
-                                F_NORMALIZATION_CONSTANT_1_INV;
-                    }
+                    // // normに球面調和に関わるマジックナンバーをかける
+                    // if (l4 + m4 + n4 == 2){ //d-type
+                    //         Norm_D *= (l4 == 2 || m4 == 2 || n4 == 2) ?  //dxx or dyy or dzz?
+                    //                 D_NORMALIZATION_CONSTANT_2_INV :
+                    //                 D_NORMALIZATION_CONSTANT_1_INV;
+                    // } else if (l4 + m4 + n4 == 3) {
+                    //     Norm_D *= (l4 == 3 || m4 == 3 || n4 == 3) ?
+                    //             F_NORMALIZATION_CONSTANT_3_INV : (l4 == 2 || m4 == 2 || n4 == 2) ?
+                    //             F_NORMALIZATION_CONSTANT_2_INV : 
+                    //             F_NORMALIZATION_CONSTANT_1_INV;
+                    // }
 
                     Norm = Norm_A * Norm_B * Norm_C * Norm_D;
                     // 前回のループの計算結果をクリア

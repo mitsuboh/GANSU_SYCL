@@ -83,4 +83,8 @@ __device__ inline size_t get_1d_indexM4(const size_t i, const size_t j, const si
     return  num_basis * num_basis * num_basis * i + num_basis * num_basis * j + num_basis * k + l;
 }
 
+
+
+
+
 } // namespace gansu::gpu

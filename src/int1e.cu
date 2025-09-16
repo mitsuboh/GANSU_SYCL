@@ -106,39 +106,39 @@ __device__ void AddToResult(double result, double *g_V, int y, int x, int sumCGT
 }
 
 
-// normに球面調和に関わるマジックナンバーをかける
-__device__ inline double normalizationFactor(int l, int m, int n) {
-    int total = l + m + n;
+// // normに球面調和に関わるマジックナンバーをかける
+// __device__ inline double normalizationFactor(int l, int m, int n) {
+//     int total = l + m + n;
 
-    if (total == 2) { // d-type
-        if(l == 2 || m == 2 || n == 2){
-            return D_NORMALIZATION_CONSTANT_2_INV;
-        }else{
-            return D_NORMALIZATION_CONSTANT_1_INV;
-        }
+//     if (total == 2) { // d-type
+//         if(l == 2 || m == 2 || n == 2){
+//             return D_NORMALIZATION_CONSTANT_2_INV;
+//         }else{
+//             return D_NORMALIZATION_CONSTANT_1_INV;
+//         }
 
-    } else if (total == 3) { // f-type
-        if (l == 3 || m == 3 || n == 3)
-            return F_NORMALIZATION_CONSTANT_3_INV;
-        else if (l == 2 || m == 2 || n == 2)
-            return F_NORMALIZATION_CONSTANT_2_INV;
-        else
-            return F_NORMALIZATION_CONSTANT_1_INV;
+//     } else if (total == 3) { // f-type
+//         if (l == 3 || m == 3 || n == 3)
+//             return F_NORMALIZATION_CONSTANT_3_INV;
+//         else if (l == 2 || m == 2 || n == 2)
+//             return F_NORMALIZATION_CONSTANT_2_INV;
+//         else
+//             return F_NORMALIZATION_CONSTANT_1_INV;
 
-    } else if (total == 4) { // g-type
-        if (l == 4 || m == 4 || n == 4) // i.e., (4, 0, 0)
-            return G_NORMALIZATION_CONSTANT_4;
-        else if (l == 3 || m == 3 || n == 3) // i.e., (3, 1, 0)
-            return G_NORMALIZATION_CONSTANT_3_INV;
-        else if (l == 0 || m == 0 || n == 0) // i.e., (2, 2, 0)
-            return G_NORMALIZATION_CONSTANT_2_2_INV;
-        else
-            return G_NORMALIZATION_CONSTANT_2_INV;
-    }
+//     } else if (total == 4) { // g-type
+//         if (l == 4 || m == 4 || n == 4) // i.e., (4, 0, 0)
+//             return G_NORMALIZATION_CONSTANT_4;
+//         else if (l == 3 || m == 3 || n == 3) // i.e., (3, 1, 0)
+//             return G_NORMALIZATION_CONSTANT_3_INV;
+//         else if (l == 0 || m == 0 || n == 0) // i.e., (2, 2, 0)
+//             return G_NORMALIZATION_CONSTANT_2_2_INV;
+//         else
+//             return G_NORMALIZATION_CONSTANT_2_INV;
+//     }
 
-    // それ以外は補正なし（1.0を掛けるのと同じ）
-    return 1.0;
-}
+//     // それ以外は補正なし（1.0を掛けるのと同じ）
+//     return 1.0;
+// }
 
 
 
@@ -215,13 +215,13 @@ void compute_kinetic_energy_integral(real_t* g_overlap, real_t* g_kinetic, const
         int m1=loop_to_ang[a.shell_type][lmn_a][1]; 
         int n1=loop_to_ang[a.shell_type][lmn_a][2];
         Norm_A = calcNorm(a.exponent, l1, m1, n1);
-        Norm_A *= normalizationFactor(l1, m1, n1);
+        // Norm_A *= normalizationFactor(l1, m1, n1);
         for(int lmn_b=0; lmn_b<comb_max(b.shell_type); lmn_b++){                  
             int l2=loop_to_ang[b.shell_type][lmn_b][0]; 
             int m2=loop_to_ang[b.shell_type][lmn_b][1]; 
             int n2=loop_to_ang[b.shell_type][lmn_b][2];
             Norm_B = calcNorm(b.exponent, l2, m2, n2);
-            Norm_B *= normalizationFactor(l2, m2, n2);
+            // Norm_B *= normalizationFactor(l2, m2, n2);
 
             result_S = coefandNorm * Norm_A * Norm_B * Et_GPU(l1, l2, 0, a.exponent, b.exponent, Dx) * Et_GPU(m1, m2, 0, a.exponent, b.exponent, Dy) * Et_GPU(n1, n2, 0, a.exponent, b.exponent, Dz);
 
@@ -308,13 +308,13 @@ void compute_nuclear_attraction_integral(real_t* g_nucattr, const PrimitiveShell
             int m1=loop_to_ang[a.shell_type][lmn_a][1]; 
             int n1=loop_to_ang[a.shell_type][lmn_a][2];
             Norm_A = calcNorm(a.exponent, l1, m1, n1);
-            Norm_A *= normalizationFactor(l1, m1, n1);
+            // Norm_A *= normalizationFactor(l1, m1, n1);
             for(int lmn_b=0; lmn_b<comb_max(b.shell_type); lmn_b++){                 
                 int l2=loop_to_ang[b.shell_type][lmn_b][0]; 
                 int m2=loop_to_ang[b.shell_type][lmn_b][1]; 
                 int n2=loop_to_ang[b.shell_type][lmn_b][2];
                 Norm_B = calcNorm(b.exponent, l2, m2, n2);
-                Norm_B *= normalizationFactor(l2, m2, n2);
+                // Norm_B *= normalizationFactor(l2, m2, n2);
 
                 if( (a.shell_type == b.shell_type) && (size_a==size_b) && (lmn_a > lmn_b)) continue;
 

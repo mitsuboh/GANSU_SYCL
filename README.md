@@ -79,9 +79,9 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 * Software
   * C++ 17 or later
   * CMake 3.31 or later
-  * NVIDIA CUDA Toolkit 11.2 or later
-  * cuBLAS 11.4 or later
-  * cuSOLVER 11.1 or later
+  * NVIDIA CUDA Toolkit 12.9 or later
+  * cuBLAS 12.9 or later
+  * cuSOLVER 11.7 or later
 
 
 ### Directory Structure
@@ -95,10 +95,12 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 │   └─ html/
 ├─ include/
 ├─ parameter_recipe/
+├─ script/
 ├─ src/
 │   └─ boys/
 ├─ test/
 ├─ xyz/
+│   ├─ large_molecular/
 │   └─ monatomic/
 ├─ CMakeLists.txt
 ├─ LICENSE
@@ -110,7 +112,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 | File/Directory | Description |
 | --- | --- |
 | `basis/` | Contains the basis set files (e.g., sto-3g.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/), and the precomputed density matrix cache files (e.g., sto-3g.sad) for SAD |
-| `auxiliary_basis` | Contains the auxiliary basis set files (e.g., cc-pvdz-rifit.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/) |
+| `auxiliary_basis/` | Contains the auxiliary basis set files (e.g., cc-pvdz-rifit.gbs) downloaded from [Basis Set Exchange](https://www.basissetexchange.org/) |
 | `doc/` | Contains document materials |
 | `doc/html/` | Contains the Doxygen-generated documentation |
 | `include/` | Contains the header files |
@@ -120,8 +122,8 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 | `src/boys/` | Contains a precomputed file for the Boys function |
 | `test/` | Contains the test files |
 | `xyz/` | Contains the XYZ files (e.g., H2O.xyz) |
-| `xyz/monatomic/` | Contains the XYZ files for monatomic molecules (e.g., H.xyz) |
 | `xyz/large_molecular/` | Contains the XYZ files for large molecules (e.g., fullerene.xyz). RI approximation (density fitting) is neccesary for them. |
+| `xyz/monatomic/` | Contains the XYZ files for monatomic molecules (e.g., H.xyz) |
 | `CMakeLists.txt` | CMake configuration file |
 | `LICENSE` | License file |
 | `Parameter.md` | Parameter overview and description |

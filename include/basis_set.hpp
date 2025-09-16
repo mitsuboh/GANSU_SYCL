@@ -102,28 +102,40 @@ public:
      * @return Normalization factor
      * @details The normalization factor is given. The order of the normalization factor is the same as the order of the Cartesian exponents (e.g., p-type: {1,0,0}, {0,1,0}, {0,0,1}) defined in "type.hpp".
      */
+
     std::vector<real_t> get_normalization_factor() const {
         std::vector<real_t> normalize_factors;
-        const std::vector<std::vector<int>>& angular_momentum_list = AngularMomentums[shell_name_to_shell_type(type)]; // exponents in the respective Cartesian direction
-        for(const auto& angular_momentums : angular_momentum_list){ // loop over the Cartesian exponents (e.g., p-type: {1,0,0}, {0,1,0}, {0,0,1})
+        const std::vector<std::vector<int>>& angular_momentum_list = AngularMomentums[shell_name_to_shell_type(type)];
+
+        for(const auto& angular_momentums : angular_momentum_list){
             real_t normalize_factor = 0.0;
+            int lx = angular_momentums[0];
+            int ly = angular_momentums[1];
+            int lz = angular_momentums[2];
+            int L = lx + ly + lz;
+
             for(const auto& primitive_a : primitives){
                 real_t n_a = std::pow(2.0 * M_PI, -3.0/4.0) 
-                    * std::sqrt(std::pow(4.0 * primitive_a.exponent, angular_momentums[0]+angular_momentums[1]+angular_momentums[2]+1.5) / factrial2(2*angular_momentums[0]-1) / factrial2(2*angular_momentums[1]-1) / factrial2(2*angular_momentums[2]-1));
+                            * std::pow(4.0 * primitive_a.exponent, L/2.0+0.75) ;
+
                 for(const auto& primitive_b : primitives){
                     real_t n_b = std::pow(2.0 * M_PI, -3.0/4.0) 
-                        * std::sqrt(std::pow(4.0 * primitive_b.exponent, angular_momentums[0]+angular_momentums[1]+angular_momentums[2]+1.5) / factrial2(2*angular_momentums[0]-1) / factrial2(2*angular_momentums[1]-1) / factrial2(2*angular_momentums[2]-1));
+                                * std::pow(4.0 * primitive_b.exponent, L/2+0.75) ;
+
                     normalize_factor += primitive_a.coefficient * n_a
-                                      * primitive_b.coefficient * n_b
-                                      / std::pow(2.0*(primitive_a.exponent + primitive_b.exponent), angular_momentums[0]+angular_momentums[1]+angular_momentums[2]+1.5);
+                                    * primitive_b.coefficient * n_b
+                                    / std::pow(2.0*(primitive_a.exponent + primitive_b.exponent), L + 1.5);
                 }
             }
-            normalize_factor *= std::pow(2.0*M_PI, 1.5) * factrial2(2*angular_momentums[0]-1) * factrial2(2*angular_momentums[1]-1) * factrial2(2*angular_momentums[2]-1);
+
+            normalize_factor *= std::pow(2.0*M_PI, 1.5);
+            
             normalize_factor = std::pow(normalize_factor,-0.5);
             normalize_factors.push_back(normalize_factor);
         }
         return normalize_factors;
     }
+
 
 private:
     std::string type; // S, P, D, ...

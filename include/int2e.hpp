@@ -42,11 +42,13 @@ __global__ void get_schwarz_upper_bound_factors_ss(const PrimitiveShell* g_shell
 __global__ void get_schwarz_upper_bound_factors_sp(const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors);
 __global__ void get_schwarz_upper_bound_factors_pp(const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors);
 __global__ void get_schwarz_upper_bound_factors_general(const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors);
+__global__ void get_schwarz_upper_bound_factors_aux_general(const PrimitiveShell* g_shell_aux, const real_t* g_aux_cgto_normalization_factors, const ShellTypeInfo shell_s0, const size_t head, const size_t num_bra, const double* g_boys_grid, double* g_max_upper_bound_factors_aux);
 
 
 // define the kernel functions as function pointers for two electron integrals
 using eri_kernel_t = void (*)(double*, const PrimitiveShell*, const real_t*, const ShellTypeInfo, const ShellTypeInfo, const ShellTypeInfo, const ShellTypeInfo, const size_t, const real_t, const double*, const int, const double*, const size_t, const size_t);
 using schwarz_kernel_t = void (*)(const PrimitiveShell*, const real_t*, const ShellTypeInfo, const ShellTypeInfo, const size_t, const size_t, const double*, double*);
+using schwarz_aux_kernel_t = void (*)(const PrimitiveShell*, const real_t*, const ShellTypeInfo, const size_t, const size_t, const double*, double*);
 
 // ここを対角，非対角の分岐にするぐらい？
 inline eri_kernel_t get_eri_kernel(int a, int b, int c, int d){
@@ -85,6 +87,12 @@ inline schwarz_kernel_t get_schwarz_kernel(int a, int b)
     else if (a == 0 && b == 1)  return get_schwarz_upper_bound_factors_sp;
     else if (a == 1 && b == 1)  return get_schwarz_upper_bound_factors_pp;
     else                        return get_schwarz_upper_bound_factors_general;
+}
+
+
+inline schwarz_aux_kernel_t get_schwarz_aux_kernel(int a)
+{
+    return get_schwarz_upper_bound_factors_aux_general;
 }
 
 

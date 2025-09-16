@@ -1414,12 +1414,17 @@ inline void writeMatrixToFile(std::string filename, double* array, size_t size) 
  */
 void compute_RI_IntermediateMatrixB(
     const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
     const PrimitiveShell* d_primitive_shells, 
     const real_t* d_cgto_normalization_factors, 
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
     const PrimitiveShell* d_auxiliary_primitive_shells, 
     const real_t* d_auxiliary_cgto_nomalization_factors, 
     real_t* d_intermediate_matrix_B, 
+    const size_t2* d_primitive_shell_pair_indices,
+    const real_t* d_schwarz_upper_bound_factors,
+    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+    const real_t schwarz_screening_threshold,
     const int num_basis, 
     const int num_auxiliary_basis, 
     const real_t* d_boys_grid, 
@@ -1443,6 +1448,8 @@ void compute_RI_IntermediateMatrixB(
         d_two_center_eri, 
         num_auxiliary_basis,
         d_boys_grid,
+        d_auxiliary_schwarz_upper_bound_factors,
+        schwarz_screening_threshold,
         verbose);
 
 
@@ -1460,15 +1467,20 @@ void compute_RI_IntermediateMatrixB(
     // Compute the three-center ERIs of the auxiliary basis functions and the basis functions
     computeThreeCenterERIs(
         shell_type_infos, 
+        shell_pair_type_infos,
         d_primitive_shells, 
         d_cgto_normalization_factors, 
         auxiliary_shell_type_infos, 
         d_auxiliary_primitive_shells, 
         d_auxiliary_cgto_nomalization_factors, 
         d_three_center_eri, 
+        d_primitive_shell_pair_indices,
         num_basis,
         num_auxiliary_basis,
         d_boys_grid,
+        d_schwarz_upper_bound_factors,
+        d_auxiliary_schwarz_upper_bound_factors,
+        schwarz_screening_threshold,
         verbose);
 
    
@@ -1910,6 +1922,8 @@ void computeTwoCenterERIs(
     real_t* d_two_center_eri, 
     const int num_auxiliary_basis,
     const real_t* d_boys_grid,
+    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+    const real_t schwarz_screening_threshold,
     const bool verbose)
 {
     // ここに２中心積分を計算するコードを書く    
@@ -1952,7 +1966,10 @@ void computeTwoCenterERIs(
         gpu::get_2center_kernel(s0, s1)<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_two_center_eri, d_auxiliary_primitive_shells, 
                                                                             d_auxiliary_cgto_nomalization_factors, 
                                                                             shell_s0, shell_s1, 
-                                                                            num_shell_pairs, num_auxiliary_basis, 
+                                                                            num_shell_pairs, 
+                                                                            d_auxiliary_schwarz_upper_bound_factors,
+                                                                            schwarz_screening_threshold,
+                                                                            num_auxiliary_basis, 
                                                                             d_boys_grid);
     
         if(verbose){
@@ -1973,19 +1990,26 @@ void computeTwoCenterERIs(
     }
 }
 
-
+inline int calcIdx_triangular_(int a, int b, int N){
+    return (int)(a*N - (a*(a-1))/2) + (b-a);
+}
 
 void computeThreeCenterERIs(
     const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, 
     const PrimitiveShell* d_primitive_shells, 
     const real_t* d_cgto_nomalization_factors, 
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
     const PrimitiveShell* d_auxiliary_primitive_shells, 
     const real_t* d_auxiliary_cgto_nomalization_factors, 
     real_t* d_three_center_eri, 
+    const size_t2* d_primitive_shell_pair_indices,
     const int num_basis,
     const int num_auxiliary_basis,
     const real_t* d_boys_grid,
+    const real_t* d_schwarz_upper_bound_factors,
+    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+    const real_t schwarz_screening_threshold,
     const bool verbose)
 {
     const int threads_per_block = 128;
@@ -2033,7 +2057,12 @@ void computeThreeCenterERIs(
         gpu::get_3center_kernel(s0, s1, s2)<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_three_center_eri, d_primitive_shells, d_auxiliary_primitive_shells, 
                                                                                 d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
                                                                                 shell_s0, shell_s1, shell_s2, 
-                                                                                num_tasks, num_basis, num_auxiliary_basis,
+                                                                                num_tasks, num_basis, 
+                                                                                &d_primitive_shell_pair_indices[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                &d_schwarz_upper_bound_factors[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                d_auxiliary_schwarz_upper_bound_factors,
+                                                                                schwarz_screening_threshold,
+                                                                                num_auxiliary_basis,
                                                                                 d_boys_grid);
     
         if(verbose){
@@ -2091,6 +2120,38 @@ void computeSchwarzUpperBounds(
         }
     }
 }
+
+
+/**
+ * @brief Compute the Schwarz upper bounds for the shell pairs.
+ * @param shell_aux_type_infos Information about the auxiliary primitive shells
+ * @param d_primitive_shells_aux Pointer to the auxiliary primitive shells in device memory
+ * @param d_boys_grid Pointer to the precomputed grid values of the Boys function in device memory
+ * @param d_cgto_aux_normalization_factors Pointer to the normalization factors of the auxiliary CGTOs in device memory
+ * @param d_upper_bound_factors_aux Pointer to store the upper bound factors in device memory to be stored
+ * @param verbose Whether to print additional information
+ * @details This function computes the Schwarz upper bounds for the shell pairs.
+ */
+void computeAuxiliarySchwarzUpperBounds(
+    const std::vector<ShellTypeInfo>& shell_aux_type_infos, 
+    const PrimitiveShell* d_primitive_shells_aux, 
+    const real_t* d_boys_grid, 
+    const real_t* d_cgto_aux_normalization_factors, 
+    real_t* d_upper_bound_factors_aux, 
+    const bool verbose)
+{
+    const int threads_per_block = 256; // the number of threads per block
+    const int shell_type_count = shell_aux_type_infos.size();
+
+    for (int s0 = 0; s0 < shell_type_count; ++s0) {
+        const ShellTypeInfo shell_s0 = shell_aux_type_infos[s0];
+        const size_t head = shell_s0.start_index;
+        const size_t num_bra = shell_s0.count;
+        const size_t num_blocks = (num_bra + threads_per_block - 1) / threads_per_block; // the number of blocks
+        gpu::get_schwarz_aux_kernel(s0)<<<num_blocks, threads_per_block>>>(d_primitive_shells_aux, d_cgto_aux_normalization_factors, shell_s0, head, num_bra, d_boys_grid, d_upper_bound_factors_aux);        
+    }
+}
+
 
 
 void computeFockMatrix_Direct_RHF(

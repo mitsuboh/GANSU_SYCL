@@ -21,6 +21,7 @@
 #include "device_host_memory.hpp"
 
 
+
 namespace gansu{
 
 // prototype of classes
@@ -123,6 +124,8 @@ protected:
     DeviceHostMatrix<real_t> intermediate_matrix_B_; ///< intermediate matrix B (num_auxiliary_basis_ x (num_basis_x num_basis_))
 
     // Suzuki.
+    DeviceHostMemory<real_t> schwarz_upper_bound_factors;
+    DeviceHostMemory<real_t> auxiliary_schwarz_upper_bound_factors;
     // DeviceHostMemory<real_t> two_center_eri_;
     // DeviceHostMemory<real_t> three_center_eri_;
 };
@@ -174,6 +177,10 @@ protected:
     // ここにHash memoryを宣言
     
 };
+
+
+
+
 
 
 } // namespace gansu
