@@ -27,7 +27,7 @@ FetchContent_MakeAvailable(googletest)
 
 
 # set compute capability
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 80 86)
 
 # C++ standard
 set(CMAKE_CXX_STANDARD 17)

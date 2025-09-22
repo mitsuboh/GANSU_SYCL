@@ -74,7 +74,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 
 ### Prerequisites
 * Hardware
-  * NVIDIA GPU with CUDA Compute Capability 8.0 or later
+  * NVIDIA GPU with CUDA Compute Capability 8.0, 8.6, or later
   * x86_64 architecture
 * Software
   * C++ 17 or later
@@ -186,11 +186,11 @@ Command-line option "-p" specifies the parameter recipe file that contains pre-d
 
 How to give the parameter recipe file:
 ``` bash
-./HF_main -p ../parameter_recipe/RHF_OptimalDamping.txt -x ../xyz/H2.xyz -g ../basis/cc-pvdz.gbs
+./HF_main -p ../parameter_recipe/RHF_OptimalDamping.txt -x ../xyz/H2O.xyz -g ../basis/cc-pvdz.gbs
 ```
 This command is equivalent to the following command:
 ``` bash
-./HF_main --parameter_file ../parameter_recipe/RHF_OptimalDamping.txt --xyzfilename ../xyz/H2.xyz --gbsfilename ../basis/cc-pvdz.gbs
+./HF_main --parameter_file ../parameter_recipe/RHF_OptimalDamping.txt --xyzfilename ../xyz/H2O.xyz --gbsfilename ../basis/cc-pvdz.gbs
 ```
 
 
