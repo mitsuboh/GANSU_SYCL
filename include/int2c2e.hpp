@@ -22,7 +22,9 @@
 #define INT2C2E_CPP
 
 #define N_ORBITAL_TYPE_AUX 5
- 
+
+#include <stdexcept>
+
 #include "boys.hpp"
 #include "types.hpp"
 #include "utils_cuda.hpp"
