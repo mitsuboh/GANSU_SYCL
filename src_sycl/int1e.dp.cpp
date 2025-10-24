@@ -12,8 +12,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
 #include <dpct/dpct.hpp>
 #include <cmath>
@@ -22,6 +20,7 @@
 #include "types.hpp"
 #include "utils_cuda.hpp"
 
+#include "int1e.hpp"
 #include "int2e.hpp"
 #include "Et_functions.hpp"
 
@@ -41,82 +40,10 @@
 
 namespace gansu::gpu{
 
-// 二条階乗を返す関数
-/*
-DPCT1109:8: Recursive functions cannot be called in SYCL device code. You need
-to adjust the code.
-*/
-int factorial2gpu(int i) {
-    if(i<1){
-        return 1;
-    }else{
-        /*
-        DPCT1109:9: Recursive functions cannot be called in SYCL device code.
-        You need to adjust the code.
-        */
-        return i * factorial2gpu(i - 2);
-    }
-}
-
-// 2点間の距離を求める関数（2乗済み）
-SYCL_EXTERNAL double calc_dist_GPU(const Coordinate &coord1,
-                                   const Coordinate &coord2) {
-    return (coord1.x-coord2.x)*(coord1.x-coord2.x) + (coord1.y-coord2.y)*(coord1.y-coord2.y) + (coord1.z-coord2.z)*(coord1.z-coord2.z);
-}
-SYCL_EXTERNAL double calc_dist_GPU(const sycl::double3 &coord1,
-                                   const Coordinate &coord2) {
-    return (coord1.x() - coord2.x) * (coord1.x() - coord2.x) +
-           (coord1.y() - coord2.y) * (coord1.y() - coord2.y) +
-           (coord1.z() - coord2.z) * (coord1.z() - coord2.z);
-}
-
-SYCL_EXTERNAL double calc_Norms(double alpha, double beta, int ijk, int lmn) {
-    return dpct::pow(2.0, ijk + lmn) * dpct::pow(2.0 / M_PI, 1.5) *
-           dpct::pow(alpha, (2.0 * ijk + 3.0) / 4.0) *
-           dpct::pow(beta, (2.0 * lmn + 3.0) / 4.0);
-}
-
-SYCL_EXTERNAL void Matrix_Symmetrization(double *matrix, int n,
-                                         sycl::local_accessor<real_t, 2> sh_mem) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-
-    if (item_ct1.get_group(1) > item_ct1.get_group(2)) return;
-
-    int src_block = item_ct1.get_group(1) * 32 * n + item_ct1.get_group(2) * 32;
-    int dst_block = item_ct1.get_group(2) * 32 * n + item_ct1.get_group(1) * 32;
-
-    if (item_ct1.get_group(2) * 32 + item_ct1.get_local_id(2) < n ||
-        item_ct1.get_group(1) * 32 + item_ct1.get_local_id(1) < n) {
-        sh_mem[item_ct1.get_local_id(1)][item_ct1.get_local_id(2)] =
-            matrix[src_block + item_ct1.get_local_id(1) * n +
-                   item_ct1.get_local_id(2)];
-    }
-    /*
-    DPCT1065:129: Consider replacing sycl::nd_item::barrier() with
-    sycl::nd_item::barrier(sycl::access::fence_space::local_space) for better
-    performance if there is no access to global memory.
-    */
-    item_ct1.barrier();
-
-    if (item_ct1.get_group(1) == item_ct1.get_group(2) &&
-            item_ct1.get_local_id(1) <= item_ct1.get_local_id(2) ||
-        (dst_block + item_ct1.get_local_id(1) * n + item_ct1.get_local_id(2) >=
-         n * n)) return;
-
-    matrix[dst_block + item_ct1.get_local_id(1) * n +
-           item_ct1.get_local_id(2)] =
-        sh_mem[item_ct1.get_local_id(2)][item_ct1.get_local_id(1)];
-}
-
-SYCL_EXTERNAL int calc_result_index(int y, int x, int sumCGTO) {
-    return (y<=x) ? y*sumCGTO + x : x*sumCGTO + y;
-}
-
-
 // MD method
-#include "MD_kernel.txt"
+//#include "MD_kernel.txt"
 // OS method
-#include "OS_kernel.txt"
+//#include "OS_kernel.txt"
 
 
 
