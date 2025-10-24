@@ -21,360 +21,72 @@
 #include <dpct/dpct.hpp>
 #include "types.hpp"
 #include "utils_cuda.hpp"
+#include "boys.hpp"
 
 namespace gansu::gpu{
 
+// 2点間の距離を求める関数（2乗済み）
+inline double calc_dist_GPU(const Coordinate &coord1,
+                                   const Coordinate &coord2) {
+    return (coord1.x-coord2.x)*(coord1.x-coord2.x) + (coord1.y-coord2.y)*(coord1.y-coord2.y) + (coord1.z-coord2.z)*(coord1.z-coord2.z);
+}
+inline double calc_dist_GPU(const sycl::double3 &coord1,
+                                   const Coordinate &coord2) {
+    return (coord1.x() - coord2.x) * (coord1.x() - coord2.x) +
+           (coord1.y() - coord2.y) * (coord1.y() - coord2.y) +
+           (coord1.z() - coord2.z) * (coord1.z() - coord2.z);
+}
+
+inline double calc_Norms(double alpha, double beta, int ijk, int lmn) {
+    return dpct::pow(2.0, ijk + lmn) * dpct::pow(2.0 / M_PI, 1.5) *
+           dpct::pow(alpha, (2.0 * ijk + 3.0) / 4.0) *
+           dpct::pow(beta, (2.0 * lmn + 3.0) / 4.0);
+}
+
+inline int calc_result_index(int y, int x, int sumCGTO) {
+    return (y<=x) ? y*sumCGTO + x : x*sumCGTO + y;
+}
+
+inline void Matrix_Symmetrization(double *matrix, int n,
+                                         sycl::local_accessor<real_t, 2> sh_mem) {
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+
+    if (item_ct1.get_group(1) > item_ct1.get_group(2)) return;
+
+    int src_block = item_ct1.get_group(1) * 32 * n + item_ct1.get_group(2) * 32;
+    int dst_block = item_ct1.get_group(2) * 32 * n + item_ct1.get_group(1) * 32;
+
+    if (item_ct1.get_group(2) * 32 + item_ct1.get_local_id(2) < n ||
+        item_ct1.get_group(1) * 32 + item_ct1.get_local_id(1) < n) {
+        sh_mem[item_ct1.get_local_id(1)][item_ct1.get_local_id(2)] =
+            matrix[src_block + item_ct1.get_local_id(1) * n +
+                   item_ct1.get_local_id(2)];
+    }
+    /*
+    DPCT1065:129: Consider replacing sycl::nd_item::barrier() with
+    sycl::nd_item::barrier(sycl::access::fence_space::local_space) for better
+    performance if there is no access to global memory.
+    */
+    item_ct1.barrier();
+
+    if (item_ct1.get_group(1) == item_ct1.get_group(2) &&
+            item_ct1.get_local_id(1) <= item_ct1.get_local_id(2) ||
+        (dst_block + item_ct1.get_local_id(1) * n + item_ct1.get_local_id(2) >=
+         n * n)) return;
+
+    matrix[dst_block + item_ct1.get_local_id(1) * n +
+           item_ct1.get_local_id(2)] =
+        sh_mem[item_ct1.get_local_id(2)][item_ct1.get_local_id(1)];
+}
+
+
 // MD method(overlap and kinetic integral)
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDss(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDsp(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDpp(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDsd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDpd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDdd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDsf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDpf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDdf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_MDff(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
+#include "md_kernel.txt"
 
 // OS method(overlap and kinetic integral)
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSss(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSsp(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSpp(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSsd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSpd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSdd(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSsf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSpf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSdf(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-SYCL_EXTERNAL
-void overlap_kinetic_OSff(real_t *g_overlap, real_t *g_kinetic,
-                          const PrimitiveShell *g_shell,
-                          const real_t *g_cgto_normalization_factors,
-                          const ShellTypeInfo shell_s0,
-                          const ShellTypeInfo shell_s1,
-                          const size_t num_threads, const int num_basis);
-
-// MD method(nuclear attraction integral)
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDss(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDsp(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDpp(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDsd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDpd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDdd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDsf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDpf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDdf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_MDff(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-// OS method(nuclear attraction integral)
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSss(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSsp(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSpp(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSsd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSpd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSdd(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSsf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSpf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSdf(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
-
-SYCL_EXTERNAL
-void nuclear_attraction_OSff(real_t *g_nucattr, const PrimitiveShell *g_shell,
-                             const real_t *g_cgto_normalization_factors,
-                             const Atom *g_atom, const int num_atoms,
-                             const ShellTypeInfo shell_s0,
-                             const ShellTypeInfo shell_s1,
-                             const size_t num_threads, const int num_basis,
-                             const real_t *g_boys_grid);
+#include "os_kernel.txt"
 
 // 2025-05-26 define a function to target matrices
-SYCL_EXTERNAL void Matrix_Symmetrization(real_t *matrix, int n,
-                                         sycl::local_accessor<real_t, 2> sh_mem);
 
 SYCL_EXTERNAL
 void compute_kinetic_energy_integral(
