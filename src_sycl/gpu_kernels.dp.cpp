@@ -27,7 +27,8 @@ namespace gansu::gpu{
  * @details This function computes the inverse of the square root of each element of the input vector.
  *         The input vector is modified in place.
  */
-SYCL_EXTERNAL void inverseSqrt_kernel(real_t *d_eigenvalues, const size_t size,
+/*
+ SYCL_EXTERNAL void inverseSqrt_kernel(real_t *d_eigenvalues, const size_t size,
                                        const double threshold) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     size_t idx = item_ct1.get_local_id(0);
@@ -36,16 +37,11 @@ SYCL_EXTERNAL void inverseSqrt_kernel(real_t *d_eigenvalues, const size_t size,
         if (value < threshold) {
             d_eigenvalues[idx] = 0.0; // Avoid division by zero
         }else{
-            /*
-            DPCT1013:275: The rounding mode could not be specified and the
-            generated code may have different accuracy than the original code.
-            Verify the correctness. SYCL math built-in function rounding mode is
-            aligned with OpenCL C 1.2 standard.
-            */
             d_eigenvalues[idx] = 1.0 / sycl::sqrt(value);
         }
     }
 }
+*/
 
 
 
@@ -58,7 +54,8 @@ SYCL_EXTERNAL void inverseSqrt_kernel(real_t *d_eigenvalues, const size_t size,
  * @details This function computes the density matrix using the coefficient matrix.
  * @details The density matrix is given by \f$ D_{ij} = 2 \sum_{k=1}^{N/2} C_{ik} C_{jk} \f$.
  */
-SYCL_EXTERNAL void computeDensityMatrix_RHF_kernel(
+/*
+ SYCL_EXTERNAL void computeDensityMatrix_RHF_kernel(
      const real_t *d_coefficient_matrix, real_t *d_density_matrix,
      const int num_electron, const size_t num_basis) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -75,7 +72,7 @@ SYCL_EXTERNAL void computeDensityMatrix_RHF_kernel(
     }
     d_density_matrix[id] = 2.0 * sum;
 }
-
+*/
 /**
  * @brief CUDA kernel for computing the density matrix for unrestricted Hartree-Fock
  * @param d_coefficient_matrix Device pointer to the coefficient matrix (alpha or beta)
@@ -85,8 +82,9 @@ SYCL_EXTERNAL void computeDensityMatrix_RHF_kernel(
  * @details This function computes the density matrix using the coefficient matrix.
  * @details The density matrix is given by \f$ D_{ij} = \sum_{k=1}^{N} C_{ik} C_{jk} \f$.
  */
-SYCL_EXTERNAL void
-computeDensityMatrix_UHF_kernel(const double *d_coefficient_matrix,
+/*
+ SYCL_EXTERNAL void
+ computeDensityMatrix_UHF_kernel(const double *d_coefficient_matrix,
                                  double *d_density_matrix, const int num_spin,
                                  const size_t num_basis) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -103,6 +101,7 @@ computeDensityMatrix_UHF_kernel(const double *d_coefficient_matrix,
     }
     d_density_matrix[id] = sum;
 }
+*/
 
 
 /**
@@ -116,7 +115,8 @@ computeDensityMatrix_UHF_kernel(const double *d_coefficient_matrix,
  * @param num_basis Number of basis functions
  * @details This function computes the density matrix using the coefficient matrix.
  */
-SYCL_EXTERNAL void computeDensityMatrix_ROHF_kernel(
+/*
+ SYCL_EXTERNAL void computeDensityMatrix_ROHF_kernel(
      const double *d_coefficient_matrix, double *d_density_matrix_closed,
      double *d_density_matrix_open, double *d_density_matrix,
      const int num_closed, const int num_open, const size_t num_basis) {
@@ -144,6 +144,7 @@ SYCL_EXTERNAL void computeDensityMatrix_ROHF_kernel(
 
     d_density_matrix[id] = sum_closed + sum_open;
 }
+*/
 
 
 /**
@@ -151,6 +152,7 @@ SYCL_EXTERNAL void computeDensityMatrix_ROHF_kernel(
  * @param d_matrix Device pointer to the matrix
  * @param size Size of the matrix
  */
+/*
 SYCL_EXTERNAL void transposeMatrixInPlace_kernel(real_t* d_matrix, int size,
                                 sycl::local_accessor<real_t, 2> s_src,
                                 sycl::local_accessor<real_t, 2> s_dst)
@@ -184,7 +186,7 @@ SYCL_EXTERNAL void transposeMatrixInPlace_kernel(real_t* d_matrix, int size,
     d_matrix[xid * size + yid] = s_src[l_yid][l_xid];
     }
 }
-
+*/
 
 /**
  * @brief CUDA kernel for computing weight sum matices sum(W[i] * B[i]).
@@ -196,6 +198,7 @@ SYCL_EXTERNAL void transposeMatrixInPlace_kernel(real_t* d_matrix, int size,
  * @param N Number of matrices.
  * @param accumulated If true, the result is accumulated to the output matrix.
  */
+/*
 SYCL_EXTERNAL void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
                                                 const double *d_W, const int M,
                                                 const int N,
@@ -216,7 +219,7 @@ SYCL_EXTERNAL void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
         d_J[id] = sum;
     }
 }
-
+*/
 
 /**
  * @brief CUDA kernel for computing sum matices sum(B[i]).
@@ -227,6 +230,7 @@ SYCL_EXTERNAL void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
  * @param N Number of matrices.
  * @param accumulated If true, the result is accumulated to the output matrix.
  */
+/*
 SYCL_EXTERNAL void sum_matrices_kernel(double *d_K, const double *d_B,
                                        const int M, const int N,
                                        const bool accumulated) {
@@ -246,8 +250,9 @@ SYCL_EXTERNAL void sum_matrices_kernel(double *d_K, const double *d_B,
         d_K[id] = sum;
     }
 }
+*/
 
-
+/*
 SYCL_EXTERNAL
 void computeFockMatrix_RHF_kernel(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis,
       sycl::local_accessor<real_t, 1> s_F_ij)
@@ -303,7 +308,8 @@ void computeFockMatrix_RHF_kernel(const real_t* d_density_matrix, const real_t* 
     }
 //    item.barrier(sycl::access::fence_space::local_space);
 }
-
+*/
+/*
 SYCL_EXTERNAL
 void computeFockMatrix_UHF_kernel(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, int num_basis,
       sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij)
@@ -363,7 +369,8 @@ void computeFockMatrix_UHF_kernel(const real_t* d_density_matrix_a, const real_t
         //g_fock[bra] = s_F_ij[0];  // use cuBLAS
     }
 }
-
+*/
+/*
 SYCL_EXTERNAL
 void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed, const real_t* d_density_matrix_open, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_closed, real_t* d_fock_matrix_open, int num_basis,
       sycl::local_accessor<real_t, 1> s_J_closed_ij, sycl::local_accessor<real_t, 1> s_J_open_ij,
@@ -374,13 +381,6 @@ void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed, const 
     const int i = bra / num_basis;
     const int j = bra % num_basis;
 
-    // 2-fold symmetry (vertical)
-    /*
-    const short j = __real_t2int_rn((__dsqrt_rn(8 * bra + 1) - 1) / 2);
-    const short i = bra - j * (j + 1) / 2;
-    const int uid = num_basis * i + j;
-    const int lid = num_basis * j + i;
-    */
 
     const size_t l = item.get_local_linear_id();
 
@@ -412,20 +412,6 @@ void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed, const 
     J_open   = reduce_over_group(sg, J_open, std::plus<>());
     K_closed = reduce_over_group(sg, K_closed, std::plus<>());
     K_open   = reduce_over_group(sg, K_open, std::plus<>());
-/*
-    for (int offset = 16; offset > 0; offset /= 2) {
-        J_closed += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), J_closed,
-            offset);
-        J_open += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), J_open, offset);
-        K_closed += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), K_closed,
-            offset);
-        K_open += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), K_open, offset);
-    }
-*/
     item.barrier(sycl::access::fence_space::local_space);
 
 //    if (item_ct1.get_local_id(2) == 0) {
@@ -441,16 +427,6 @@ void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed, const 
         atomic_J_open.fetch_add(J_open);
         atomic_K_closed.fetch_add(K_closed);
         atomic_K_open.fetch_add(K_open);
-/*
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_J_closed_ij.get_pointer(), J_closed);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_J_open_ij.get_pointer(), J_open);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_K_closed_ij.get_pointer(), K_closed);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_K_open_ij.get_pointer(), K_open);
-*/
     }
     item.barrier(sycl::access::fence_space::local_space);
 
@@ -459,17 +435,17 @@ void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed, const 
         d_fock_matrix_open[bra]  = 0.5 * (d_core_hamiltonian_matrix[bra] + s_J_closed_ij[0] - 0.5 * s_K_closed_ij[0] + s_J_open_ij[0] - s_K_open_ij[0]);
     }
 }
+*/
 
-
+/*
 SYCL_EXTERNAL void computeUnifiedFockMatrix_ROHF_kernel(
     const real_t *d_fock_mo_closed_matrix, const real_t *d_fock_mo_open_matrix,
     const ROHF_ParameterSet rohf_params, real_t *d_unified_fock_matrix,
     const int num_closed, const int num_open, const size_t num_basis) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-//    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-//                item_ct1.get_local_id(2);
-    size_t id = item_ct1.get_local_linear_id();
-    if (!(id >= num_basis * (num_basis+1) / 2)){
+    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+                item_ct1.get_local_id(2);
+    if (id >= num_basis * (num_basis+1) / 2) return;
 
     const size_t2 ij = index1to2(id, true);
     size_t i,j;
@@ -516,9 +492,8 @@ SYCL_EXTERNAL void computeUnifiedFockMatrix_ROHF_kernel(
     // 2-fold symmetry
     d_unified_fock_matrix[i*num_basis+j] = d;
     if(i != j) d_unified_fock_matrix[j*num_basis+i] = d;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
 }
+*/
 
 
 /**
@@ -528,6 +503,7 @@ SYCL_EXTERNAL void computeUnifiedFockMatrix_ROHF_kernel(
  * @param num_basis Number of basis functions
  * @details This function computes the trace of a matrix.
  */
+/*
 SYCL_EXTERNAL void getMatrixTrace(const double *d_matrix, double *d_trace,
                                   const int num_basis, double &s_trace)
 {
@@ -547,7 +523,7 @@ SYCL_EXTERNAL void getMatrixTrace(const double *d_matrix, double *d_trace,
         d_trace[0] = s_trace;
     }
 }
-
+*/
 
 /**
  * @brief CUDA kernel for computing the initial Fock matrix in GWH method
@@ -557,6 +533,7 @@ SYCL_EXTERNAL void getMatrixTrace(const double *d_matrix, double *d_trace,
  * @param num_basis Number of basis functions
  * @param c_x Constant c_x
  */
+/*
 SYCL_EXTERNAL void computeInitialFockMatrix_GWH_kernel(
     const double *d_core_hamiltonian_matrix, const double *d_overlap_matrix,
     double *d_fock_matrix, const int num_basis, const double c_x) {
@@ -570,7 +547,8 @@ SYCL_EXTERNAL void computeInitialFockMatrix_GWH_kernel(
 
     d_fock_matrix[id] = c_x * d_overlap_matrix[id] * (d_core_hamiltonian_matrix[p*num_basis+p] + d_core_hamiltonian_matrix[q*num_basis+q]) / 2.0;
 }
-
+*/
+/*
 SYCL_EXTERNAL void computeRIIntermediateMatrixB_kernel(
     const double *d_three_center_eri, const double *d_matrix_L,
     double *d_matrix_B, const int num_basis, const int num_auxiliary_basis) {
@@ -590,8 +568,8 @@ SYCL_EXTERNAL void computeRIIntermediateMatrixB_kernel(
     }
     d_matrix_B[id] = sum;
 }
-
-
+*/
+/*
 SYCL_EXTERNAL void computeFockMatrix_RI_RHF_kernel(
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix, double *d_Fock_matrix, const int num_basis) {
@@ -602,8 +580,8 @@ SYCL_EXTERNAL void computeFockMatrix_RI_RHF_kernel(
 
     d_Fock_matrix[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - 0.5*d_K_matrix[id];
 }
-
-
+*/
+/*
 SYCL_EXTERNAL void computeFockMatrix_RI_UHF_kernel(
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix, double *d_Fock_matrix, const int num_basis) {
@@ -614,7 +592,8 @@ SYCL_EXTERNAL void computeFockMatrix_RI_UHF_kernel(
 
     d_Fock_matrix[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - d_K_matrix[id];
 }
-
+*/
+/*
 SYCL_EXTERNAL void computeFockMatrix_RI_ROHF_kernel(
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix_closed, const double *d_K_matrix_open,
@@ -628,13 +607,14 @@ SYCL_EXTERNAL void computeFockMatrix_RI_ROHF_kernel(
     d_Fock_matrix_closed[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - 0.5*d_K_matrix_closed[id];
     d_Fock_matrix_open[id] = 0.5 * (d_core_hamiltonian_matrix[id] + d_J_matrix[id] - d_K_matrix_open[id]);
 }
-
+*/
 /*
  * @brief Sets zeros to the upper triangular part of the matrix
  *
  * @param d_A Pointer to the N x N matrix in device memory (input/output).
  * @param N The size of the matrix (number of rows/columns).
  */
+/*
  SYCL_EXTERNAL void setZeroUpperTriangle(double *d_A, const int N) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
@@ -645,6 +625,7 @@ SYCL_EXTERNAL void computeFockMatrix_RI_ROHF_kernel(
         d_A[row * N + col] = 0.0;
     }
 }
+*/
 
 
 /**
@@ -654,6 +635,7 @@ SYCL_EXTERNAL void computeFockMatrix_RI_ROHF_kernel(
  * @param diag Device pointer to the output diagonal vector
  * @param N Size of the matrices (N x N)
  */
+/*
 SYCL_EXTERNAL void compute_diagonal_of_product(const double *A, const double *B,
                                                double *diag, const int N) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -667,7 +649,7 @@ SYCL_EXTERNAL void compute_diagonal_of_product(const double *A, const double *B,
         diag[i] = sum;
     }
 }
-
+*/
 
 /**
  * @brief CUDA kernel for computing the diagonal of the sum of two matrices A and B, multiplied by a third matrix C
@@ -677,6 +659,7 @@ SYCL_EXTERNAL void compute_diagonal_of_product(const double *A, const double *B,
  * @param diag Device pointer to the output diagonal vector
  * @param N Size of the matrices (N x N)
  */
+/*
 SYCL_EXTERNAL void compute_diagonal_of_product_sum(const double *A,
                                                    const double *B,
                                                    const double *C,
@@ -695,6 +678,7 @@ SYCL_EXTERNAL void compute_diagonal_of_product_sum(const double *A,
     }
     diag[i] = sum;
 }
+*/
 
 
 void constructERIHash_kernel(const std::vector<ShellTypeInfo> shell_type_infos, const std::vector<ShellPairTypeInfo> shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_cgto_normalization_factors, /* Hash memoryへのポインタ, */ const bool verbose)
