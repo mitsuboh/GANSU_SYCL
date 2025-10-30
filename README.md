@@ -1,8 +1,6 @@
-# Updates
+## Updates
 
-- Oct 30 2025: gpu_test branch is merged and cofirmed run on Core Ultra2 GPU.
-Due to JIT compile of device codes, it takes 27 plus 22 minutes only for
-the first run as shown blelow. After the first run no compile time is needed.
+- Oct 30 2025: gpu_test branch is merged and cofirmed run on Core Ultra2 GPU. Due to JIT compile of device codes, it takes 27 plus 22 minutes only for the first run as shown blelow. After the first run no compile time is needed.
 
 [00:00.000] START: compute_nuclear_repulsion_energy
 [00:00.000] END:   compute_nuclear_repulsion_energy after 0.016 ms
@@ -13,11 +11,7 @@ the first run as shown blelow. After the first run no compile time is needed.
 [49:44.378] START: compute_transform_matrix
 [49:44.419] END:   compute_transform_matrix after 41.559 ms
 
-If you do not like this, you can use AOT compiling by adding CMakelists.txt
-something like, 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_gen -Xs \"-device 0x7d67\"")
-                                                                   [Your device id]--> ^^^^^^
----------------------------------
+- If you do not like this, you can use AOT compiling by adding CMakelists.txt something like, set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-target_gen -Xs \"-device 0x7d67\"")                                                                                    [Your device id: 0x7d67 ]
 
 # GANSU-SYCL
 
