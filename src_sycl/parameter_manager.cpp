@@ -91,7 +91,7 @@ bool ParameterManager::contains(const std::string& key) const {
 
 bool ParameterManager::is_valid_key(const std::string& key) const {
     std::string key_lower = toLowerCase(key);
-    return default_parameters_.find(key_lower) != parameters_.end();
+    return default_parameters_.find(key_lower) != default_parameters_.end();
 }
 
 void ParameterManager::set_default_values_to_unspecfied_parameters() {
