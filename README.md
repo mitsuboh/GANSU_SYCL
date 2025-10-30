@@ -2,14 +2,14 @@
 
 - Oct 30 2025: gpu_test branch is merged and cofirmed run on Core Ultra2 GPU. Due to JIT compile of device codes, it takes 27 plus 22 minutes only for the first run as shown blelow. After the first run no compile time is needed.
 
-[00:00.000] START: compute_nuclear_repulsion_energy
-[00:00.000] END:   compute_nuclear_repulsion_energy after 0.016 ms
-[00:00.000] START: compute_core_hamiltonian_matrix
-[27:25.462] END:   compute_core_hamiltonian_matrix after 1.6455e+06 ms
-[27:25.462] START: precompute_eri_matrix
-[49:44.378] END:   precompute_eri_matrix after 1.3389e+06 ms
-[49:44.378] START: compute_transform_matrix
-[49:44.419] END:   compute_transform_matrix after 41.559 ms
+[00:00.000] START: compute_nuclear_repulsion_energy<br>
+[00:00.000] END:   compute_nuclear_repulsion_energy after 0.016 ms<br> 
+[00:00.000] START: compute_core_hamiltonian_matrix<br>
+[27:25.462] END:   compute_core_hamiltonian_matrix after 1.6455e+06 ms<br>
+[27:25.462] START: precompute_eri_matrix<br>
+[49:44.378] END:   precompute_eri_matrix after 1.3389e+06 ms<br>
+[49:44.378] START: compute_transform_matrix<br>
+[49:44.419] END:   compute_transform_matrix after 41.559 ms<br>
 
 - If you do not like this, you can use AOT compiling by adding CMakelists.txt something like, set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-target_gen -Xs \"-device 0x7d67\"")                                                                                    [Your device id: 0x7d67 ]
 
@@ -97,3 +97,4 @@ University in collaboration with Fujitsu Limited. We sincerely thank them for ma
 valuable contributions.
 
 We would like to thank Intel for granting us access to the Intel® Software Development Platform 1.0.0, which was made available under specific agreement terms. The platform’s capabilities were essential to the success of this work.
+
