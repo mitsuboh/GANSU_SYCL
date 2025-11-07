@@ -986,35 +986,35 @@ void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                          const double schwarz_screening_threshold,
                          int num_auxiliary_basis, const double *g_boys_grid);
 #else
-void calc_sg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_sg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
