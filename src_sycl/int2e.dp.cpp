@@ -61,9 +61,10 @@ void ssss2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                      item_ct1.get_local_id(2);
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -119,9 +120,8 @@ void sssp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -177,10 +177,8 @@ void sspp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id =
-        (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -236,10 +234,8 @@ void spsp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id =
-        (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -295,9 +291,8 @@ void sppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -352,9 +347,8 @@ void pppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
     // Compute 4D index from thread id
@@ -1810,9 +1804,8 @@ void MD_1T1SP(double *g_int2e, const PrimitiveShell *g_shell,
               const size_t head_ket)
 {
     // 通し番号indexの計算
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    const size_t id = item_ct1.get_global_id(0);
 
     if (id >= num_threads) return;
 

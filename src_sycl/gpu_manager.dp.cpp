@@ -523,7 +523,7 @@ void computeCoreHamiltonianMatrix(
     V_streams.reserve(N);
 //    std::vector<dpct::queue_ptr> streams(N);
 //    std::vector<dpct::queue_ptr> V_streams(N);
-
+    printf("################################ %d\n",N);
     for (int i = 0; i < N; i++) {
         streams.emplace_back(wk_ctx, work_dev);
         V_streams.emplace_back(wk_ctx, work_dev);
@@ -716,6 +716,7 @@ void computeERIMatrix(
 
     // make multi stream
     const int num_kernels = shell_quadruples.size();
+    printf("******************************** %d\n",num_kernels);
 //    std::vector<dpct::queue_ptr> streams(num_kernels);
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
@@ -742,15 +743,19 @@ void computeERIMatrix(
 
         const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
         const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
+        const int csid = stream_id++;
 
 //    dpct::dim3 blocks(num_blocks,1,1);
 //    dpct::dim3 threads(threads_per_block,1,1);
-    sycl::range<3> blocks(1, 1, num_blocks);
-    sycl::range<3> threads(1, 1, threads_per_block);
+//    sycl::range<3> blocks(1, 1, num_blocks);
+//    sycl::range<3> threads(1, 1, threads_per_block);
+      sycl::range<1> blocks(num_blocks);
+      sycl::range<1> threads(threads_per_block);
 
-            streams[stream_id++].submit([&](sycl::handler& cgh){
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
+//            streams[csid].submit([&](sycl::handler& cgh){
+            workq.submit([&](sycl::handler& cgh){
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                 launch_eri_kernel(
                   s0, s1, s2, s3,
                   d_eri_matrix, d_primitive_shells,
@@ -781,6 +786,7 @@ void computeERIMatrix(
             std::cout << "|braket|= " << num_braket << ", " ;
             std::cout << "num_blocks: " << num_blocks << std::endl;
         }
+    printf("++++++++++++++++++++++++++++++++ %d\n",csid);
     }
 
     // syncronize streams

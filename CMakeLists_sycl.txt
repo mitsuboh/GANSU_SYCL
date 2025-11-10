@@ -13,7 +13,8 @@
 # 
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES  CXX)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl" )
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_gen -Xs \"-device arl-s\"")
 include(dpct.cmake)
 
 
