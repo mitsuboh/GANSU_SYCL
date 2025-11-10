@@ -523,7 +523,7 @@ void computeCoreHamiltonianMatrix(
     V_streams.reserve(N);
 //    std::vector<dpct::queue_ptr> streams(N);
 //    std::vector<dpct::queue_ptr> V_streams(N);
-    printf("################################ %d\n",N);
+    
     for (int i = 0; i < N; i++) {
         streams.emplace_back(wk_ctx, work_dev);
         V_streams.emplace_back(wk_ctx, work_dev);
@@ -716,7 +716,6 @@ void computeERIMatrix(
 
     // make multi stream
     const int num_kernels = shell_quadruples.size();
-    printf("******************************** %d\n",num_kernels);
 //    std::vector<dpct::queue_ptr> streams(num_kernels);
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
@@ -786,7 +785,6 @@ void computeERIMatrix(
             std::cout << "|braket|= " << num_braket << ", " ;
             std::cout << "num_blocks: " << num_blocks << std::endl;
         }
-    printf("++++++++++++++++++++++++++++++++ %d\n",csid);
     }
 
     // syncronize streams
