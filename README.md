@@ -11,7 +11,9 @@
 [49:44.378] START: compute_transform_matrix<br>
 [49:44.419] END:   compute_transform_matrix after 41.559 ms<br>
 
-- If you do not like this, you can use AOT compiling by adding CMakelists.txt something like, set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-target_gen -Xs \"-device 0x7d67\"")                                                                                    [Your device id: 0x7d67 ]
+
+- If you do not like this, you can use AOT compiling by adding CMakelists.txt something like, set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_gen -Xs \\\"-device arl-s\\\"")                                                                                    [Your device is Arrow Lake S ] 
+
 
 # GANSU-SYCL
 
