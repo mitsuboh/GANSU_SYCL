@@ -17,7 +17,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "types.hpp"
 #include "utils_cuda.hpp"
 
@@ -251,69 +250,56 @@ inline void sum_matrices_kernel(double *d_K, const double *d_B,
 
 //SYCL_EXTERNAL void computeFockMatrix_RHF_kernel( const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis, sycl::local_accessor<real_t, 1> s_F_ij);
 inline void computeFockMatrix_RHF_kernel(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis,
-      sycl::local_accessor<real_t, 1> s_F_ij)
+      sycl::local_accessor<real_t, 1> sdata)
 {
     auto item = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 
     const int bra = item.get_group_linear_id();
     const int i = bra / num_basis;
     const int j = bra % num_basis;
-    const size_t l = item.get_local_linear_id();
+    const size_t lid = item.get_local_linear_id();
+    const int lsize  = item.get_local_range(0);
 
-    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
-        s_F_ij[0] = 0.0;
-    }
-    item.barrier(sycl::access::fence_space::local_space);
+    real_t lsum = 0.0;
 
-    real_t sum = 0.0;
-    if (l < num_basis) {
+    for (int l = lid; l < num_basis; l += lsize) {
         for (int k = 0; k < num_basis; ++k) {
             size_t eid1 = get_1d_indexM4(i, j, k, l, num_basis);
             size_t eid2 = get_1d_indexM4(i, k, j, l, num_basis);
-            sum += (d_eri[eid1] - 0.5 * d_eri[eid2]) * d_density_matrix[k * num_basis + l];
+
+            lsum += (d_eri[eid1] - 0.5 * d_eri[eid2]) *
+                          d_density_matrix[k * num_basis + l];
         }
     }
-//    item.barrier(sycl::access::fence_space::local_space);
-//    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
-//       sycl::ext::oneapi::experimental::printf("<%d-%f> ",l,sum);
-//    }
-//    item.barrier(sycl::access::fence_space::local_space);
 
-//    auto sg = sycl::ext::oneapi::experimental::this_sub_group();
-    auto sg = sycl::ext::oneapi::this_work_item::get_sub_group();
-    sum = reduce_over_group(sg, sum, std::plus<>());
-//    item.barrier(sycl::access::fence_space::local_space);
-//    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
-//       if(bra==0)sycl::ext::oneapi::experimental::printf("<<%d %f>> ",l,sum);
-//    }
+    // ---- block reduction ----
+    sdata[lid] = lsum;
     item.barrier(sycl::access::fence_space::local_space);
 
-    if (sg.leader()) {
-        sycl::atomic_ref<real_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group,
-        sycl::access::address_space::local_space> atomic_F(s_F_ij[0]);
-        atomic_F.fetch_add(sum);
+    for (int offset = lsize >> 1; offset > 0; offset >>=1) {
+        if (lid < offset)
+            sdata[lid] += sdata[lid + offset];
+        item.barrier(sycl::access::fence_space::local_space);
     }
 
-    item.barrier(sycl::access::fence_space::global_and_local);
-//    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
-//       if(bra==0)sycl::ext::oneapi::experimental::printf("<<<%d %f>>> ",l,s_F_ij[0]);
-//    }
-
-    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
-        d_fock_matrix[bra] = s_F_ij[0] + d_core_hamiltonian_matrix[bra];
+    if (lid == 0) {
+        d_fock_matrix[bra] =
+            sdata[0] + d_core_hamiltonian_matrix[bra];
     }
-//    item.barrier(sycl::access::fence_space::local_space);
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_UHF_kernel( const double *d_density_matrix_a, const double *d_density_matrix_b, const double *d_core_hamiltonian_matrix, const double *d_eri, double *d_fock_matrix_a, double *d_fock_matrix_b, int num_basis, sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij);
 inline void computeFockMatrix_UHF_kernel(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, int num_basis,
       sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij)
-//                                  real_t *s_Fa_ij, real_t *s_Fb_ij)
+//                                  real_t s_Fa_ij, real_t s_Fb_ij)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int bra = item_ct1.get_group(2);
+    auto item = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+
+    const int bra = item.get_group_linear_id();
     const int i = bra / num_basis;
     const int j = bra % num_basis;
+    const size_t lid = item.get_local_linear_id();
+    const int lsize = item.get_local_range(0);
 
     // 2-fold symmetry (vertical)
     /*
@@ -323,58 +309,39 @@ inline void computeFockMatrix_UHF_kernel(const real_t* d_density_matrix_a, const
     const int lid = num_basis * j + i;
     */
 
-//    const size_t l = item_ct1.get_local_range(2) * item_ct1.get_local_id(1) +
-//                     item_ct1.get_local_id(2);
-    const size_t l = item_ct1.get_local_linear_id();
-
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
+    if (lid == 0) {
         s_Fa_ij[0] = 0.0;
         s_Fb_ij[0] = 0.0;
     }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
+    item.barrier(sycl::access::fence_space::local_space);
 
     real_t sum_a = 0.0;
     real_t sum_b = 0.0;
-    size_t eid1, eid2;
-    if (l < num_basis) {
+    for (int l = lid; l < num_basis; l += lsize) {
         for (int k = 0; k < num_basis; ++k) {
-            eid1 = get_1d_indexM4(i, j, k, l, num_basis);
-            //eid2 = get_1d_indexM4(i, l, k, j, num_basis);
-            eid2 = get_1d_indexM4(i, k, j, l, num_basis);
+            size_t eid1 = get_1d_indexM4(i, j, k, l, num_basis);
+            size_t eid2 = get_1d_indexM4(i, k, j, l, num_basis);
             sum_a += (d_density_matrix_a[num_basis * k + l]+d_density_matrix_b[num_basis * k + l]) * d_eri[eid1] - d_density_matrix_a[num_basis * k + l] * d_eri[eid2];
             sum_b += (d_density_matrix_a[num_basis * k + l]+d_density_matrix_b[num_basis * k + l]) * d_eri[eid1] - d_density_matrix_b[num_basis * k + l] * d_eri[eid2];
         }
     }
+    // ---- block-wide reduction ----
+    s_Fa_ij[lid] = sum_a;
+    s_Fb_ij[lid] = sum_b;
+    item.barrier(sycl::access::fence_space::local_space);
 
-    for (int offset = 16; offset > 0; offset /= 2) {
-        sum_a += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), sum_a, offset);
-        sum_b += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), sum_b, offset);
+    for (int offset = lsize >> 1; offset > 0; offset >>= 1) {
+        if (lid < offset) {
+            s_Fa_ij[lid] += s_Fa_ij[lid + offset];
+            s_Fb_ij[lid] += s_Fb_ij[lid + offset];
+        }
+        item.barrier(sycl::access::fence_space::local_space);
     }
 
-    if (item_ct1.get_local_id(2) == 0) {
-
-        sycl::atomic_ref<real_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space> atomic_Fa(s_Fa_ij[0]);
-        sycl::atomic_ref<real_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space> atomic_Fb(s_Fb_ij[0]);
-
-        // 加算操作
-        atomic_Fa.fetch_add(sum_a);
-        atomic_Fb.fetch_add(sum_b);
-/*
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_Fa_ij, sum_a);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_Fb_ij, sum_b);
-*/
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
+    // ---- write result ----
+    if (lid == 0) {
         d_fock_matrix_a[bra] = s_Fa_ij[0] + d_core_hamiltonian_matrix[bra];
         d_fock_matrix_b[bra] = s_Fb_ij[0] + d_core_hamiltonian_matrix[bra];
-        //g_fock[uid] = g_fock[lid] = s_F_ij[0] + d_core_hamiltonian_matrix[uid];   // 2-fold symmetry
-        //g_fock[bra] = s_F_ij[0];  // use cuBLAS
     }
 }
 

@@ -13,7 +13,6 @@
  */
 
 #include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 #include "gpu_manager.hpp"
 #include "int1e.hpp"
 #include "int2e.hpp"
@@ -25,8 +24,6 @@
 #include <tuple>     // std::tuple
 #include <algorithm> // std::reverse
 #include <fstream>
-//#include <dpct/lib_common_utils.hpp>
-//#include <dpct/blas_utils.hpp>
 #include <oneapi/mkl.hpp>
 #include <oneapi/mkl/lapack.hpp>
 #include <thread>
