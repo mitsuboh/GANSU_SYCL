@@ -1,1 +1,1 @@
-cpx -fsycl -DPROFILE_ENABLED -I../include_sycl ../src_sycl/*.cpp -qmkl -o HF_main.exe
+icpx -fsycl -DPROFILE_ENABLED -I../include_sycl ../src_sycl/*.cpp -qmkl -o HF_main.exe -lopenCL
