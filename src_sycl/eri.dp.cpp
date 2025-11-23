@@ -139,8 +139,10 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
 }
 
 void ERI_RI::precomputation() {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue q_ct1;
+    sycl::device dev_ct1 = q_ct1.get_device();
     // compute the intermediate matrix B of the auxiliary basis functions
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
@@ -203,6 +205,31 @@ void ERI_RI::precomputation() {
                     });
             });
 
+real_t* keys_begin =
+    &schwarz_upper_bound_factors.device_ptr()
+        [shell_pair_type_infos[pair_idx].start_index];
+
+real_t* keys_end = keys_begin + shell_pair_type_infos[pair_idx].count;
+
+size_t2* values_begin =
+    &d_primitive_shell_pair_indices
+        [shell_pair_type_infos[pair_idx].start_index];
+size_t count = shell_pair_type_infos[pair_idx].count;
+
+// zip(keys, values)
+auto zipped_begin = dpl::make_zip_iterator(keys_begin, values_begin);
+auto zipped_end   = dpl::make_zip_iterator(keys_end,   values_begin + count);
+
+auto policy = dpl::execution::make_device_policy(q_ct1);
+
+// ソート（Schwarz bound の降順）
+dpl::sort(policy, zipped_begin, zipped_end,
+          [](const auto& a, const auto& b) {
+              return std::get<0>(a) > std::get<0>(b);
+          });
+
+pair_idx++;
+/*
             dpct::device_pointer<real_t> keys_begin(
                 &schwarz_upper_bound_factors.device_ptr()
                      [shell_pair_type_infos[pair_idx].start_index]);
@@ -219,9 +246,10 @@ void ERI_RI::precomputation() {
                        std::greater<real_t>());
 
             pair_idx++;
+*/
         }
     }
-    dev_ct1.queues_wait_and_throw();
+    q_ct1.wait_and_throw();
 
     // compute upper bounds of  aux-shell
     gpu::computeAuxiliarySchwarzUpperBounds(
