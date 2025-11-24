@@ -393,20 +393,7 @@ inline void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed,
     J_open   = reduce_over_group(sg, J_open, std::plus<>());
     K_closed = reduce_over_group(sg, K_closed, std::plus<>());
     K_open   = reduce_over_group(sg, K_open, std::plus<>());
-/*
-    for (int offset = 16; offset > 0; offset /= 2) {
-        J_closed += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), J_closed,
-            offset);
-        J_open += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), J_open, offset);
-        K_closed += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), K_closed,
-            offset);
-        K_open += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), K_open, offset);
-    }
-*/
+
     item.barrier(sycl::access::fence_space::local_space);
 
 //    if (item_ct1.get_local_id(2) == 0) {
@@ -422,16 +409,6 @@ inline void computeFockMatrix_ROHF_kernel(const real_t* d_density_matrix_closed,
         atomic_J_open.fetch_add(J_open);
         atomic_K_closed.fetch_add(K_closed);
         atomic_K_open.fetch_add(K_open);
-/*
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_J_closed_ij.get_pointer(), J_closed);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_J_open_ij.get_pointer(), J_open);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_K_closed_ij.get_pointer(), K_closed);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            s_K_open_ij.get_pointer(), K_open);
-*/
     }
     item.barrier(sycl::access::fence_space::local_space);
 
@@ -506,25 +483,7 @@ inline void computeUnifiedFockMatrix_ROHF_kernel(
  * @details This function computes the trace of a matrix.
  */
 //SYCL_EXTERNAL void getMatrixTrace(const double *d_matrix, double *d_trace, const int num_basis, double &s_trace);
-inline void getMatrixTrace(const double *d_matrix, double *d_trace,
-                                  const int num_basis, double &s_trace)
-{
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    if (item_ct1.get_local_id(2) >= num_basis) return;
-
-    if (item_ct1.get_local_id(2) == 0) {
-        s_trace = 0;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &s_trace, d_matrix[num_basis * item_ct1.get_local_id(2) +
-                           item_ct1.get_local_id(2)]);
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-    if (item_ct1.get_local_id(2) == 0) {
-        d_trace[0] = s_trace;
-    }
-}
+// Embeded into gpu_manager
 
 /**
  * @brief CUDA kernel for computing the initial Fock matrix in GWH method

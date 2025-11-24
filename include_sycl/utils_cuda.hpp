@@ -17,7 +17,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "types.hpp"
 
 namespace gansu::gpu {

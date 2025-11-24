@@ -18,7 +18,6 @@
 #define INT1E_CUH
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "types.hpp"
 #include "utils_cuda.hpp"
 #include "boys.hpp"
@@ -38,9 +37,9 @@ inline double calc_dist_GPU(const sycl::double3 &coord1,
 }
 
 inline double calc_Norms(double alpha, double beta, int ijk, int lmn) {
-    return dpct::pow(2.0, ijk + lmn) * dpct::pow(2.0 / M_PI, 1.5) *
-           dpct::pow(alpha, (2.0 * ijk + 3.0) / 4.0) *
-           dpct::pow(beta, (2.0 * lmn + 3.0) / 4.0);
+    return sycl::pow(2.0, ijk + lmn) * sycl::pow(2.0 / M_PI, 1.5) *
+           sycl::pow(alpha, (2.0 * ijk + 3.0) / 4.0) *
+           sycl::pow(beta, (2.0 * lmn + 3.0) / 4.0);
 }
 
 inline int calc_result_index(int y, int x, int sumCGTO) {

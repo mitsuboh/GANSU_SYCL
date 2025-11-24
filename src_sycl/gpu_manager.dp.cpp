@@ -13,6 +13,7 @@
  */
 
 #include <sycl/sycl.hpp>
+#include <cmath>
 #include "gpu_manager.hpp"
 #include "int1e.hpp"
 #include "int2e.hpp"
@@ -493,7 +494,8 @@ void computeCoreHamiltonianMatrix(
 //    sycl::device wk_dev{sycl::default_selector_v};
 //    sycl::context wk_ctx{wk_dev} ;
 
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclsolver();
+//    sycl::queue workq;
     // compute the core Hamiltonian matrix
     const int threads_per_block = 128; // the number of threads per block
 
@@ -789,7 +791,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
                               real_t *d_orbital_energies) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclsolver();
     // allocate temporary memory
     real_t* d_tempMatrix = nullptr;
     real_t* d_tempSymFockMatrix = nullptr;
@@ -1093,9 +1095,9 @@ void computeFockMatrix_ROHF(
     const ROHF_ParameterSet ROH_parameters, real_t *d_fock_matrix_closed,
     real_t *d_fock_matrix_open, real_t *d_fock_matrix, const int num_closed,
     const int num_open, const int num_basis) try {
-//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue workq;
+	//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+	//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& workq = GPUHandle::syclsolver();
     real_t* d_temp_F_MO_closed = nullptr; // Fock matrix for the closed-shell MO
     real_t* d_temp_F_MO_open = nullptr; // Fock matrix for the open-shell MO
     real_t* d_temp_R_MO = nullptr; /// unified Fock matrix R_MO
@@ -1449,7 +1451,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
                             const bool is_include_transform) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclsolver();
     real_t* d_tempFPS;
     real_t* d_tempSPF;
     real_t* d_tempMatrix1;
@@ -1687,7 +1689,7 @@ catch (sycl::exception const &exc) {
      const int num_basis) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclsolver();
     const real_t cx = 1.75;
 
     // allocate temporary memory
@@ -2028,7 +2030,7 @@ void compute_RI_IntermediateMatrixB(
     const bool verbose) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclsolver();
 
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;

@@ -20,13 +20,9 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <iostream>
-#include <dpct/blas_utils.hpp>
+#include <mkl.h>
 
-#include <dpct/lapack_utils.hpp>
-
-#include <dpct/lib_common_utils.hpp>
 
 namespace gansu{
 
