@@ -15,10 +15,8 @@
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "eri.hpp"
 #include "utils_cuda.hpp"
-#include <dpct/dpl_utils.hpp>
 
 namespace gansu{
 
@@ -139,10 +137,7 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
 }
 
 void ERI_RI::precomputation() {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue q_ct1;
-    sycl::device dev_ct1 = q_ct1.get_device();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclsolver();
     // compute the intermediate matrix B of the auxiliary basis functions
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
@@ -229,24 +224,6 @@ dpl::sort(policy, zipped_begin, zipped_end,
           });
 
 pair_idx++;
-/*
-            dpct::device_pointer<real_t> keys_begin(
-                &schwarz_upper_bound_factors.device_ptr()
-                     [shell_pair_type_infos[pair_idx].start_index]);
-            dpct::device_pointer<real_t> keys_end(
-                &schwarz_upper_bound_factors.device_ptr()
-                     [shell_pair_type_infos[pair_idx].start_index] +
-                shell_pair_type_infos[pair_idx].count);
-            dpct::device_pointer<size_t2> values_begin(
-                &d_primitive_shell_pair_indices[shell_pair_type_infos[pair_idx]
-                                                    .start_index]);
-
-            dpct::sort(oneapi::dpl::execution::make_device_policy(q_ct1),
-                       keys_begin, keys_end, values_begin,
-                       std::greater<real_t>());
-
-            pair_idx++;
-*/
         }
     }
     q_ct1.wait_and_throw();
@@ -261,18 +238,22 @@ pair_idx++;
         verbose
     );
 
-    for(const auto& s : auxiliary_shell_type_infos_){
-        dpct::device_pointer<real_t> keys_begin(
-            &auxiliary_schwarz_upper_bound_factors.device_ptr()[s.start_index]);
-        dpct::device_pointer<real_t> keys_end(
-            &auxiliary_schwarz_upper_bound_factors.device_ptr()[s.start_index] +
-            s.count);
-        dpct::device_pointer<PrimitiveShell> values_begin(
-            &auxiliary_primitive_shells_.device_ptr()[s.start_index]);
+    for (const auto &s : auxiliary_shell_type_infos_) {
+        real_t *keys_begin = auxiliary_schwarz_upper_bound_factors.device_ptr() + s.start_index;
+        real_t *keys_end   = keys_begin + s.count;
 
-        dpct::sort(oneapi::dpl::execution::make_device_policy(q_ct1),
-                   keys_begin, keys_end, values_begin, std::greater<real_t>());
+        PrimitiveShell *values_begin =
+            auxiliary_primitive_shells_.device_ptr() + s.start_index;
+
+        oneapi::dpl::sort_by_key(
+            oneapi::dpl::execution::make_device_policy(q_ct1),
+            keys_begin,
+            keys_end,
+            values_begin,
+            std::greater<real_t>()  // or custom lambda
+        );
     }
+
 
 
     gpu::compute_RI_IntermediateMatrixB(
@@ -294,7 +275,7 @@ pair_idx++;
         verbose
         );
 
-    dpct::dpct_free(d_primitive_shell_pair_indices, q_ct1);
+    sycl::free(d_primitive_shell_pair_indices, q_ct1);
     /*
     if(1){
         // copy the intermediate matrix B to the host memory

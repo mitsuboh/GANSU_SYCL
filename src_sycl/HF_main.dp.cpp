@@ -20,7 +20,6 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
