@@ -28,34 +28,40 @@
  #endif
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "int2c2e.hpp"
 #include "boys.hpp"
- #include "types.hpp"
- #include "utils_cuda.hpp"
- #include "parameters.h"
- #include "compile_flag.hpp"
+#include "types.hpp"
+#include "utils_cuda.hpp"
+#include "parameters.h"
+#include "compile_flag.hpp"
 
- namespace gansu::gpu{
+namespace gansu::gpu{
 
-    __inline__ double calcNormsWOFact2_3center(double alpha, double beta, double gamma, int sum_ang1,  int sum_ang2,  int sum_ang3){
-        return dpct::pow(2.0, sum_ang1 + sum_ang2 + sum_ang3)
-               // * pow(factorial2_gpu(2.0*i1-1.0)*factorial2_gpu(2.0*j1-1.0)*factorial2_gpu(2.0*k1-1.0)*factorial2_gpu(2.0*l1-1.0)*factorial2_gpu(2.0*m1-1.0)*factorial2_gpu(2.0*n1-1.0)*factorial2_gpu(2.0*i2-1.0)*factorial2_gpu(2.0*k2-1.0)*factorial2_gpu(2.0*m2-1.0), -0.5)
-               * dpct::pow(2.0 / M_PI, 2.25) *
-               dpct::pow(alpha, (2.0 * (sum_ang1) + 3.0) / 4.0) *
-               dpct::pow(beta, (2.0 * (sum_ang2) + 3.0) / 4.0) *
-               dpct::pow(gamma, (2.0 * (sum_ang3) + 3.0) / 4.0);
-    }
+__inline__ double calcNormsWOFact2_3center(double alpha, double beta, double gamma, int sum_ang1,  int sum_ang2,  int sum_ang3){
+    return sycl::pow(2.0, sum_ang1 + sum_ang2 + sum_ang3)
+           // * pow(factorial2_gpu(2.0*i1-1.0)*factorial2_gpu(2.0*j1-1.0)*factorial2_gpu(2.0*k1-1.0)*factorial2_gpu(2.0*l1-1.0)*factorial2_gpu(2.0*m1-1.0)*factorial2_gpu(2.0*n1-1.0)*factorial2_gpu(2.0*i2-1.0)*factorial2_gpu(2.0*k2-1.0)*factorial2_gpu(2.0*m2-1.0), -0.5)
+           * sycl::pow(2.0 / M_PI, 2.25) *
+           sycl::pow(alpha, (2.0 * (sum_ang1) + 3.0) / 4.0) *
+           sycl::pow(beta, (2.0 * (sum_ang2) + 3.0) / 4.0) *
+           sycl::pow(gamma, (2.0 * (sum_ang3) + 3.0) / 4.0);
+}
     
 
-    __inline__ void addToResult_3center(double res, double *g_result, int p, int q, int r, int nCGTO, int nAux, bool is_prim_id_not_equal, const real_t* d_cgto_nomalization_factors, const real_t* d_auxiliary_cgto_nomalization_factors){
-        res *= d_cgto_nomalization_factors[p] * d_cgto_nomalization_factors[q] * d_auxiliary_cgto_nomalization_factors[r];
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_result[r * nCGTO * nCGTO + p * nCGTO + q], res);
-        if (is_prim_id_not_equal)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_result[r * nCGTO * nCGTO + q * nCGTO + p], res);
+__inline__ void addToResult_3center(double res, double *g_result, int p, int q, int r, int nCGTO, int nAux, bool is_prim_id_not_equal, const real_t* d_cgto_nomalization_factors, const real_t* d_auxiliary_cgto_nomalization_factors){
+    res *= d_cgto_nomalization_factors[p] * d_cgto_nomalization_factors[q] * d_auxiliary_cgto_nomalization_factors[r];
+
+    double* addr = &g_result[r * nCGTO * nCGTO + p * nCGTO + q];
+    sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>
+         atomic_val(*addr);
+    atomic_val.fetch_add(res);
+    if (is_prim_id_not_equal)
+    {
+    double* addr2 = &g_result[r * nCGTO * nCGTO + q * nCGTO + p];
+    sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>
+        atomic_val2(*addr2);
+    atomic_val2.fetch_add(res);
     }
+}
 
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//

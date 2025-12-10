@@ -13,7 +13,6 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <cmath>
 
 #include "boys.hpp"
@@ -48,14 +47,20 @@ namespace gansu::gpu{
 
 
 
-
 // すべての行列要素にatomicAddを行う（汎用カーネルで使用）
-void AddToResult(double result, double *g_V, int y, int x, int sumCGTO, bool flag){
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_V[y * sumCGTO + x], result);
-    if(flag){
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_V[x * sumCGTO + y], result);
+inline void AddToResult(double result, double *g_V, int y, int x, int sumCGTO, bool flag)
+{
+    double *p1 = &g_V[y * sumCGTO + x];
+    sycl::atomic_ref< double, sycl::memory_order::relaxed,
+        sycl::memory_scope::device, sycl::access::address_space::global_space > a1(*p1);
+    a1.fetch_add(result);
+
+    if (flag) {
+        double *p2 = &g_V[x * sumCGTO + y];
+        sycl::atomic_ref<double, sycl::memory_order::relaxed,
+        sycl::memory_scope::device, sycl::access::address_space::global_space> a2(*p2);
+
+        a2.fetch_add(result);
     }
 }
 
@@ -257,35 +262,16 @@ SYCL_EXTERNAL void compute_kinetic_energy_integral(real_t* g_overlap, real_t* g_
                                                      b.exponent, Dz
                                                      )));
 
-            // AddToResult(
-            //     result_S, 
-            //     g_overlap, 
-            //     size_a+lmn_a, size_b+lmn_b, 
-            //     num_basis, 
-            //     primitive_index_a != primitive_index_b
-            // );
-            // AddToResult(
-            //     result_K, 
-            //     g_kinetic, 
-            //     size_a+lmn_a, size_b+lmn_b, 
-            //     num_basis, 
-            //     primitive_index_a != primitive_index_b
-            // );
+             if( (a.shell_type == b.shell_type) && (size_a==size_b) && (lmn_a > lmn_b)) continue;
 
-            if( (a.shell_type == b.shell_type) && (size_a==size_b) && (lmn_a > lmn_b)) continue;
+             bool double_condition = (size_a == size_b) && (primitive_index_a != primitive_index_b);
+             double factor = double_condition ? 2.0 : 1.0;
+             int iy = size_a + lmn_a;
+             int ix = size_b + lmn_b;
 
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_overlap[calc_result_index(size_a + lmn_a, size_b + lmn_b,
-                                             num_basis)],
-                result_S *
-                    (1.0 + int((size_a == size_b) &&
-                               (primitive_index_a != primitive_index_b))));
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_kinetic[calc_result_index(size_a + lmn_a, size_b + lmn_b,
-                                             num_basis)],
-                result_K *
-                    (1.0 + int((size_a == size_b) &&
-                               (primitive_index_a != primitive_index_b))));
+            AddToResult(result_S * factor, g_overlap, iy, ix, num_basis, false);
+            AddToResult(result_K * factor, g_kinetic, iy, ix, num_basis, false);
+
         }
     }
 }
@@ -428,21 +414,13 @@ SYCL_EXTERNAL void compute_nuclear_attraction_integral(real_t* g_nucattr, const 
                 result_V = (-g_atom[atom_index].atomic_number) * coefandNorm * Norm_A * Norm_B * temp;
 
 
-                // AddToResult(
-                //     result_V, 
-                //     g_nucattr, 
-                //     size_a+lmn_a, size_b+lmn_b, 
-                //     num_basis, 
-                //     primitive_index_a != primitive_index_b
-                // );
-
-                dpct::atomic_fetch_add<
-                    sycl::access::address_space::generic_space>(
-                    &g_nucattr[calc_result_index(size_a + lmn_a, size_b + lmn_b,
-                                                 num_basis)],
-                    result_V *
-                        (1.0 + int((size_a == size_b) &&
-                                   (primitive_index_a != primitive_index_b))));
+                AddToResult(
+                     result_V, 
+                     g_nucattr, 
+                     size_a+lmn_a, size_b+lmn_b, 
+                     num_basis, 
+                     primitive_index_a != primitive_index_b
+                );
             }
         }
     }

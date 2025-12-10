@@ -20,7 +20,6 @@
  * @details This file contains the implementation of the HF class.
  */
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <cmath> // sqrt
 #include <cassert>
 #include <algorithm> // std::sort
@@ -69,8 +68,6 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     geometry_optimization(parameters.get<int>("geometry_optimization")),
     geometry_optimization_method(parameters.get<std::string>("geometry_optimization_method"))
 {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
       sycl::queue& workq = gpu::GPUHandle::syclsolver();
     // print all the values of boys function for the test (temporary implementation)
     if(verbose){

@@ -18,7 +18,7 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "types.hpp"
 #include "rohf.hpp"
 #include "gpu_manager.hpp"

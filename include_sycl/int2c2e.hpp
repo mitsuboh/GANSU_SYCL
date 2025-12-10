@@ -24,7 +24,7 @@
 #define N_ORBITAL_TYPE_AUX 5
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include <stdexcept>
 
 #include "boys.hpp"
@@ -78,20 +78,27 @@ constexpr int loop_to_ang_RI[7][28][3] =
 
 
     __inline__ double calcNormsWOFact2_2center(double alpha, double gamma, int ang1, int ang2){
-        return dpct::pow(2.0, ang1 + ang2) * dpct::pow(2.0 / M_PI, 1.5) *
-               dpct::pow(alpha, (2.0 * ang1 + 3.0) / 4.0) *
-               dpct::pow(gamma, (2.0 * ang2 + 3.0) / 4.0);
+        return sycl::pow(2.0, ang1 + ang2) * sycl::pow(2.0 / M_PI, 1.5) *
+               sycl::pow(alpha, (2.0 * ang1 + 3.0) / 4.0) *
+               sycl::pow(gamma, (2.0 * ang2 + 3.0) / 4.0);
     }
     
 
     __inline__ void addToResult_2center(double res, double *g_result, int p, int r, int nAux, bool is_prim_id_not_equal, const real_t* d_auxiliary_cgto_nomalization_factors){
         res *= d_auxiliary_cgto_nomalization_factors[p] * d_auxiliary_cgto_nomalization_factors[r];
 
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_result[p * nAux + r], res);
+        double* addr = &g_result[p * nAux + r];
+        sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space> 
+            atomic_val(*addr);
+        atomic_val.fetch_add(res);
+
+        double* addr2 = &g_result[r * nAux + p];
         if (is_prim_id_not_equal)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_result[r * nAux + p], res);
+        {
+        sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space> 
+            atomic_val2(*addr2);
+        atomic_val2.fetch_add(res);
+        }
     }
  
 /*

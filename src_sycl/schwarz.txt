@@ -17,7 +17,7 @@
 #define PP_TYPES 9
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "int2c2e.hpp"
     // 順序合わせたやつ
 //inline dpct::constant_memory<int, 3> loop_to_ang_RI_(
@@ -78,9 +78,9 @@ double calculate_upper_bound_factor_ss(
     return a.coefficient * b.coefficient * c.coefficient * d.coefficient *
            calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 0,
                      0, 0, 0, 0, 0, 0, 0, 0) *
-           2.0 * dpct::pow(M_PI, 2.5) /
+           2.0 * sycl::pow(M_PI, 2.5) /
            ((a.exponent + b.exponent) * (c.exponent + d.exponent) *
-            dpct::pow(a.exponent + b.exponent + c.exponent + d.exponent, 0.5)) *
+            sycl::pow(a.exponent + b.exponent + c.exponent + d.exponent, 0.5)) *
            sycl::exp(-(a.exponent * b.exponent) *
                          ((a.coordinate.x - b.coordinate.x) *
                               (a.coordinate.x - b.coordinate.x) +
@@ -130,7 +130,7 @@ void calculate_upper_bound_factors_sp(
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 1, 0,
                   0, 0, 0, 0, 1, 0, 0) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +
@@ -182,7 +182,7 @@ void calculate_upper_bound_factors_pp(
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 1, 0, 0,
                   1, 0, 0, 1, 0, 0, 1) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +

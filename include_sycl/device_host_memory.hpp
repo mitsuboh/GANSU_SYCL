@@ -22,7 +22,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <iostream>
 #include <stdexcept>
 #include <cstring>
@@ -64,8 +63,6 @@ public:
      * Frees the allocated device and host memory if they exist.
      */
     virtual ~CudaMemoryManager() {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = gpu::GPUHandle::syclsolver();
         if (device_ptr_) {
             sycl::free(device_ptr_, workq);
@@ -144,10 +141,7 @@ public:
     }
 
     void allocate() override {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = gpu::GPUHandle::syclsolver();
-        dpct::err0 err;
 
         if (allocate_host_memory_in_advance) try {
             (this->host_ptr_) = (typename std::remove_reference<
@@ -173,11 +167,12 @@ public:
     }
 
     void toDevice() override {
+        sycl::queue& workq = gpu::GPUHandle::syclsolver();
         if (!this->device_ptr_) {
             allocate();
         }
         if (this->device_ptr_ && this->host_ptr_) {
-            dpct::get_in_order_queue()
+            workq 
                 .memcpy(this->device_ptr_, this->host_ptr_,
                         this->size_ * sizeof(T))
                 .wait();
@@ -185,8 +180,6 @@ public:
     }
 
     void toHost() override {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = gpu::GPUHandle::syclsolver();
         if (!this->host_ptr_) try {
                 (this->host_ptr_) = (typename std::remove_reference<

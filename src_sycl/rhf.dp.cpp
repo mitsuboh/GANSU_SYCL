@@ -18,7 +18,7 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "rhf.hpp"
 
 #include <limits> // numeric_limits<double>::max();

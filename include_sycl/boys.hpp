@@ -23,7 +23,6 @@
 #define BOYS_CUH
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "parameters.h"
 
 #ifndef M_PI

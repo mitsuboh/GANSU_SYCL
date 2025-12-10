@@ -21,7 +21,7 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "hf.hpp"
 #include "rohf.hpp"
 #include <memory> // std::unique_ptr
@@ -244,8 +244,9 @@ public:
      * @details This function updates the Fock matrix with damping.
      */
     void get_new_fock_matrix() override {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
         if (first_iteration_) { // First iteration: no damping, just store the density matrix and the Fock matrix
             first_iteration_ = false;
             q_ct1.memcpy(prev_density_matrix_a.device_ptr(),
@@ -339,8 +340,9 @@ public:
      * @details This function updates the Fock matrix with damping.
      */
     void get_new_fock_matrix() override {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
         { // alpha spin
             // Compute the error matrix
             gpu::computeDIISErrorMatrix(
@@ -545,7 +547,8 @@ public:
             hf_.get_num_basis()
         );
 
-        dpct::get_in_order_queue().memcpy(
+        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        workq.memcpy(
             hf_.get_coefficient_matrix_b().device_ptr(),
             hf_.get_coefficient_matrix_a().device_ptr(),
             hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
@@ -576,7 +579,8 @@ public:
             hf_.get_coefficient_matrix_a().device_ptr(),
             hf_.get_num_basis()
         );
-        dpct::get_in_order_queue().memcpy(
+        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        workq.memcpy(
             hf_.get_coefficient_matrix_b().device_ptr(),
             hf_.get_coefficient_matrix_a().device_ptr(),
             hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
@@ -605,8 +609,9 @@ public:
     ~InitialGuess_UHF_Density() = default;
 
     void guess() override {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
         // initial guess from the density matrix given as an argument
         q_ct1.memcpy(hf_.get_density_matrix_a().device_ptr(), density_matrix_a_,
                      hf_.get_num_basis() * hf_.get_num_basis() *
@@ -722,8 +727,9 @@ public:
 */
 
     void guess() override {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
         // allocate and initialize the density matrices of alpha and beta spins
         std::unique_ptr<real_t[]> density_matrix_alpha(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
         std::unique_ptr<real_t[]> density_matrix_beta(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
