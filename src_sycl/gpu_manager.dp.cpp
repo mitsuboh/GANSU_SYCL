@@ -13,7 +13,7 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+#include <cmath>
 #include "gpu_manager.hpp"
 #include "int1e.hpp"
 #include "int2e.hpp"
@@ -25,10 +25,8 @@
 #include <tuple>     // std::tuple
 #include <algorithm> // std::reverse
 #include <fstream>
-#include <dpct/lib_common_utils.hpp>
-
-//#include <dpct/blas_utils.hpp>
-
+#include <oneapi/mkl.hpp>
+#include <oneapi/mkl/lapack.hpp>
 #include <thread>
 
 namespace gansu::gpu{
@@ -52,11 +50,8 @@ namespace gansu::gpu{
  */
 int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues,
                        real_t *d_eigenvectors, const int size) try {
-//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     //cusolverManager cusolver;
     sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
-//    int cusolverParams = GPUHandle::cusolverParams();
 
     size_t workspaceInBytesOnDevice;
     size_t workspaceInBytesOnHost;
@@ -360,7 +355,7 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
  * @param size Number of the vector.
  */
 void invertSqrtElements(real_t* d_vectors, const size_t size, const double threshold) {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     size_t blockSize = 256;
     size_t numBlocks = (size + blockSize - 1) / blockSize;
     /*
@@ -385,7 +380,7 @@ void invertSqrtElements(real_t* d_vectors, const size_t size, const double thres
  * @details The size of the matrix is size x size.
  */
  void transposeMatrixInPlace(real_t* d_matrix, const int size) {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     sycl::range<2> blockSize(WARP_SIZE, WARP_SIZE);
     sycl::range<2> gridSize((size + WARP_SIZE - 1) / WARP_SIZE,
                         (size + WARP_SIZE - 1) / WARP_SIZE);
@@ -441,15 +436,14 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
  * @return Trace of the matrix (the sum of the diagonal elements)
  */
  real_t computeMatrixTrace(const real_t *d_matrix, const int size) try {
-  sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue workq;
     if(size > 1024){ // 1024 is the maximum number of threads per block. If the size is larger than 1024, two or more blocks are required.
         THROW_EXCEPTION("Too many basis functions.");
     }
 
-//    dpct::err0 err;
     real_t zero = 0;
-    real_t* d_trace = sycl::malloc_device<real_t>(1, syclsolverHandle);
-    syclsolverHandle.memcpy(d_trace, &zero, sizeof(real_t)).wait();
+    real_t* d_trace = sycl::malloc_device<real_t>(1, workq);
+    workq.memcpy(d_trace, &zero, sizeof(real_t)).wait();
 
     real_t h_trace = 0.0;
 
@@ -459,16 +453,16 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
     Adjust the work-group size if needed.
     */
 //    void getMatrixTrace(queue& q, const float* d_matrix, float* d_trace, int num_basis) {
-    syclsolverHandle.submit([&](sycl::handler& cgh) {
+    workq.submit([&](sycl::handler& cgh) {
         auto red = sycl::reduction(d_trace, sycl::plus<>());
         cgh.parallel_for(sycl::range<1>(size), red, [=](sycl::id<1> i, auto& sum) {
             int idx = i[0];
             sum += d_matrix[idx * size + idx];
         });
     }).wait();
-    syclsolverHandle.memcpy(&h_trace, d_trace, sizeof(real_t)).wait();
+    workq.memcpy(&h_trace, d_trace, sizeof(real_t)).wait();
 
-    sycl::free(d_trace,syclsolverHandle);
+    sycl::free(d_trace, workq);
     return h_trace;
 }
  catch (sycl::exception const &exc) {
@@ -501,8 +495,7 @@ void computeCoreHamiltonianMatrix(
 //    sycl::context wk_ctx{wk_dev} ;
 
     sycl::queue& workq = GPUHandle::syclsolver();
-    sycl::device work_dev = workq.get_device();
-    sycl::context wk_ctx{work_dev} ;
+//    sycl::queue workq;
     // compute the core Hamiltonian matrix
     const int threads_per_block = 128; // the number of threads per block
 
@@ -521,12 +514,17 @@ void computeCoreHamiltonianMatrix(
     streams.reserve(N);
     std::vector<sycl::queue> V_streams;
     V_streams.reserve(N);
+
 //    std::vector<dpct::queue_ptr> streams(N);
 //    std::vector<dpct::queue_ptr> V_streams(N);
     
     for (int i = 0; i < N; i++) {
-        streams.emplace_back(wk_ctx, work_dev);
-        V_streams.emplace_back(wk_ctx, work_dev);
+//        streams.emplace_back(sycl::queue{sycl::default_selector_v,
+//                             sycl::property::queue::in_order()});
+//        V_streams.emplace_back(sycl::queue{sycl::default_selector_v,
+//                             sycl::property::queue::in_order()});
+        streams.emplace_back(GPUHandle::syclsolver());
+        V_streams.emplace_back(GPUHandle::syclsolver());
     }
 
     // Call the kernel functions from (s0|s1),... (e.g. (f|f), (d|f), (d|d), (s|d), (p|d), (d|d) for s, p, d, f shells)
@@ -569,15 +567,6 @@ void computeCoreHamiltonianMatrix(
                     num_shell_pairs, num_basis);
             });
             });
-/*
-            dpct::kernel_launcher::launch(
-                launch_overlap_kinetic_kernel, num_blocks,
-                threads_per_block, 0, streams[index],
-                s0, s1, d_overlap_matrix,
-                d_core_hamiltonian_matrix, d_primitive_shells,
-                d_cgto_normalization_factors, shell_s0, shell_s1,
-                num_shell_pairs, num_basis);
-*/
             V_streams[index].submit([&](sycl::handler& cgh){
 //            cgh.depends_on(e1); //明示的依存
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
@@ -588,14 +577,6 @@ void computeCoreHamiltonianMatrix(
                     shell_s1, num_shell_pairs, num_basis, d_boys_grid);
             });
             });
-/*
-            dpct::kernel_launcher::launch(
-                launch_nuclear_attraction_kernel, num_blocks,
-                threads_per_block, 0, V_streams[index],
-                s0, s1, d_core_hamiltonian_matrix, d_primitive_shells,
-                d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0,
-                shell_s1, num_shell_pairs, num_basis, d_boys_grid);
-*/
         }
     }
     // syncronize streams
@@ -688,8 +669,9 @@ void computeERIMatrix(
 //    sycl::device wk_dev{sycl::default_selector_v};
 //    sycl::context wk_ctx{wk_dev} ;
     sycl::queue& workq = GPUHandle::syclsolver();
-    sycl::device work_dev = workq.get_device();
-    sycl::context wk_ctx{work_dev} ;
+//    sycl::device work_dev = workq.get_device();
+//    sycl::context wk_ctx{work_dev} ;
+//    sycl::queue workq;
 
     // compute the electron repulsion integrals
     const int threads_per_block = 256; // the number of threads per block
@@ -720,7 +702,7 @@ void computeERIMatrix(
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
     for (int i = 0; i < num_kernels; i++) {
-        streams.emplace_back(wk_ctx, work_dev);
+        streams.emplace_back(GPUHandle::syclsolver());
 //        streams[i] = dev_ct1.create_queue();
     }
 
@@ -742,7 +724,6 @@ void computeERIMatrix(
 
         const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
         const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
-        const int csid = stream_id++;
 
 //    dpct::dim3 blocks(num_blocks,1,1);
 //    dpct::dim3 threads(threads_per_block,1,1);
@@ -751,8 +732,9 @@ void computeERIMatrix(
       sycl::range<1> blocks(num_blocks);
       sycl::range<1> threads(threads_per_block);
 
-//            streams[csid].submit([&](sycl::handler& cgh){
-            workq.submit([&](sycl::handler& cgh){
+          streams[stream_id].submit([&](sycl::handler& cgh){
+// streams produces wrong result -- needs to debug!!
+//          workq.submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                        [=](sycl::nd_item<1> item_ct1) {
                 launch_eri_kernel(
@@ -764,16 +746,7 @@ void computeERIMatrix(
                   head_ket);
             });
             });
-/*
-        dpct::kernel_launcher::launch(
-            gpu::launch_eri_kernel, num_blocks, threads_per_block,
-            0, streams[stream_id++], s0, s1, s2, s3,
-            d_eri_matrix, d_primitive_shells,
-            d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2,
-            shell_s3, num_braket, schwarz_screening_threshold,
-            d_schwarz_upper_bound_factors, num_basis, d_boys_grid, head_bra,
-            head_ket);
-*/
+
         if(verbose){
             std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2) << shell_type_to_shell_name(s3) << "): ";
             std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
@@ -785,6 +758,7 @@ void computeERIMatrix(
             std::cout << "|braket|= " << num_braket << ", " ;
             std::cout << "num_blocks: " << num_blocks << std::endl;
         }
+        stream_id = stream_id + 1;
     }
 
     // syncronize streams
@@ -823,8 +797,6 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     real_t* d_tempSymFockMatrix = nullptr;
     real_t* d_tempEigenvectors = nullptr;
     real_t* d_tempEigenvalues = nullptr; // if d_orbital_energies is nullptr, the eigenvalues are stored in d_tempEigenvalues
-
-//    dpct::err0 err;
 
     try {
         d_tempMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
@@ -929,7 +901,7 @@ void computeDensityMatrix_RHF(const real_t* d_coefficient_matrix, real_t* d_dens
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -960,7 +932,7 @@ void computeDensityMatrix_UHF(const real_t* d_coefficient_matrix, real_t* d_dens
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -992,7 +964,7 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -1017,7 +989,7 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
  * @details The Fock matrix is given by \f$ F_{\mu\nu} = H_{\mu\nu} + \sum_{\lambda\sigma} D_{\lambda\sigma} ((\mu\nu|\lambda\sigma) - {1 \over 2}(\nu\sigma|\mu\lambda)) \f$.
  */
 void computeFockMatrix_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, const int num_basis) {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     const int warpsPerBlock = (num_basis + WARP_SIZE - 1) / WARP_SIZE;
     const int threadsPerBlock = WARP_SIZE * warpsPerBlock;
     if (threadsPerBlock > 1024) {
@@ -1087,7 +1059,9 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    dpct::get_default_queue().submit([&](sycl::handler& cgh){
+    sycl::queue workq;
+    workq.submit([&](sycl::handler& cgh){
+//    dpct::get_default_queue().submit([&](sycl::handler& cgh){
     sycl::local_accessor<real_t, 1> s_Fa_ij(sycl::range<1>(1), cgh);
     sycl::local_accessor<real_t, 1> s_Fb_ij(sycl::range<1>(1), cgh);
     cgh.parallel_for(
@@ -1121,16 +1095,14 @@ void computeFockMatrix_ROHF(
     const ROHF_ParameterSet ROH_parameters, real_t *d_fock_matrix_closed,
     real_t *d_fock_matrix_open, real_t *d_fock_matrix, const int num_closed,
     const int num_open, const int num_basis) try {
-//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+	//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+	//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = GPUHandle::syclsolver();
     real_t* d_temp_F_MO_closed = nullptr; // Fock matrix for the closed-shell MO
     real_t* d_temp_F_MO_open = nullptr; // Fock matrix for the open-shell MO
     real_t* d_temp_R_MO = nullptr; /// unified Fock matrix R_MO
     real_t* d_temp_matrix1 = nullptr;
     real_t* d_temp_matrix2 = nullptr;
-
-//    dpct::err0 err;
 
     try {
         d_temp_F_MO_closed = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
@@ -1200,7 +1172,9 @@ void computeFockMatrix_ROHF(
         the limit. To get the device limit, query
         info::device::max_work_group_size. Adjust the work-group size if needed.
         */
-        dpct::get_default_queue().submit([&](sycl::handler& cgh){
+        sycl::queue workq;
+        workq.submit([&](sycl::handler& cgh){
+//      dpct::get_default_queue().submit([&](sycl::handler& cgh){
         sycl::local_accessor<real_t, 1> s_J_closed_ij(sycl::range<1>(1), cgh);
         sycl::local_accessor<real_t, 1> s_J_open_ij(sycl::range<1>(1), cgh);
         sycl::local_accessor<real_t, 1> s_K_closed_ij(sycl::range<1>(1), cgh);
@@ -1352,17 +1326,15 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
                                        const real_t *d_density_matrix,
                                        const real_t *d_prev_density_matrix,
                                        const int num_basis) try {
-  sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue workq;
     // allocate temporary memory
     real_t* d_tempDiffFockMatrix = nullptr;
     real_t* d_tempDiffDensityMatrix = nullptr;
     real_t* d_tempMatrix = nullptr;
 
-    dpct::err0 err;
-
-    d_tempDiffFockMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, syclsolverHandle);
-    d_tempDiffDensityMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, syclsolverHandle);
-    d_tempMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, syclsolverHandle);
+    d_tempDiffFockMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+    d_tempDiffDensityMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+    d_tempMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
 
     // calculate the difference between the Fock matrices
     // \f$ F_{\mathrm{diff}} = F_{\mathrm{new}} - F_{\mathrm{old}}  \f$
@@ -1396,9 +1368,9 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
     }
 
     // free the temporary memory
-    sycl::free(d_tempDiffFockMatrix, syclsolverHandle);
-    sycl::free(d_tempDiffDensityMatrix, syclsolverHandle);
-    sycl::free(d_tempMatrix, syclsolverHandle);
+    sycl::free(d_tempDiffFockMatrix, workq);
+    sycl::free(d_tempDiffDensityMatrix, workq);
+    sycl::free(d_tempMatrix, workq);
 
     return alpha;
 }
@@ -1434,11 +1406,11 @@ catch (sycl::exception const &exc) {
  */
 void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha,
              int num_basis) try {
-  sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue workq;
     real_t* d_tempMatrix;
 
 try {
-    d_tempMatrix = sycl::malloc_device<real_t>( num_basis * num_basis, syclsolverHandle);
+    d_tempMatrix = sycl::malloc_device<real_t>( num_basis * num_basis, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1449,10 +1421,10 @@ catch (sycl::exception const& e) {
 
     weightedMatrixSum(d_matrix_old, d_matrix_new, d_tempMatrix, 1.0-alpha, alpha, num_basis);
 
-    syclsolverHandle.memcpy(d_matrix_old, d_tempMatrix, num_basis * num_basis * sizeof(real_t));
-    syclsolverHandle.memcpy(d_matrix_new, d_tempMatrix, num_basis * num_basis * sizeof(real_t)).wait();
+    workq.memcpy(d_matrix_old, d_tempMatrix, num_basis * num_basis * sizeof(real_t));
+    workq.memcpy(d_matrix_new, d_tempMatrix, num_basis * num_basis * sizeof(real_t)).wait();
 
-    sycl::free(d_tempMatrix, syclsolverHandle);
+    sycl::free(d_tempMatrix, workq);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1483,8 +1455,6 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     real_t* d_tempFPS;
     real_t* d_tempSPF;
     real_t* d_tempMatrix1;
-
-    dpct::err0 err;
 
     try {
         d_tempFPS = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
@@ -1557,7 +1527,7 @@ catch (sycl::exception const &exc) {
 void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
                            real_t *d_new_fock_matrix, const int num_prev,
                            const int num_basis) try {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     if (num_prev <= 1){
         THROW_EXCEPTION("DIIS requires at least two previous Fock matrices.");
     }
@@ -1571,8 +1541,6 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     if (h_DIIS_matrix == nullptr) {
         THROW_EXCEPTION("Failed to allocate host memory for DIIS matrix.");
     }
-
-    dpct::err0 err;
 
     try {
         d_DIIS_matrix = sycl::malloc_device<real_t>(num_size * num_size, workq);
@@ -1723,8 +1691,6 @@ catch (sycl::exception const &exc) {
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = GPUHandle::syclsolver();
     const real_t cx = 1.75;
-
-    dpct::err0 err;
 
     // allocate temporary memory
     real_t* d_temp_FockMatrix = nullptr;
@@ -1927,8 +1893,6 @@ catch (sycl::exception const& e) {
     std::cerr << "SYCL exception during omatcopy: " << e.what() << std::endl;
 }
 
-    dpct::err0 err;
-
     real_t *d_tmp;
     try {
         d_tmp = sycl::malloc_device<real_t>(row * col, syclsolverHandle);
@@ -2067,7 +2031,6 @@ void compute_RI_IntermediateMatrixB(
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = GPUHandle::syclsolver();
-    dpct::err0 err;
 
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;
@@ -2164,7 +2127,7 @@ void computeIntermediateMatrixB(
 
     const int num_threads = 256;
     const int num_blocks = (num_auxiliary_basis * num_basis * num_basis + num_threads - 1) / num_threads;
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue workq;
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, num_threads),
@@ -2186,8 +2149,6 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     //cublasManager cublas;
 //    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
-
-    dpct::err0 err;
 
     // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
     const int num_threads = 256;
@@ -2327,8 +2288,6 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     //cublasManager cublas;
 //    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
      sycl::queue& workq = GPUHandle::syclsolver();
-
-    dpct::err0 err;
 
     // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
     const int num_threads = 256;
@@ -2523,8 +2482,6 @@ void computeFockMatrix_RI_ROHF(
     sycl::queue& workq = GPUHandle::syclsolver();
     //cublasManager cublas;
 //    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
-
-    dpct::err0 err;
 
     real_t* d_temp_F_MO_closed = nullptr; // Fock matrix for the closed-shell MO
     real_t* d_temp_F_MO_open = nullptr; // Fock matrix for the open-shell MO
@@ -2810,7 +2767,10 @@ void computeTwoCenterERIs(
     const real_t schwarz_screening_threshold,
     const bool verbose)
 {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//    sycl::queue& workq = GPUHandle::syclsolver();
+//    sycl::device work_dev = workq.get_device();
+
     // ここに２中心積分を計算するコードを書く    
     const int threads_per_block = 128;
     const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
@@ -2833,7 +2793,12 @@ void computeTwoCenterERIs(
 
     // make multi stream
     const int num_kernels = shell_pairs.size();
-    std::vector<dpct::queue_ptr> streams(num_kernels);
+//    std::vector<dpct::queue_ptr> streams(num_kernels);
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for (int i = 0; i < num_kernels; i++) {
+        streams.emplace_back(GPUHandle::syclsolver());
+    }
 
     // for-loop for sorted shell-type (s0, s1)
     int stream_id = 0;
@@ -2850,7 +2815,7 @@ void computeTwoCenterERIs(
         sycl::range<3> threads(1, 1, threads_per_block);
 
         // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
-            streams[stream_id++]->submit([&](sycl::handler& cgh){
+            streams[stream_id++].submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
                        [=](sycl::nd_item<3> item_ct1) {
                 gpu::launch_2center_kernel(
@@ -2861,15 +2826,7 @@ void computeTwoCenterERIs(
                     schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
             });
             });
-/*
-        dpct::kernel_launcher::launch(
-            gpu::get_2center_kernel(s0, s1), num_blocks, threads_per_block, 0,
-            streams[stream_id++], d_two_center_eri,
-            d_auxiliary_primitive_shells, d_auxiliary_cgto_nomalization_factors,
-            shell_s0, shell_s1, num_shell_pairs,
-            d_auxiliary_schwarz_upper_bound_factors,
-            schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
-*/
+
         if(verbose){
             std::cout << "(" << shell_type_to_shell_name(s0) << "|" << shell_type_to_shell_name(s1) << "): ";
             std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
@@ -2878,14 +2835,17 @@ void computeTwoCenterERIs(
             std::cout << "num_blocks: " << num_blocks << std::endl;
         }
     }
+    for (int i = 0; i < num_kernels; i++) {
+        streams[i].wait();
+    }
 
     // syncronize streams
-    dev_ct1.queues_wait_and_throw();
+//    dev_ct1.queues_wait_and_throw();
 
     // destory streams
-    for (int i = 0; i < num_kernels; i++) {
-        dev_ct1.destroy_queue(streams[i]);
-    }
+//    for (int i = 0; i < num_kernels; i++) {
+//        dev_ct1.destroy_queue(streams[i]);
+//    }
 }
 
 inline int calcIdx_triangular_(int a, int b, int N){
@@ -2910,7 +2870,7 @@ void computeThreeCenterERIs(
     const real_t schwarz_screening_threshold,
     const bool verbose)
 {
-  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
     const int threads_per_block = 128;
     const int shell_type_count = shell_type_infos.size();
     const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
@@ -2938,7 +2898,12 @@ void computeThreeCenterERIs(
 
     // make multi stream
     const int num_kernels = shell_triples.size();
-    std::vector<dpct::queue_ptr> streams(num_kernels);
+//    std::vector<dpct::queue_ptr> streams(num_kernels);
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for (int i = 0; i < num_kernels; i++) {
+        streams.emplace_back(GPUHandle::syclsolver());
+    }
 
     // for-loop for sorted shell-type (s0, s1, s2, s3)
     int stream_id = 0;
@@ -2956,7 +2921,7 @@ void computeThreeCenterERIs(
         sycl::range<3> threads(1, 1, threads_per_block);
 
         // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
-            streams[stream_id++]->submit([&](sycl::handler& cgh){
+            streams[stream_id++].submit([&](sycl::handler& cgh){
             const size_t shell_pair_index = shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index;
             const size_t2* dp_ind = &d_primitive_shell_pair_indices[shell_pair_index];
             const double* schwarz_bound = &d_schwarz_upper_bound_factors[shell_pair_index];
@@ -2978,25 +2943,7 @@ void computeThreeCenterERIs(
                     schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
             });
             });
-/*
-        dpct::kernel_launcher::launch(
-            gpu::launch_3center_kernel, num_blocks, threads_per_block,
-            0, streams[stream_id++], s0, s1, s2,
-            d_three_center_eri, d_primitive_shells,
-            d_auxiliary_primitive_shells, d_cgto_nomalization_factors,
-            d_auxiliary_cgto_nomalization_factors, shell_s0, shell_s1, shell_s2,
-            num_tasks, num_basis,
-            &d_primitive_shell_pair_indices
-                [shell_pair_type_infos[calcIdx_triangular_(s0, s1,
-                                                           shell_type_count)]
-                     .start_index],
-            &d_schwarz_upper_bound_factors
-                [shell_pair_type_infos[calcIdx_triangular_(s0, s1,
-                                                           shell_type_count)]
-                     .start_index],
-            d_auxiliary_schwarz_upper_bound_factors,
-            schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
-*/
+
         if(verbose){
             std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2)<< "): ";
             std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
@@ -3007,14 +2954,17 @@ void computeThreeCenterERIs(
         }
 
     }
+    for (int i = 0; i < num_kernels; i++) {
+        streams[i].wait();
+    }
 
     // syncronize streams
-    dev_ct1.queues_wait_and_throw();
+//    dev_ct1.queues_wait_and_throw();
 
     // destory streams
-    for (int i = 0; i < num_kernels; i++) {
-        dev_ct1.destroy_queue(streams[i]);
-    }
+//    for (int i = 0; i < num_kernels; i++) {
+//        dev_ct1.destroy_queue(streams[i]);
+//    }
 }
 
 /**
@@ -3063,14 +3013,6 @@ void computeSchwarzUpperBounds(
                     d_upper_bound_factors);
             });
             });
-/*
-            dpct::kernel_launcher::launch(
-                gpu::launch_schwarz_kernel, blocks, threads,
-                0, 0, s0, s1,
-                d_primitive_shells, d_cgto_normalization_factors,
-                shell_s0, shell_s1, head, num_bra, d_boys_grid,
-                d_upper_bound_factors);
-*/
         }
     }
 }
@@ -3114,12 +3056,6 @@ void computeAuxiliarySchwarzUpperBounds(
                     shell_s0, head, num_bra, d_boys_grid, d_upper_bound_factors_aux);
             });
             });
-/*
-        dpct::kernel_launcher::launch(
-            gpu::get_schwarz_aux_kernel(s0), num_blocks, threads_per_block, 0,
-            0, d_primitive_shells_aux, d_cgto_aux_normalization_factors,
-            shell_s0, head, num_bra, d_boys_grid, d_upper_bound_factors_aux);
-*/
     }
 }
 
@@ -3149,8 +3085,6 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = GPUHandle::syclsolver();
-
-    dpct::err0 err;
 
     real_t* d_mulliken_population = nullptr;
     try {
@@ -3197,7 +3131,6 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = GPUHandle::syclsolver();
-    dpct::err0 err;
 
     real_t* d_mulliken_population = nullptr;
     try {

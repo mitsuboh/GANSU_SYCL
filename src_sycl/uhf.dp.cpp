@@ -19,7 +19,7 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "uhf.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
 

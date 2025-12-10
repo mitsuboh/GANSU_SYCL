@@ -16,8 +16,6 @@
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
-#include <dpct/dpl_utils.hpp>
 #include <vector>
 #include<cmath>
 #include<string>

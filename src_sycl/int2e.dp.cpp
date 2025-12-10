@@ -15,7 +15,6 @@
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <cstdio>
 #include <cstdint>
 
@@ -412,9 +411,9 @@ void ssss(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
             calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0,
                       0, 0, 0, 0, 0, 0, 0, 0, 0) *
-            2.0 * dpct::pow(M_PI, 2.5) /
+            2.0 * sycl::pow(M_PI, 2.5) /
             ((a.exponent + b.exponent) * (c.exponent + d.exponent) *
-             dpct::pow(a.exponent + b.exponent + c.exponent + d.exponent,
+             sycl::pow(a.exponent + b.exponent + c.exponent + d.exponent,
                        0.5)) *
             sycl::exp(-(a.exponent * b.exponent) *
                           ((a.coordinate.x - b.coordinate.x) *
@@ -471,7 +470,7 @@ void sssp(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 0, 0,
                   0, 0, 0, 0, 1, 0, 0) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +
@@ -536,7 +535,7 @@ void sspp(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 0, 0,
                   0, 1, 0, 0, 1, 0, 0) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +
@@ -633,7 +632,7 @@ void spsp(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 1, 0,
                   0, 0, 0, 0, 1, 0, 0) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +
@@ -733,7 +732,7 @@ void sppp(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 0, 1, 0,
                   0, 1, 0, 0, 1, 0, 0) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +
@@ -967,7 +966,7 @@ void pppp(double* g_int2e,
         a.coefficient * b.coefficient * c.coefficient * d.coefficient *
         calcNorms(a.exponent, b.exponent, c.exponent, d.exponent, 0, 0, 1, 0, 0,
                   1, 0, 0, 1, 0, 0, 1) *
-        2.0 * dpct::pow(M_PI, 2.5) / (p * q * dpct::pow(p + q, 0.5)) *
+        2.0 * sycl::pow(M_PI, 2.5) / (p * q * sycl::pow(p + q, 0.5)) *
         sycl::exp(-(a.exponent * b.exponent) *
                       ((a.coordinate.x - b.coordinate.x) *
                            (a.coordinate.x - b.coordinate.x) +

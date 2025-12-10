@@ -17,7 +17,7 @@
 #define INT2E_CUH
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "boys.hpp"
 #include "types.hpp"
 #include "utils_cuda.hpp"
@@ -264,19 +264,19 @@ double calcNorm(double exp, int l, int m, int n){
            static_cast<double>(sycl::sqrt(static_cast<double>(
                factorial2_gpu(2.0 * l - 1.0) * factorial2_gpu(2.0 * m - 1.0) *
                factorial2_gpu(2.0 * n - 1.0)))) *
-           PI3_4 * dpct::pow(exp, (2.0 * (l + m + n) + 3.0) / 4.0);
+           PI3_4 * sycl::pow(exp, (2.0 * (l + m + n) + 3.0) / 4.0);
 }
 
 inline 
 double calcNorms(double alpha, double beta, double gamma, double delta, int i1, int k1, int m1, int j1, int l1, int n1, int i2, int k2, int m2, int j2, int l2, int n2)
 {
-    return dpct::pow(2.0,
+    return sycl::pow(2.0,
                      i1 + i2 + j1 + j2 + k1 + k2 + l1 + l2 + m1 + m2 + n1 + n2)
            /*
            DPCT1109:7: Recursive functions cannot be called in SYCL device code.
            You need to adjust the code.
            */
-           * dpct::pow(factorial2_gpu(2.0 * i1 - 1.0) *
+           * sycl::pow(factorial2_gpu(2.0 * i1 - 1.0) *
                            factorial2_gpu(2.0 * j1 - 1.0) *
                            factorial2_gpu(2.0 * k1 - 1.0) *
                            factorial2_gpu(2.0 * l1 - 1.0) *
@@ -290,169 +290,145 @@ double calcNorms(double alpha, double beta, double gamma, double delta, int i1, 
                            factorial2_gpu(2.0 * n2 - 1.0),
                        -0.5) *
            8.0 / (M_PI * M_PI * M_PI) *
-           dpct::pow(alpha, (2.0 * (i1 + k1 + m1) + 3.0) / 4.0) *
-           dpct::pow(beta, (2.0 * (j1 + l1 + n1) + 3.0) / 4.0) *
-           dpct::pow(gamma, (2.0 * (i2 + k2 + m2) + 3.0) / 4.0) *
-           dpct::pow(delta, (2.0 * (j2 + l2 + n2) + 3.0) / 4.0);
+           sycl::pow(alpha, (2.0 * (i1 + k1 + m1) + 3.0) / 4.0) *
+           sycl::pow(beta, (2.0 * (j1 + l1 + n1) + 3.0) / 4.0) *
+           sycl::pow(gamma, (2.0 * (i2 + k2 + m2) + 3.0) / 4.0) *
+           sycl::pow(delta, (2.0 * (j2 + l2 + n2) + 3.0) / 4.0);
 }
 
 
 
 
 /* case1. 全てひっくり返すか判定([ss|ss], [pp|pp])　*/
-inline 
-void addToResult_case1(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+inline
+void addToResult_case1(double res, double* g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket) {
+    using atomic_type = sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
     if (!sym_bra)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
     if (!sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
     if (!sym_bra && !sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-    if(!sym_braket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+    if (!sym_braket) {
+        atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
         if (!sym_bra)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
         if (!sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
         if (!sym_bra && !sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
 
 /* case2. bra側のみ判定 ([ss|sp]) */
-inline 
-void addToResult_case2(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-    if(!sym_bra) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+inline
+void addToResult_case2(double res, double* g_G, int p, int q, int r, int s, int nao, bool sym_bra) {
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+
+    if (!sym_bra) {
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
 
 /* case3. ket側のみ判定 ([sp|pp]) */
-inline 
-void addToResult_case3(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_ket)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-    if(!sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+inline
+void addToResult_case3(double res, double* g_G, int p, int q, int r, int s, int nao, bool sym_ket) {
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+
+    if (!sym_ket) {
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
-
 /* case4. bra側ket側，それぞれ判定 ([ss|pp]) */
-inline 
-void addToResult_case4(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    if(!sym_bra) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+inline
+void addToResult_case4(double res, double* g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket) {
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+
+    if (!sym_bra) {
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
     }
-    if(!sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+    if (!sym_ket) {
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
     }
-    if(!sym_bra && !sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+    if (!sym_bra && !sym_ket) {
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
 
 /* case5. bra-ketを判定 ([sp|sp]) */
-inline 
-void addToResult_case5(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_braket)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-    if(!sym_braket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+inline
+void addToResult_case5(double res, double* g_G, int p, int q, int r, int s, int nao, bool sym_braket) {
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+
+    if (!sym_braket) {
+        atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
 /* case6. 判定しない ([sp|sd]) */
-inline 
-void addToResult_case6(double res, double *g_G, int p, int q, int r, int s, int nao)
-{
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+inline
+void addToResult_case6(double res, double* g_G, int p, int q, int r, int s, int nao) {
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
 }
 
 
@@ -461,137 +437,130 @@ inline
 void addToResult_case1(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
     if (!sym_bra)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
     if (!sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
     if (!sym_bra && !sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+
     if(!sym_braket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
         if (!sym_bra)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
         if (!sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
         if (!sym_bra && !sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+            atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
-
 
 /* case2. bra側のみ判定 ([ss|sp]) */
 inline 
 void addToResult_case2(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+
     if(!sym_bra) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
-
 
 /* case3. ket側のみ判定 ([sp|pp]) */
 inline 
 void addToResult_case3(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_ket, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+
     if(!sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
-
 
 /* case4. bra側ket側，それぞれ判定 ([ss|pp]) */
 inline 
 void addToResult_case4(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, const double* g_cgto_normalization_factors)
-{    
+{
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+
     if(!sym_bra) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
     }
+
     if(!sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
     }
+
     if(!sym_bra && !sym_ket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
-
 
 /* case5. bra-ketを判定 ([sp|sp]) */
 inline 
 void addToResult_case5(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_braket, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+
     if(!sym_braket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+        atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+        atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 
@@ -600,54 +569,58 @@ inline
 void addToResult_case6(double res, double *g_G, int p, int q, int r, int s, int nao, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+
+    using atomic_type = sycl::atomic_ref<double,
+                                         sycl::memory_order::relaxed,
+                                         sycl::memory_scope::device,
+                                         sycl::access::address_space::global_space>;
+
+    atomic_type(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+    atomic_type(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
 }
 
 
 
-inline 
+inline
 void addToResult(double res, double *g_G, int p, int q, int r, int s, int nao, bool sym_bra, bool sym_ket, bool sym_braket, const double* g_cgto_normalization_factors)
 {
     res *= g_cgto_normalization_factors[p] * g_cgto_normalization_factors[q] * g_cgto_normalization_factors[r] * g_cgto_normalization_factors[s];
 
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_G[calcIdx4Dim(p, q, r, s, nao)], res);
+    using atomic_t =
+        sycl::atomic_ref<double,
+                         sycl::memory_order::relaxed,
+                         sycl::memory_scope::device,
+                         sycl::access::address_space::global_space>;
+
+    atomic_t(g_G[calcIdx4Dim(p, q, r, s, nao)]).fetch_add(res);
+
     if (!sym_bra)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, r, s, nao)], res);
+        atomic_t(g_G[calcIdx4Dim(q, p, r, s, nao)]).fetch_add(res);
+
     if (!sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(p, q, s, r, nao)], res);
+        atomic_t(g_G[calcIdx4Dim(p, q, s, r, nao)]).fetch_add(res);
+
     if (!sym_bra && !sym_ket)
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(q, p, s, r, nao)], res);
-    if(!sym_braket) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &g_G[calcIdx4Dim(r, s, p, q, nao)], res);
+        atomic_t(g_G[calcIdx4Dim(q, p, s, r, nao)]).fetch_add(res);
+
+    if (!sym_braket) {
+
+        atomic_t(g_G[calcIdx4Dim(r, s, p, q, nao)]).fetch_add(res);
+
         if (!sym_bra)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(r, s, q, p, nao)], res);
+            atomic_t(g_G[calcIdx4Dim(r, s, q, p, nao)]).fetch_add(res);
+
         if (!sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, p, q, nao)], res);
+            atomic_t(g_G[calcIdx4Dim(s, r, p, q, nao)]).fetch_add(res);
+
         if (!sym_bra && !sym_ket)
-            dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-                &g_G[calcIdx4Dim(s, r, q, p, nao)], res);
+            atomic_t(g_G[calcIdx4Dim(s, r, q, p, nao)]).fetch_add(res);
     }
 }
 

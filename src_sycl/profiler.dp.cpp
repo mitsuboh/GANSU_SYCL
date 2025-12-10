@@ -13,7 +13,7 @@
  */
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+#include "gpu_manager.hpp"
 #include "profiler.hpp"
 #include <iomanip>  // For std::setw and std::setfill
 #include "console.hpp" // Font color
@@ -108,7 +108,8 @@ ScopedTimer::ScopedTimer(const std::string& name) : functionName(name) {
 }
 
 ScopedTimer::~ScopedTimer() {
-    dpct::get_current_device().queues_wait_and_throw();
+    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    workq.wait_and_throw();
     GlobalProfiler::stop(functionName);
 }
 

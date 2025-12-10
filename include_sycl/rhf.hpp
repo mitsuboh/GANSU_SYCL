@@ -21,7 +21,7 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "hf.hpp"
 #include "rohf.hpp" // for SAD
 #include <memory> // std::unique_ptr
@@ -467,8 +467,9 @@ public:
             density_matrix[i] = density_matrix_a_[i] + density_matrix_b_[i];
         }
 
-        dpct::get_in_order_queue()
-            .memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
+//        dpct::get_in_order_queue()
+        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+            workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
             .wait();
         hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
@@ -597,8 +598,9 @@ public:
             }
         }
 
-        dpct::get_in_order_queue()
-            .memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
+//        dpct::get_in_order_queue()
+        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+            workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
             .wait();
         hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
