@@ -1,52 +1,26 @@
-# 
-# GANSU: GPU Acclerated Numerical Simulation Utility
-# 
-# Copyright (c) 2025, Hiroshima University and Fujitsu Limited
-# All rights reserved.
-# 
-# This software is licensed under the BSD 3-Clause License.
-# You may obtain a copy of the license in the LICENSE file
-# located in the root directory of this source tree or at:
-# https://opensource.org/licenses/BSD-3-Clause
-#  
-# SPDX-License-Identifier: BSD-3-Clause
-# 
 cmake_minimum_required(VERSION 3.31)
-project(GANSU LANGUAGES  CXX)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl" )
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -fsycl-targets=spir64_gen -Xs \"-device arl-s\"")
-include(dpct.cmake)
+project(GANSU LANGUAGES CXX)
 
-
-# Uncomment the following line to enable to support D-type basis functions for RI approximations (density fitting)
-# Note: Build time will take several hours (5-6 hours)
-#
-# add_definitions(-DCOMPUTE_D_BASIS)
-
-# Uncomment the following line to enable to support G-type auxiliary basis functions for RI approximations (density fitting)
-# Note: Build time will take one day or more
-# 
-# add_definitions(-DCOMPUTE_G_AUX)
-
-
-# set compute capability
-set(CMAKE_SYCL_ARCHITECTURES 80 86)
-
-# C++ standard
+# --- C++ / SYCL 設定 ---
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 17)
+if(WIN32)
+    set(SYCL_FLAGS "/fsycl /DMKL_ILP64 /Qmkl")
+else()
+    set(SYCL_FLAGS "-fsycl -DMKL_ILP64 -qmkl=parallel")
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
 
-# Set include directories (global)
+# --- Include directories ---
 include_directories(include_sycl)
 
-
-# Static libraries
+# --- 静的ライブラリ ---
 add_library(int1e STATIC src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC src_sycl/int2e.dp.cpp)
 add_library(int2c2e STATIC src_sycl/int2c2e.dp.cpp)
 add_library(int3c2e STATIC src_sycl/int3c2e.dp.cpp)
 
-set(SOURCES
+# --- GANSU ライブラリ ---
+set(GANSU_SOURCES
     src_sycl/basis_set.cpp
     src_sycl/parseXYZ.cpp
     src_sycl/hf.dp.cpp
@@ -60,39 +34,26 @@ set(SOURCES
     src_sycl/eri.dp.cpp
     src_sycl/utils.cpp
 )
+add_library(gansu STATIC ${GANSU_SOURCES})
+target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
+target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e)
 
-find_package(MKL CONFIG REQUIRED)
+# --- oneAPI MKL リンク（Sparse は除く） ---
+find_package(MKL REQUIRED)
 
-add_library(gansu STATIC ${SOURCES})
-target_compile_definitions(gansu PRIVATE PROFILE_ENABLED) # add option -DPROFILE_ENABLED 
-target_compile_definitions(gansu PRIVATE CONSOLE_COLOR_ENABLED) # add option -DCONSOLE_COLOR_ENABLED 
-target_link_libraries(gansu ${MKL_LIB}
-        MKL::MKL
-        
-        int1e
-        int2e
-        int2c2e
-        int3c2e
-    )
+# --- リンクオプションに MKL を追加 ---
+if(WIN32)
+    target_link_options(gansu PRIVATE "/Qmkl")
+else()
+    target_link_options(gansu PRIVATE "-qmkl=parallel")
+endif()
 
-
+# --- 実行ファイル ---
 add_executable(HF_main src_sycl/HF_main.dp.cpp)
-target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED) # add option -DPROFILE_ENABLED 
-target_compile_definitions(HF_main PRIVATE CONSOLE_COLOR_ENABLED) # add option -DCONSOLE_COLOR_ENABLED 
-target_link_libraries(HF_main gansu
-    )
+target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
+target_link_libraries(HF_main PRIVATE gansu)
 
-# add_executable(demo src/demo.cu ${SOURCES})
-# target_link_libraries(demo
-#         gansu
-#     )
+# --- TBB が必要なら ---
+# find_package(TBB REQUIRED)
+# target_link_libraries(gansu PRIVATE TBB::tbb)
 
-
-# add_executable(HF_main_no_profile src/HF_main.cu ${SOURCES})
-# target_link_libraries(HF_main_no_profile
-#         cublas
-#         cusolver
-#         ${CUDA_LIBRARIES}
-#         int1e
-#         int2e
-#     )

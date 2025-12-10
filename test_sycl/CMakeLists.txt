@@ -15,8 +15,15 @@
 
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES  CXX)
+
+if(WIN32)
+    set(SYCL_FLAGS "/fsycl /DMKL_ILP64 /Qmkl")
+else()
+    set(SYCL_FLAGS "-fsycl -DMKL_ILP64 -qmkl=parallel")
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-include(dpct.cmake)
 
 # Download Google Test using FetchContent
 include(FetchContent)
@@ -79,6 +86,11 @@ target_link_libraries(test_runner gansu
         gtest_main
     )
 
+if(WIN32)
+    target_link_options(gansu PRIVATE "/Qmkl")
+else()
+    target_link_options(gansu PRIVATE "-qmkl=parallel")
+endif()
 
 # Enable CTest framework
 enable_testing()

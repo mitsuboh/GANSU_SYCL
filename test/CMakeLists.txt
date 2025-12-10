@@ -40,6 +40,8 @@ include_directories(../include)
 # Static libraries
 add_library(int1e STATIC ../src/int1e.cu)
 add_library(int2e STATIC ../src/int2e.cu)
+add_library(int2c2e STATIC ../src/int2c2e.cu)
+add_library(int3c2e STATIC ../src/int3c2e.cu)
 
 
 set(SOURCES
@@ -74,6 +76,12 @@ set(TEST_SOURCES
 add_executable(test_runner ${TEST_SOURCES})
 target_link_libraries(test_runner
         gansu
+      int1e
+      int2e
+      int2c2e
+      int3c2e
+      cublas
+      cusolver
         gtest
         gtest_main
     )
