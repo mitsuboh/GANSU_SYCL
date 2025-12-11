@@ -1,6 +1,6 @@
 ## Updates
 
-- Dec 11 2025 All dpct APIs are replaced by Sycl APIs.
+- Dec 11 2025: All dpct APIs are replaced by Sycl APIs.
 - Oct 30 2025: Gpu_test branch is merged and cofirmed run on Core Ultra2 GPU. Due to JIT compile of device codes, it takes 27 plus 22 minutes only for the first run as shown blelow. After the first run no compile time is needed.
 
 [00:00.000] START: compute_nuclear_repulsion_energy
