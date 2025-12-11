@@ -2357,7 +2357,6 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
 
 
 
-
 void constructERIHash(
     const std::vector<ShellTypeInfo>& shell_type_infos, 
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,

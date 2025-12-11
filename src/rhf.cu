@@ -345,23 +345,42 @@ void RHF::report() {
         std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
     }
 
-    std::cout << std::endl;
-    std::cout << "[Mayer bond order]" << std::endl;
-    const auto& mayer_bond_order_matrix = compute_mayer_bond_order();
 
-    // save the current format flags and precision
-    std::ios::fmtflags old_flags = std::cout.flags();
-    std::streamsize old_precision = std::cout.precision();
-
-    for(size_t i=0; i<atoms.size(); i++){
-        for(size_t j=0; j<atoms.size(); j++){
-            std::cout << std::fixed << std::setprecision(3) << mayer_bond_order_matrix[i][j] << " ";
-        }
+    { // print Mayer bond order matrix
         std::cout << std::endl;
+        std::cout << "[Mayer bond order]" << std::endl;
+        const auto& mayer_bond_order_matrix = compute_mayer_bond_order();
+        // save the current format flags and precision
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_precision = std::cout.precision();
+        for(size_t i=0; i<atoms.size(); i++){
+            for(size_t j=0; j<atoms.size(); j++){
+                std::cout << std::fixed << std::setprecision(3) << mayer_bond_order_matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        // restore the format flags and precision
+        std::cout.flags(old_flags);
+        std::cout.precision(old_precision);
     }
-    // restore the format flags and precision
-    std::cout.flags(old_flags);
-    std::cout.precision(old_precision);
+
+    { // print Wiberg bond order matrix
+        std::cout << std::endl;
+        std::cout << "[Wiberg bond order]" << std::endl;
+        const auto& wiberg_bond_order_matrix = compute_wiberg_bond_order();
+        // save the current format flags and precision
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_precision = std::cout.precision();
+        for(size_t i=0; i<atoms.size(); i++){
+            for(size_t j=0; j<atoms.size(); j++){
+                std::cout << std::fixed << std::setprecision(3) << wiberg_bond_order_matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        // restore the format flags and precision
+        std::cout.flags(old_flags);
+        std::cout.precision(old_precision);
+    }
 
     std::cout << std::endl;
     std::cout << "[Calculation Summary]" << std::endl;
@@ -589,15 +608,15 @@ std::vector<std::vector<real_t>> RHF::compute_mayer_bond_order() const{
 }
 
 
-std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() {
+std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() const{
     std::vector<std::vector<real_t>> wiberg_bond_order_matrix(atoms.size(), std::vector<real_t>(atoms.size(), 0.0));
 
-    std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store S^{1/2} * D * S^{1/2}
+    std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store DS (product of density and overlap matrices)
 
-    // Compute S^{1/2}
-    gpu::computeSqrtOverlapDensitySqrtOverlapMatrix(
-        overlap_matrix.device_ptr(),
+    // calculate the product of density and overlap matrices
+    gpu::computeDensityOverlapMatrix(
         density_matrix.device_ptr(),
+        overlap_matrix.device_ptr(),
         temp_matrix.data(),
         num_basis
     );
@@ -612,8 +631,8 @@ std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() {
             real_t bond_order_ij = 0.0;
             for(int bi=basis_i_start; bi<basis_i_end; bi++){
                 for(int bj=basis_j_start; bj<basis_j_end; bj++){
-                    real_t d_ij = temp_matrix[bi * num_basis + bj];
-                    bond_order_ij += d_ij * d_ij;
+                    real_t ds_ij = temp_matrix[bi * num_basis + bj];
+                    bond_order_ij += ds_ij * ds_ij;
                 }
             }
             wiberg_bond_order_matrix[i][j] = bond_order_ij;
@@ -621,7 +640,7 @@ std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() {
     }
 
     if(verbose){
-        std::cout << "Wiberg bond order matrix:" << std::endl;
+        std::cout << "Mayer bond order matrix:" << std::endl;
         for(size_t i=0; i<atoms.size(); i++){
             for(size_t j=0; j<atoms.size(); j++){
                 std::cout << wiberg_bond_order_matrix[i][j] << " ";

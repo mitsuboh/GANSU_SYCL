@@ -90,7 +90,8 @@ void computeAuxiliarySchwarzUpperBounds(const std::vector<ShellTypeInfo>& shell_
 void computeMullikenPopulation_RHF(const real_t* d_density_matrix, const real_t* d_overlap_matrix, real_t* mulliken_population_basis, const int num_basis);
 void computeMullikenPopulation_UHF(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* overlap_matrix, real_t* mulliken_population_basis, const int num_basis);
 
-void computeDensityOverlapMatrix(const real_t* d_density_matrix, const real_t* overlap_matrix, real_t* result_matrix, const int num_basis); // for Mayer bond order
+void computeDensityOverlapMatrix(const real_t* d_density_matrix, const real_t* overlap_matrix, real_t* result_matrix, const int num_basis); // for Mayer/Wiberg bond order
+
 
 void computeSqrtOverlapDensitySqrtOverlapMatrix(const real_t* d_density_matrix, const real_t* overlap_matrix, real_t* result_matrix, const int num_basis); // for Wiberg bond order (RHF, ROHF)
 
