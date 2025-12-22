@@ -533,7 +533,7 @@ std::vector<std::vector<real_t>> ROHF::compute_wiberg_bond_order() const{
     }
 
     if(verbose){
-        std::cout << "Mayer bond order matrix:" << std::endl;
+        std::cout << "Wiberg bond order matrix:" << std::endl;
         for(size_t i=0; i<atoms.size(); i++){
             for(size_t j=0; j<atoms.size(); j++){
                 std::cout << wiberg_bond_order_matrix[i][j] << " ";
