@@ -21,7 +21,7 @@
 
 #include <sycl/sycl.hpp>
 #include <iostream>
-#include <mkl.h>
+//#include <mkl.h>
 
 
 namespace gansu{
@@ -38,9 +38,11 @@ inline void display_env_info(){
 
     // cuBLAS Version
     // MKL Version
+/*
     MKLVersion ver;
     mkl_get_version(&ver);
     std::cout << "MKL Version: " << ver.MajorVersion << "." << ver.MinorVersion << "." << ver.UpdateVersion << std::endl ;
+*/
 }
 
 

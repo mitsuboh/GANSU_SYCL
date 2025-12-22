@@ -1926,7 +1926,7 @@ catch (sycl::exception const& e) {
 */
 
     // // Solve A * X = B → X overwrites B
-    oneapi::mkl::blas::trsm(
+    oneapi::mkl::blas::column_major::trsm(
         syclsolverHandle,
         oneapi::mkl::side::left,
         oneapi::mkl::uplo::lower,
@@ -2179,7 +2179,7 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
     real_t alpha = 1.0;
     real_t beta = 0.0;
 
-    oneapi::mkl::blas::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
+    oneapi::mkl::blas::column_major::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
                             num_auxiliary_basis, alpha, d_intermediate_matrix_B,
                             num_basis*num_basis, d_density_matrix, 1, beta, d_W, 1);
 //    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
@@ -2330,7 +2330,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     real_t alpha = 1.0;
     real_t beta = 0.0;
 
-    oneapi::mkl::blas::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
+    oneapi::mkl::blas::column_major::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
                             num_auxiliary_basis, alpha, d_intermediate_matrix_B,
                             num_basis*num_basis, d_density_matrix, 1, beta, d_W, 1);
 //    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
@@ -2572,7 +2572,7 @@ void computeFockMatrix_RI_ROHF(
         real_t alpha = 1.0;
         real_t beta = 0.0;
 
-    oneapi::mkl::blas::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
+    oneapi::mkl::blas::column_major::gemv(workq, oneapi::mkl::transpose::trans, num_basis*num_basis,
                             num_auxiliary_basis, alpha, d_intermediate_matrix_B,
                             num_basis*num_basis, d_density_matrix, 1, beta, d_W, 1);
 //        cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
