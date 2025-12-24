@@ -48,6 +48,21 @@ inline void inverseSqrt_kernel(real_t *d_eigenvalues, const size_t size,
     }
 }
 
+inline void sqrt_kernel(real_t *d_eigenvalues, const size_t size,
+                                       const double threshold) {
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+    size_t idx = item_ct1.get_local_id(0);
+    if (idx < size) {
+        double value = d_eigenvalues[idx];
+        if (value < threshold) {
+//            d_eigenvalues[idx] = 0.0; // Avoid division by zero
+            d_eigenvalues[idx] = threshold; // Avoid division by zero
+        }else{
+            d_eigenvalues[idx] = sycl::sqrt(value);
+        }
+    }
+}
+
 /**
  * @brief CUDA kernel for computing the density matrix for restricted Hartree-Fock
  * @param d_coefficient_matrix Device pointer to the coefficient matrix

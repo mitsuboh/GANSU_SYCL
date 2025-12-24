@@ -74,6 +74,10 @@ public:
 
     std::vector<real_t> analyze_mulliken_population() const override;
 
+    std::vector<std::vector<real_t>> compute_mayer_bond_order() const override;
+
+    std::vector<std::vector<real_t>> compute_wiberg_bond_order() const override;
+
     real_t get_total_spin() override;;
 
     /**

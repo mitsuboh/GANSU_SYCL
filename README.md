@@ -1,5 +1,6 @@
 ## Updates
 
+- Dec 24 2025: Merged GANSU updates. Confirmed this sycl version runs both on Intel GPU and NVidia GPU (llvm + oneMath on culbas).
 - Dec 11 2025: All dpct APIs are replaced by Sycl APIs.
 - Oct 30 2025: Gpu_test branch is merged and cofirmed run on Core Ultra2 GPU. Due to JIT compile of device codes, it takes 27 plus 22 minutes only for the first run as shown blelow. After the first run no compile time is needed.
 
