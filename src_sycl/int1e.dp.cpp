@@ -173,10 +173,10 @@ available and adjust the code, or use smaller sub-group size to avoid high
 register pressure.
 */
 
-SYCL_EXTERNAL void compute_kinetic_energy_integral(real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+SYCL_EXTERNAL void compute_kinetic_energy_integral(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
                                         const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t num_threads, const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -284,12 +284,12 @@ size available and adjust the code, or use smaller sub-group size to avoid high
 register pressure.
 */
 
-SYCL_EXTERNAL void compute_nuclear_attraction_integral(real_t* g_nucattr, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+SYCL_EXTERNAL void compute_nuclear_attraction_integral(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
                                         const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                                         const size_t num_threads, 
                                         const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;

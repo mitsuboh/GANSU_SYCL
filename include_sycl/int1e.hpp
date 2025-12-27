@@ -89,6 +89,7 @@ inline void Matrix_Symmetrization(double *matrix, int n,
 
 SYCL_EXTERNAL
 void compute_kinetic_energy_integral(
+    const sycl::nd_item<3>& item_ct1,
     real_t *g_overlap, real_t *g_kinetic, const PrimitiveShell *g_shell,
     const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
     const ShellTypeInfo shell_s1, const size_t num_threads,
@@ -96,6 +97,7 @@ void compute_kinetic_energy_integral(
 
 SYCL_EXTERNAL
 void compute_nuclear_attraction_integral(
+    const sycl::nd_item<3>& item_ct1,
     real_t *g_nucattr, const PrimitiveShell *g_shell,
     const real_t *g_cgto_normalization_factors, const Atom *g_atom,
     const int num_atoms, const ShellTypeInfo shell_s0,
@@ -103,7 +105,7 @@ void compute_nuclear_attraction_integral(
     const real_t *g_boys_grid);
 
 
-inline void launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real_t* g_kinetic,
+inline void launch_overlap_kinetic_kernel(const sycl::nd_item<3>& item_ct1, int a, int b, real_t* g_overlap, real_t* g_kinetic,
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
                         const size_t num_threads,
                         const int num_basis)
@@ -111,67 +113,67 @@ inline void launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real
     int flag=0;
 
     if(flag){
-        if (a == 0 && b == 0) overlap_kinetic_MDss(g_overlap, g_kinetic,
+        if (a == 0 && b == 0) overlap_kinetic_MDss(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 1) overlap_kinetic_MDsp(g_overlap, g_kinetic,
+        else if (a == 0 && b == 1) overlap_kinetic_MDsp(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 1) overlap_kinetic_MDpp(g_overlap, g_kinetic,
+        else if (a == 1 && b == 1) overlap_kinetic_MDpp(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 2) overlap_kinetic_MDsd(g_overlap, g_kinetic,
+        else if (a == 0 && b == 2) overlap_kinetic_MDsd(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 2) overlap_kinetic_MDpd(g_overlap, g_kinetic,
+        else if (a == 1 && b == 2) overlap_kinetic_MDpd(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 2 && b == 2) overlap_kinetic_MDdd(g_overlap, g_kinetic,
+        else if (a == 2 && b == 2) overlap_kinetic_MDdd(item_ct1,  g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 3) overlap_kinetic_MDsf(g_overlap, g_kinetic,
+        else if (a == 0 && b == 3) overlap_kinetic_MDsf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 3) overlap_kinetic_MDpf(g_overlap, g_kinetic,
+        else if (a == 1 && b == 3) overlap_kinetic_MDpf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 2 && b == 3) overlap_kinetic_MDdf(g_overlap, g_kinetic,
+        else if (a == 2 && b == 3) overlap_kinetic_MDdf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 3 && b == 3) overlap_kinetic_MDff(g_overlap, g_kinetic,
+        else if (a == 3 && b == 3) overlap_kinetic_MDff(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else compute_kinetic_energy_integral(g_overlap, g_kinetic,
+        else compute_kinetic_energy_integral(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
@@ -180,67 +182,67 @@ inline void launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real
         // else THROW_EXCEPTION("Only up to f-orbitals are supported in MD method for overlap and kinetic integrals");
     }
     else{
-        if (a == 0 && b == 0) overlap_kinetic_OSss(g_overlap, g_kinetic,
+        if (a == 0 && b == 0) overlap_kinetic_OSss(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 1) overlap_kinetic_OSsp(g_overlap, g_kinetic,
+        else if (a == 0 && b == 1) overlap_kinetic_OSsp(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 1) overlap_kinetic_OSpp(g_overlap, g_kinetic,
+        else if (a == 1 && b == 1) overlap_kinetic_OSpp(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 2) overlap_kinetic_OSsd(g_overlap, g_kinetic,
+        else if (a == 0 && b == 2) overlap_kinetic_OSsd(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 2) overlap_kinetic_OSpd(g_overlap, g_kinetic,
+        else if (a == 1 && b == 2) overlap_kinetic_OSpd(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 2 && b == 2) overlap_kinetic_OSdd(g_overlap, g_kinetic,
+        else if (a == 2 && b == 2) overlap_kinetic_OSdd(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 0 && b == 3) overlap_kinetic_OSsf(g_overlap, g_kinetic,
+        else if (a == 0 && b == 3) overlap_kinetic_OSsf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 1 && b == 3) overlap_kinetic_OSpf(g_overlap, g_kinetic,
+        else if (a == 1 && b == 3) overlap_kinetic_OSpf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 2 && b == 3) overlap_kinetic_OSdf(g_overlap, g_kinetic,
+        else if (a == 2 && b == 3) overlap_kinetic_OSdf(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else if (a == 3 && b == 3) overlap_kinetic_OSff(g_overlap, g_kinetic,
+        else if (a == 3 && b == 3) overlap_kinetic_OSff(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
                           shell_s1,
                           num_threads, num_basis);
-        else compute_kinetic_energy_integral(g_overlap, g_kinetic,
+        else compute_kinetic_energy_integral(item_ct1, g_overlap, g_kinetic,
                           g_shell,
                           g_cgto_normalization_factors,
                           shell_s0,
@@ -251,7 +253,7 @@ inline void launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real
 }
 
 
-inline void launch_nuclear_attraction_kernel(int a, int b, real_t* g_nucattr,
+inline void launch_nuclear_attraction_kernel(const sycl::nd_item<3>& item_ct1, int a, int b, real_t* g_nucattr,
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
                         const Atom* g_atom, const int num_atoms,
                         const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
@@ -261,73 +263,73 @@ inline void launch_nuclear_attraction_kernel(int a, int b, real_t* g_nucattr,
     int flag=0;
 
     if(flag){
-        if (a == 0 && b == 0) nuclear_attraction_MDss(g_nucattr,
+        if (a == 0 && b == 0) nuclear_attraction_MDss(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 1) nuclear_attraction_MDsp(g_nucattr,
+        else if (a == 0 && b == 1) nuclear_attraction_MDsp(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 1) nuclear_attraction_MDpp(g_nucattr,
+        else if (a == 1 && b == 1) nuclear_attraction_MDpp(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 2) nuclear_attraction_MDsd(g_nucattr,
+        else if (a == 0 && b == 2) nuclear_attraction_MDsd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 2) nuclear_attraction_MDpd(g_nucattr,
+        else if (a == 1 && b == 2) nuclear_attraction_MDpd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 2 && b == 2) nuclear_attraction_MDdd(g_nucattr,
+        else if (a == 2 && b == 2) nuclear_attraction_MDdd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 3) nuclear_attraction_MDsf(g_nucattr,
+        else if (a == 0 && b == 3) nuclear_attraction_MDsf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 3) nuclear_attraction_MDpf(g_nucattr,
+        else if (a == 1 && b == 3) nuclear_attraction_MDpf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 2 && b == 3) nuclear_attraction_MDdf(g_nucattr,
+        else if (a == 2 && b == 3) nuclear_attraction_MDdf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 3 && b == 3) nuclear_attraction_MDff(g_nucattr,
+        else if (a == 3 && b == 3) nuclear_attraction_MDff(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else compute_nuclear_attraction_integral(g_nucattr,
+        else compute_nuclear_attraction_integral(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
         // else THROW_EXCEPTION("Only up to f-orbitals are supported in MD method for nuclear attraction integrals");
     }
     else{
-        if (a == 0 && b == 0) nuclear_attraction_OSss(g_nucattr,
+        if (a == 0 && b == 0) nuclear_attraction_OSss(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 1) nuclear_attraction_OSsp(g_nucattr,
+        else if (a == 0 && b == 1) nuclear_attraction_OSsp(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 1) nuclear_attraction_OSpp(g_nucattr,
+        else if (a == 1 && b == 1) nuclear_attraction_OSpp(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 2) nuclear_attraction_OSsd(g_nucattr,
+        else if (a == 0 && b == 2) nuclear_attraction_OSsd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 2) nuclear_attraction_OSpd(g_nucattr,
+        else if (a == 1 && b == 2) nuclear_attraction_OSpd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 2 && b == 2) nuclear_attraction_OSdd(g_nucattr,
+        else if (a == 2 && b == 2) nuclear_attraction_OSdd(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 0 && b == 3) nuclear_attraction_OSsf(g_nucattr,
+        else if (a == 0 && b == 3) nuclear_attraction_OSsf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 1 && b == 3) nuclear_attraction_OSpf(g_nucattr,
+        else if (a == 1 && b == 3) nuclear_attraction_OSpf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 2 && b == 3) nuclear_attraction_OSdf(g_nucattr,
+        else if (a == 2 && b == 3) nuclear_attraction_OSdf(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else if (a == 3 && b == 3) nuclear_attraction_OSff(g_nucattr,
+        else if (a == 3 && b == 3) nuclear_attraction_OSff(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
-        else compute_nuclear_attraction_integral(g_nucattr,
+        else compute_nuclear_attraction_integral(item_ct1, g_nucattr,
                         g_shell, g_cgto_normalization_factors, g_atom, num_atoms,
                         shell_s0, shell_s1, num_threads, num_basis, g_boys_grid);
         // else THROW_EXCEPTION("Only up to f-orbitals are supported in OS method for nuclear attraction integrals");

@@ -35,12 +35,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSss(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSss(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -88,12 +88,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSsp(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSsp(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -162,12 +162,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSpp(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSpp(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -306,12 +306,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSsd(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSsd(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -413,12 +413,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSpd(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSpd(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -652,12 +652,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSdd(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSdd(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -1093,12 +1093,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSsf(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSsf(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -1244,12 +1244,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSpf(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSpf(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -1615,12 +1615,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSdf(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSdf(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -2316,12 +2316,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void overlap_kinetic_OSff(real_t* g_overlap, real_t* g_kinetic, 
+inline void overlap_kinetic_OSff(const sycl::nd_item<3>& item_ct1, real_t* g_overlap, real_t* g_kinetic, 
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                         const size_t num_threads,
                         const int num_basis)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -3461,12 +3461,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSss(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSss(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -3517,12 +3517,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSsp(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSsp(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -3590,12 +3590,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSpp(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSpp(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -3762,12 +3762,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSsd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSsd(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -3897,12 +3897,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSpd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSpd(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -4446,12 +4446,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSdd(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSdd(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -7176,12 +7176,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSsf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSsf(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -7496,12 +7496,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSpf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSpf(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -9617,12 +9617,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSdf(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSdf(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;
@@ -21375,12 +21375,12 @@ Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
 
-inline void nuclear_attraction_OSff(real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
+inline void nuclear_attraction_OSff(const sycl::nd_item<3>& item_ct1, real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,  
                            const Atom* g_atom, const int num_atoms, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, 
                            const size_t num_threads,
                            const int num_basis, const real_t* g_boys_grid)
 {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         const size_t id = item_ct1.get_local_id(2) +
                           item_ct1.get_group(2) * item_ct1.get_local_range(2);
         if(id >= num_threads) return;

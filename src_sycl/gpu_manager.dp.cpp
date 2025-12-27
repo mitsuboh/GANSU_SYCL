@@ -581,7 +581,7 @@ void computeCoreHamiltonianMatrix(
 //            sycl::event e1 = streams[index].submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
                        [=](sycl::nd_item<3> item_ct1) {
-                launch_overlap_kinetic_kernel(
+                launch_overlap_kinetic_kernel( item_ct1,
                     s0, s1, d_overlap_matrix,
                     d_core_hamiltonian_matrix, d_primitive_shells,
                     d_cgto_normalization_factors, shell_s0, shell_s1,
@@ -592,7 +592,7 @@ void computeCoreHamiltonianMatrix(
 //            cgh.depends_on(e1); //明示的依存
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
                        [=](sycl::nd_item<3> item_ct1) {
-                launch_nuclear_attraction_kernel(
+                launch_nuclear_attraction_kernel( item_ct1,
                     s0, s1, d_core_hamiltonian_matrix, d_primitive_shells,
                     d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0,
                     shell_s1, num_shell_pairs, num_basis, d_boys_grid);
