@@ -386,7 +386,7 @@ void sqrtElements(real_t* d_vectors, const size_t size) {
     size_t numBlocks = (size + blockSize - 1) / blockSize;
     {
       workq.parallel_for(
-          sycl::nd_range<1>(sycl::range<1>(numBlocks) * sycl::range<1>(blockSize), sycl::range     <1>(blockSize)),
+          sycl::nd_range<1>(sycl::range<1>(numBlocks) * sycl::range<1>(blockSize), sycl::range<1>(blockSize)),
           [=](sycl::nd_item<1> item_ct1) {
               sqrt_kernel(d_vectors, size, 0.);
           }).wait();
@@ -758,7 +758,7 @@ void computeERIMatrix(
 //          workq.submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                        [=](sycl::nd_item<1> item_ct1) {
-                launch_eri_kernel(
+                launch_eri_kernel( item_ct1,
                   s0, s1, s2, s3,
                   d_eri_matrix, d_primitive_shells,
                   d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2,

@@ -32,7 +32,8 @@
 
 namespace gansu::gpu{
 
-SYCL_EXTERNAL void ssss2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void ssss2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -41,7 +42,8 @@ SYCL_EXTERNAL void ssss2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void sssp2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void sssp2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -50,7 +52,8 @@ SYCL_EXTERNAL void sssp2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void sspp2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void sspp2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -59,7 +62,8 @@ SYCL_EXTERNAL void sspp2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void spsp2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void spsp2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -68,7 +72,8 @@ SYCL_EXTERNAL void spsp2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void sppp2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void sppp2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -77,7 +82,8 @@ SYCL_EXTERNAL void sppp2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void pppp2e(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void pppp2e(sycl::nd_item<1> item_ct1,
+            double *g_int2e, const PrimitiveShell *g_shell,
             const real_t *g_cgto_normalization_factors,
             const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
             const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -86,7 +92,8 @@ SYCL_EXTERNAL void pppp2e(double *g_int2e, const PrimitiveShell *g_shell,
             const double *g_boys_grid, const size_t head_bra,
             const size_t head_ket);
 
-SYCL_EXTERNAL void MD_1T1SP(double *g_int2e, const PrimitiveShell *g_shell,
+SYCL_EXTERNAL void MD_1T1SP(sycl::nd_item<1> item_ct1,
+              double *g_int2e, const PrimitiveShell *g_shell,
               const real_t *g_cgto_normalization_factors,
               const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
               const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -134,7 +141,7 @@ using schwarz_aux_kernel_t = void (*)(const PrimitiveShell*, const real_t*, cons
 
 // ここを対角，非対角の分岐にするぐらい？
 
-inline void launch_eri_kernel(int a, int b, int c, int d,
+inline void launch_eri_kernel(sycl::nd_item<1> item, int a, int b, int c, int d,
 real_t* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2=s3
     const size_t num_threads, const real_t swartz_screening_threshold, const real_t* g_upper_bound_factors,
@@ -159,31 +166,31 @@ real_t* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalizati
     // else throw std::runtime_error("Invalid shell type");
 
     // Hybrid
-    if (a == 0 && b == 0 && c == 0 && d == 0) ssss2e(
+    if (a == 0 && b == 0 && c == 0 && d == 0) ssss2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else if (a == 0 && b == 0 && c == 0 && d == 1) sssp2e(
+    else if (a == 0 && b == 0 && c == 0 && d == 1) sssp2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else if (a == 0 && b == 0 && c == 1 && d == 1) sspp2e(
+    else if (a == 0 && b == 0 && c == 1 && d == 1) sspp2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else if (a == 0 && b == 1 && c == 0 && d == 1) spsp2e(
+    else if (a == 0 && b == 1 && c == 0 && d == 1) spsp2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else if (a == 0 && b == 1 && c == 1 && d == 1) sppp2e(
+    else if (a == 0 && b == 1 && c == 1 && d == 1) sppp2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else if (a == 1 && b == 1 && c == 1 && d == 1) pppp2e(
+    else if (a == 1 && b == 1 && c == 1 && d == 1) pppp2e( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);
-    else MD_1T1SP(
+    else MD_1T1SP( item,
     g_int2e, g_shell, g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3,
     num_threads, swartz_screening_threshold, g_upper_bound_factors,
     num_basis, g_boys_grid, head_bra, head_ket);

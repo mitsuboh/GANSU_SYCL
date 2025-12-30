@@ -55,12 +55,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void ssss2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void ssss2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2=s3
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
 //    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                      item_ct1.get_local_id(2);
     const size_t id = item_ct1.get_global_id(0);
@@ -114,12 +114,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void sssp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void sssp2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
@@ -171,12 +171,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void sspp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void sspp2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
@@ -228,12 +228,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void spsp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void spsp2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
@@ -285,12 +285,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void sppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void sppp2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
@@ -341,12 +341,12 @@ hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
 
-void pppp2e(double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
+void pppp2e(sycl::nd_item<1> item_ct1, double* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3, // s0=s1=s2
     const size_t num_threads, const real_t swartz_screening_threshold, const double* g_upper_bound_factors,
     const int num_basis, const double* g_boys_grid, const size_t head_bra, const size_t head_ket)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
     if (id >= num_threads) return;
 
@@ -1793,7 +1793,7 @@ exceeds 128 bytes and may cause high register pressure. Consult with your
 hardware vendor to find the total register size available and adjust the code,
 or use smaller sub-group size to avoid high register pressure.
 */
-void MD_1T1SP(double *g_int2e, const PrimitiveShell *g_shell,
+void MD_1T1SP(sycl::nd_item<1> item_ct1, double *g_int2e, const PrimitiveShell *g_shell,
               const real_t *g_cgto_normalization_factors,
               const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
               const ShellTypeInfo shell_s2, const ShellTypeInfo shell_s3,
@@ -1803,7 +1803,7 @@ void MD_1T1SP(double *g_int2e, const PrimitiveShell *g_shell,
               const size_t head_ket)
 {
     // 通し番号indexの計算
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
     const size_t id = item_ct1.get_global_id(0);
 
     if (id >= num_threads) return;
