@@ -51,7 +51,7 @@ namespace gansu::gpu{
 int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues,
                        real_t *d_eigenvectors, const int size) try {
     //cusolverManager cusolver;
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     size_t workspaceInBytesOnDevice;
     size_t workspaceInBytesOnHost;
@@ -63,7 +63,7 @@ int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues,
     // Query the workspace sizes of the device and host memory
 try {
     workspaceInBytesOnDevice = oneapi::mkl::lapack::syevd_scratchpad_size<real_t>(
-        syclsolverHandle,
+        workq,
         oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size,
         size
         );
@@ -84,7 +84,7 @@ catch (std::exception const& e) {
 
     // workspace allocation
 try {
-    d_workspace = sycl::malloc_device<real_t>(workspaceInBytesOnDevice, syclsolverHandle);
+    d_workspace = sycl::malloc_device<real_t>(workspaceInBytesOnDevice, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -96,7 +96,7 @@ catch (sycl::exception const& e) {
     // temporary matrix allocation for d_matrix since the eigenvectors will be stored in the same memory of d_matrix
     real_t * d_temp_matrix;
 try {
-     d_temp_matrix = sycl::malloc_device<real_t>(size * size, syclsolverHandle);
+     d_temp_matrix = sycl::malloc_device<real_t>(size * size, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -106,11 +106,11 @@ catch (sycl::exception const& e) {
 }
 
     // copy the d_matrix since the eigenvectors will be stored in the same memory
-    syclsolverHandle.memcpy(d_temp_matrix, d_matrix, size * size * sizeof(real_t)).wait();
+    workq.memcpy(d_temp_matrix, d_matrix, size * size * sizeof(real_t)).wait();
 
     // Perform eigenvalue decomposition
 try {
-    ev = oneapi::mkl::lapack::syevd( syclsolverHandle,
+    ev = oneapi::mkl::lapack::syevd( workq,
         oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size,
         d_temp_matrix, size,
         d_eigenvalues,
@@ -128,13 +128,13 @@ catch (sycl::exception const& e) {
 }
 
     // Copy the eigenvectors to d_eigenvectors
-    syclsolverHandle.memcpy(d_eigenvectors, d_temp_matrix, size * size * sizeof(real_t)).wait();
+    workq.memcpy(d_eigenvectors, d_temp_matrix, size * size * sizeof(real_t)).wait();
 
     // transpose the eigenvectors since the eigenvectors are stored by column-major order
 //    transposeMatrixInPlace(d_eigenvectors, size);
 // 転置処理：A → B（転置＋スケーリング係数 1.0）
 try {
-    ev = oneapi::mkl::blas::row_major::omatcopy( syclsolverHandle,
+    ev = oneapi::mkl::blas::row_major::omatcopy( workq,
         oneapi::mkl::transpose::trans, size, size,
         1.0,                           // スケーリング係数
         d_temp_matrix, size,
@@ -156,12 +156,12 @@ catch (sycl::exception const& e) {
     int h_info = 0;
 
 //    if (err == 0) h_info = 0;
-    syclsolverHandle.wait_and_throw();
+    workq.wait_and_throw();
 //    q_ct1.memcpy(&h_info, d_info, sizeof(int)).wait();
 
     // free the temporary memory
-    sycl::free(d_temp_matrix, syclsolverHandle);
-    sycl::free(d_workspace, syclsolverHandle);
+    sycl::free(d_temp_matrix, workq);
+    sycl::free(d_workspace, workq);
 //    sycl::free(h_workspace, syclsolverHandle);
 //    sycl::free(d_info, syclsolverHandle);
 
@@ -192,14 +192,14 @@ catch (sycl::exception const &exc) {
  */
  void matrixMatrixProduct(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size, const bool transpose_A, const bool transpose_B, const bool accumulate){
     //cublasManager cublas;
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     sycl::event ev;
 
     const real_t alpha = 1.0;
     const real_t beta = 0.0;
 
     if (!accumulate){
-        syclsolverHandle.memset(d_matrix_C, 0, size * size * sizeof(real_t)).wait();
+        workq.memset(d_matrix_C, 0, size * size * sizeof(real_t)).wait();
     }
 
     const oneapi::mkl::transpose transA =
@@ -215,7 +215,7 @@ catch (sycl::exception const &exc) {
     // Perform matrix matrix multipication
 try {
      ev = oneapi::mkl::blas::column_major::gemm(
-        syclsolverHandle,
+        workq,
         transB, transA,
         size, size, size,
         alpha,
@@ -247,7 +247,7 @@ catch (sycl::exception const& e) {
  */
 void weightedMatrixSum(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const double weight_A, const double weight_B, const int size) {
     //cublasManager cublas;
-   sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+   sycl::queue& workq = GPUHandle::syclqueue();
     sycl::event ev;
 
     const real_t alpha = weight_A;
@@ -256,7 +256,7 @@ void weightedMatrixSum(const double* d_matrix_A, const double* d_matrix_B, doubl
     // Perform weighted matrix sum
 try {
      ev = oneapi::mkl::blas::column_major::omatadd(
-        syclsolverHandle,
+        workq,
         oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans,
         size, size,
         alpha, d_matrix_A, size,
@@ -320,19 +320,19 @@ void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, doubl
  */
 double innerProduct(const double* d_vector_A, const double* d_vector_B, const int size) {
     //cublasManager cublas;
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t result;
-    real_t * d_result = sycl::malloc_device<real_t>(1, syclsolverHandle);
+    real_t * d_result = sycl::malloc_device<real_t>(1, workq);
     oneapi::mkl::blas::column_major::dot(
-        syclsolverHandle,
+        workq,
         size,
         d_vector_A, 1,
         d_vector_B, 1,
         d_result
     );
-    syclsolverHandle.memcpy(&result, d_result, sizeof(real_t)).wait();
-    sycl::free(d_result, syclsolverHandle);
+    workq.memcpy(&result, d_result, sizeof(real_t)).wait();
+    sycl::free(d_result, workq);
 /*
     cublasDdot(
         cublasHandle,
@@ -355,7 +355,7 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
  * @param size Number of the vector.
  */
 void invertSqrtElements(real_t* d_vectors, const size_t size, const double threshold) {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     size_t blockSize = 256;
     size_t numBlocks = (size + blockSize - 1) / blockSize;
     /*
@@ -381,7 +381,7 @@ void invertSqrtElements(real_t* d_vectors, const size_t size, const double thres
  * @param size Number of the vector.
  */
 void sqrtElements(real_t* d_vectors, const size_t size) {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     size_t blockSize = 256;
     size_t numBlocks = (size + blockSize - 1) / blockSize;
     {
@@ -401,7 +401,7 @@ void sqrtElements(real_t* d_vectors, const size_t size) {
  * @details The size of the matrix is size x size.
  */
  void transposeMatrixInPlace(real_t* d_matrix, const int size) {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     sycl::range<2> blockSize(WARP_SIZE, WARP_SIZE);
     sycl::range<2> gridSize((size + WARP_SIZE - 1) / WARP_SIZE,
                         (size + WARP_SIZE - 1) / WARP_SIZE);
@@ -441,13 +441,13 @@ catch (std::exception const& e) {
  */
 void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size) {
     //cublasManager cublas;
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     // Set the matrix to zero
-    syclsolverHandle.memset(d_matrix, 0, size * size * sizeof(real_t)).wait();
+    workq.memset(d_matrix, 0, size * size * sizeof(real_t)).wait();
 
     // Set the diagonal elements to the eigenvalues
-    oneapi::mkl::blas::column_major::copy(syclsolverHandle, size, d_vector, 1, d_matrix, size + 1).wait();
+    oneapi::mkl::blas::column_major::copy(workq, size, d_vector, 1, d_matrix, size + 1).wait();
 }
 
 /**
@@ -457,7 +457,7 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
  * @return Trace of the matrix (the sum of the diagonal elements)
  */
  real_t computeMatrixTrace(const real_t *d_matrix, const int size) try {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     if(size > 1024){ // 1024 is the maximum number of threads per block. If the size is larger than 1024, two or more blocks are required.
         THROW_EXCEPTION("Too many basis functions.");
     }
@@ -515,7 +515,7 @@ void computeCoreHamiltonianMatrix(
 //    sycl::device wk_dev{sycl::default_selector_v};
 //    sycl::context wk_ctx{wk_dev} ;
 
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 //    sycl::queue workq;
     // compute the core Hamiltonian matrix
     const int threads_per_block = 128; // the number of threads per block
@@ -544,8 +544,8 @@ void computeCoreHamiltonianMatrix(
 //                             sycl::property::queue::in_order()});
 //        V_streams.emplace_back(sycl::queue{sycl::default_selector_v,
 //                             sycl::property::queue::in_order()});
-        streams.emplace_back(GPUHandle::syclsolver());
-        V_streams.emplace_back(GPUHandle::syclsolver());
+        streams.emplace_back(GPUHandle::syclqueue());
+        V_streams.emplace_back(GPUHandle::syclqueue());
     }
 
     // Call the kernel functions from (s0|s1),... (e.g. (f|f), (d|f), (d|d), (s|d), (p|d), (d|d) for s, p, d, f shells)
@@ -689,7 +689,7 @@ void computeERIMatrix(
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::device wk_dev{sycl::default_selector_v};
 //    sycl::context wk_ctx{wk_dev} ;
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 //    sycl::device work_dev = workq.get_device();
 //    sycl::context wk_ctx{work_dev} ;
 //    sycl::queue workq;
@@ -723,7 +723,7 @@ void computeERIMatrix(
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
     for (int i = 0; i < num_kernels; i++) {
-        streams.emplace_back(GPUHandle::syclsolver());
+        streams.emplace_back(GPUHandle::syclqueue());
 //        streams[i] = dev_ct1.create_queue();
     }
 
@@ -812,7 +812,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
                               real_t *d_orbital_energies) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     // allocate temporary memory
     real_t* d_tempMatrix = nullptr;
     real_t* d_tempSymFockMatrix = nullptr;
@@ -922,7 +922,7 @@ void computeDensityMatrix_RHF(const real_t* d_coefficient_matrix, real_t* d_dens
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -953,7 +953,7 @@ void computeDensityMatrix_UHF(const real_t* d_coefficient_matrix, real_t* d_dens
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -985,7 +985,7 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, threads_per_block),
@@ -1010,7 +1010,7 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
  * @details The Fock matrix is given by \f$ F_{\mu\nu} = H_{\mu\nu} + \sum_{\lambda\sigma} D_{\lambda\sigma} ((\mu\nu|\lambda\sigma) - {1 \over 2}(\nu\sigma|\mu\lambda)) \f$.
  */
 void computeFockMatrix_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, const int num_basis) {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     const int warpsPerBlock = (num_basis + WARP_SIZE - 1) / WARP_SIZE;
     const int threadsPerBlock = WARP_SIZE * warpsPerBlock;
     if (threadsPerBlock > 1024) {
@@ -1080,7 +1080,7 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     limit. To get the device limit, query info::device::max_work_group_size.
     Adjust the work-group size if needed.
     */
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     workq.submit([&](sycl::handler& cgh){
 //    dpct::get_default_queue().submit([&](sycl::handler& cgh){
     sycl::local_accessor<real_t, 1> s_Fa_ij(sycl::range<1>(1), cgh);
@@ -1118,7 +1118,7 @@ void computeFockMatrix_ROHF(
     const int num_open, const int num_basis) try {
 	//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 	//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     real_t* d_temp_F_MO_closed = nullptr; // Fock matrix for the closed-shell MO
     real_t* d_temp_F_MO_open = nullptr; // Fock matrix for the open-shell MO
     real_t* d_temp_R_MO = nullptr; /// unified Fock matrix R_MO
@@ -1193,7 +1193,7 @@ void computeFockMatrix_ROHF(
         the limit. To get the device limit, query
         info::device::max_work_group_size. Adjust the work-group size if needed.
         */
-        sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
         workq.submit([&](sycl::handler& cgh){
 //      dpct::get_default_queue().submit([&](sycl::handler& cgh){
         sycl::local_accessor<real_t, 1> s_J_closed_ij(sycl::range<1>(1), cgh);
@@ -1347,7 +1347,7 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
                                        const real_t *d_density_matrix,
                                        const real_t *d_prev_density_matrix,
                                        const int num_basis) try {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     // allocate temporary memory
     real_t* d_tempDiffFockMatrix = nullptr;
     real_t* d_tempDiffDensityMatrix = nullptr;
@@ -1427,7 +1427,7 @@ catch (sycl::exception const &exc) {
  */
 void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha,
              int num_basis) try {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     real_t* d_tempMatrix;
 
 try {
@@ -1472,7 +1472,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
                             const bool is_include_transform) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     real_t* d_tempFPS;
     real_t* d_tempSPF;
     real_t* d_tempMatrix1;
@@ -1548,7 +1548,7 @@ catch (sycl::exception const &exc) {
 void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
                            real_t *d_new_fock_matrix, const int num_prev,
                            const int num_basis) try {
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     if (num_prev <= 1){
         THROW_EXCEPTION("DIIS requires at least two previous Fock matrices.");
     }
@@ -1710,7 +1710,7 @@ catch (sycl::exception const &exc) {
      const int num_basis) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     const real_t cx = 1.75;
 
     // allocate temporary memory
@@ -1765,35 +1765,35 @@ catch (sycl::exception const &exc) {
  * @param N The size of the matrix (number of rows/columns).
  */
 void invertMatrix(double *d_A, const int N) try {
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     int64_t *d_ipiv;
     real_t *d_work;
             // Leading dimension
     int lda = N;
 
     // Pivot indices
-    d_ipiv = sycl::malloc_device<int64_t>( N, syclsolverHandle);
+    d_ipiv = sycl::malloc_device<int64_t>( N, workq);
 
     // Scratchpad size
-    int64_t lwork_rf = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>( syclsolverHandle, N, N, lda);
-    real_t *d_work_rf = sycl::malloc_device<real_t>(lwork_rf, syclsolverHandle);
+    int64_t lwork_rf = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>( workq, N, N, lda);
+    real_t *d_work_rf = sycl::malloc_device<real_t>(lwork_rf, workq);
 
     // LU Decomposition
-    oneapi::mkl::lapack::getrf( syclsolverHandle, N, N, d_A, N, d_ipiv, d_work_rf, lwork_rf).wait();
+    oneapi::mkl::lapack::getrf( workq, N, N, d_A, N, d_ipiv, d_work_rf, lwork_rf).wait();
 
-    sycl::free(d_work_rf, syclsolverHandle);
+    sycl::free(d_work_rf, workq);
 
     // Inversion scratchpad size
-    int64_t lwork_ri = oneapi::mkl::lapack::getri_scratchpad_size<real_t>( syclsolverHandle, N, lda);
-    real_t *d_work_ri = sycl::malloc_device<real_t>(lwork_ri, syclsolverHandle);
+    int64_t lwork_ri = oneapi::mkl::lapack::getri_scratchpad_size<real_t>( workq, N, lda);
+    real_t *d_work_ri = sycl::malloc_device<real_t>(lwork_ri, workq);
 
     // Inverse computation
-    oneapi::mkl::lapack::getri( syclsolverHandle, N, d_A, lda, d_ipiv, d_work_ri, lwork_ri).wait();
+    oneapi::mkl::lapack::getri( workq, N, d_A, lda, d_ipiv, d_work_ri, lwork_ri).wait();
 
-    syclsolverHandle.wait_and_throw();
+    workq.wait_and_throw();
 
-    sycl::free(d_ipiv, syclsolverHandle);
-    sycl::free(d_work_ri, syclsolverHandle);
+    sycl::free(d_ipiv, workq);
+    sycl::free(d_work_ri, workq);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1811,14 +1811,14 @@ catch (sycl::exception const &exc) {
  * @param N The size of the matrix (number of rows/columns).
  */
 void choleskyDecomposition(double *d_A, const int N) try {
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     std::int64_t lwork;
     real_t *d_work = nullptr;
 
     // Get workspace size
 try {
-    lwork = oneapi::mkl::lapack::potrf_scratchpad_size<real_t>( syclsolverHandle,
+    lwork = oneapi::mkl::lapack::potrf_scratchpad_size<real_t>( workq,
         oneapi::mkl::uplo::upper, N, N);
 }
 catch (oneapi::mkl::lapack::invalid_argument const& e) {
@@ -1829,7 +1829,7 @@ catch (oneapi::mkl::lapack::invalid_argument const& e) {
 
     // workspace allocation
 try {
-    d_work = sycl::malloc_device<real_t>(lwork, syclsolverHandle);
+    d_work = sycl::malloc_device<real_t>(lwork, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1841,7 +1841,7 @@ catch (sycl::exception const& e) {
 
     // Perform Cholesky decomposition (A -> L, overwriting lower triangular part)
 try {
-    auto ev = oneapi::mkl::lapack::potrf(syclsolverHandle,
+    auto ev = oneapi::mkl::lapack::potrf(workq,
         oneapi::mkl::uplo::upper, N, d_A, N, d_work, lwork
     );
     ev.wait_and_throw();
@@ -1858,7 +1858,7 @@ try{
     const int num_threads = 256;
     const int num_blocks = (N * N + num_threads - 1) / num_threads;
 
-    syclsolverHandle.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
+    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                                              sycl::range<3>(1, 1, num_threads),
                                          sycl::range<3>(1, 1, num_threads)),
                        [=](sycl::nd_item<3> item_ct1) {
@@ -1866,7 +1866,7 @@ try{
                        }).wait();
 
     // Cleanup
-    sycl::free(d_work, syclsolverHandle);
+    sycl::free(d_work, workq);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1890,14 +1890,14 @@ catch (sycl::exception const &exc) {
  * @param row The number of columns.
  */
 void solve_lower_triangular(double *d_A, double *d_B, int row, int col) try {
-    sycl::queue& syclsolverHandle = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     sycl::event ev;
 
     // 転置
 //    transposeMatrixInPlace(d_A, row);
 // 転置処理：A → B（転置＋スケーリング係数 1.0）
 try {
-    ev = oneapi::mkl::blas::row_major::omatcopy( syclsolverHandle,
+    ev = oneapi::mkl::blas::row_major::omatcopy( workq,
         oneapi::mkl::transpose::trans, row, row,
         1.0,                           // スケーリング係数
         d_A, row,
@@ -1916,7 +1916,7 @@ catch (sycl::exception const& e) {
 
     real_t *d_tmp;
     try {
-        d_tmp = sycl::malloc_device<real_t>(row * col, syclsolverHandle);
+        d_tmp = sycl::malloc_device<real_t>(row * col, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1928,7 +1928,7 @@ catch (sycl::exception const& e) {
     const real_t beta = 0.0; //これ必要
 
     oneapi::mkl::blas::column_major::omatadd(
-        syclsolverHandle,
+        workq,
         oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
         row, col,
         alpha, d_B, col,
@@ -1948,7 +1948,7 @@ catch (sycl::exception const& e) {
 
     // // Solve A * X = B → X overwrites B
     oneapi::mkl::blas::column_major::trsm(
-        syclsolverHandle,
+        workq,
         oneapi::mkl::side::left,
         oneapi::mkl::uplo::lower,
         oneapi::mkl::transpose::nontrans,
@@ -1975,7 +1975,7 @@ catch (sycl::exception const& e) {
 */
 
     oneapi::mkl::blas::column_major::omatadd(
-        syclsolverHandle,
+        workq,
         oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
         col, row,
         alpha,
@@ -1998,7 +1998,7 @@ catch (sycl::exception const& e) {
     );
 */
 
-    sycl::free(d_tmp, syclsolverHandle);
+    sycl::free(d_tmp, workq);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -2051,7 +2051,7 @@ void compute_RI_IntermediateMatrixB(
     const bool verbose) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;
@@ -2148,7 +2148,7 @@ void computeIntermediateMatrixB(
 
     const int num_threads = 256;
     const int num_blocks = (num_auxiliary_basis * num_basis * num_basis + num_threads - 1) / num_threads;
-    sycl::queue workq;
+    sycl::queue& workq = GPUHandle::syclqueue();
     workq.parallel_for(
         sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
                               sycl::range<3>(1, 1, num_threads),
@@ -2165,7 +2165,7 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
                               const real_t *d_intermediate_matrix_B,
                               real_t *d_fock_matrix, const int num_basis,
                               const int num_auxiliary_basis) try {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     //cublasManager cublas;
@@ -2308,7 +2308,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     //cublasManager cublas;
 //    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
-     sycl::queue& workq = GPUHandle::syclsolver();
+     sycl::queue& workq = GPUHandle::syclqueue();
 
     // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
     const int num_threads = 256;
@@ -2500,7 +2500,7 @@ void computeFockMatrix_RI_ROHF(
     const int num_auxiliary_basis) try {
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     //cublasManager cublas;
 //    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
 
@@ -2818,7 +2818,7 @@ void computeTwoCenterERIs(
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
     for (int i = 0; i < num_kernels; i++) {
-        streams.emplace_back(GPUHandle::syclsolver());
+        streams.emplace_back(GPUHandle::syclqueue());
     }
 
     // for-loop for sorted shell-type (s0, s1)
@@ -2923,7 +2923,7 @@ void computeThreeCenterERIs(
     std::vector<sycl::queue> streams;
     streams.reserve(num_kernels);
     for (int i = 0; i < num_kernels; i++) {
-        streams.emplace_back(GPUHandle::syclsolver());
+        streams.emplace_back(GPUHandle::syclqueue());
     }
 
     // for-loop for sorted shell-type (s0, s1, s2, s3)
@@ -3020,7 +3020,7 @@ void computeSchwarzUpperBounds(
             const size_t num_blocks = (num_bra + threads_per_block - 1) / threads_per_block; // the number of blocks
 //    dpct::dim3 blocks(num_blocks,1,1);
 //    dpct::dim3 threads(threads_per_block,1,1);
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
     sycl::range<3> blocks(1, 1, num_blocks);
     sycl::range<3> threads(1, 1, threads_per_block);
 
@@ -3064,7 +3064,7 @@ void computeAuxiliarySchwarzUpperBounds(
         const size_t head = shell_s0.start_index;
         const size_t num_bra = shell_s0.count;
         const size_t num_blocks = (num_bra + threads_per_block - 1) / threads_per_block; // the number of blocks
-        sycl::queue& workq = GPUHandle::syclsolver();
+        sycl::queue& workq = GPUHandle::syclqueue();
         sycl::range<3> blocks(1, 1, num_blocks);
         sycl::range<3> threads(1, 1, threads_per_block);
 
@@ -3105,7 +3105,7 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
                                    const int num_basis) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t* d_mulliken_population = nullptr;
     try {
@@ -3151,7 +3151,7 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
                                    const int num_basis) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t* d_mulliken_population = nullptr;
     try {
@@ -3197,7 +3197,7 @@ void computeDensityOverlapMatrix(const real_t* d_density_matrix,
 				const int num_basis) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t* d_result_matrix = nullptr;
     try {
@@ -3232,7 +3232,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
         const real_t* d_sqrt_overlap_matrix,
         real_t* result_matrix,
         const int num_basis) try {
-    sycl::queue& workq = GPUHandle::syclsolver();
+    sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t* d_eigval = nullptr;
     try {

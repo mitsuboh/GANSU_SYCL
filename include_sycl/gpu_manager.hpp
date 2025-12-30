@@ -105,23 +105,23 @@ void computeFockMatrix_Hash_RHF(const real_t* d_density_matrix, const real_t* d_
 class GPUHandle {
 public:
     // Public accessor for thread-local SYCL queue
-    static sycl::queue& syclsolver() {
-        return instance().syclsolver_;
+    static sycl::queue& syclqueue() {
+        return instance().syclqueue_;
     }
 
 private:
-    sycl::queue syclsolver_;
+    sycl::queue syclqueue_;
 
     // Private constructor initializes the SYCL queue
     GPUHandle() {
         try {
-            syclsolver_ = sycl::queue(
+            syclqueue_ = sycl::queue(
                 sycl::default_selector_v,
                 sycl::property::queue::in_order{}
             );
 //Debug
-        const auto& dev = syclsolver_.get_device();
-        const auto& ctx = syclsolver_.get_context();
+        const auto& dev = syclqueue_.get_device();
+        const auto& ctx = syclqueue_.get_context();
 
         std::cout << "[SYCL Init] Device: " << dev.get_info<sycl::info::device::name>() << "\n"
                   << "[SYCL Init] Vendor: " << dev.get_info<sycl::info::device::vendor>() << "\n"

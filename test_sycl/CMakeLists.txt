@@ -1,57 +1,49 @@
-# 
-# GANSU: GPU Acclerated Numerical Simulation Utility
-# 
-# Copyright (c) 2025, Hiroshima University and Fujitsu Limited
-# All rights reserved.
-# 
-# This software is licensed under the BSD 3-Clause License.
-# You may obtain a copy of the license in the LICENSE file
-# located in the root directory of this source tree or at:
-# https://opensource.org/licenses/BSD-3-Clause
-#  
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-
-
 cmake_minimum_required(VERSION 3.31)
-project(GANSU LANGUAGES  CXX)
+project(GANSU LANGUAGES CXX)
 
-if(WIN32)
-    set(SYCL_FLAGS "/fsycl /DMKL_ILP64 /Qmkl")
-else()
-    set(SYCL_FLAGS "-fsycl -DMKL_ILP64 -qmkl=parallel")
-endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
+# --- C++ standard ---
+set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
-
-# Download Google Test using FetchContent
+# --- Download Google Test ---
 include(FetchContent)
 FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
 )
-# Build settings for GTest
 FetchContent_MakeAvailable(googletest)
 
+# --- SYCL compile flags for Intel GPU (no CUDA) ---
+set(SYCL_COMMON_COMPILE
+    -fsycl
+    -fsycl-targets=nvptx64-nvidia-cuda
+    -fsycl-device-code-split=per_kernel
+)
 
-# set compute capability
-set(CMAKE_SYCL_ARCHITECTURES 80 86)
+set(SYCL_CUDA_BACKEND_OPTS
+    -Xsycl-target-backend=nvptx64-nvidia-cuda "--cuda-gpu-arch=sm_70"
+) 
 
-# C++ standard
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 17)
+set(ONEMATH_HOME ~/docker_env/oneMath) 
 
-# Set include directories (global)
-include_directories(../include_sycl)
+# --- Include directories ---
+include_directories(
+    ../include_sycl
+    ${ONEMATH_HOME}/include
+    ${ONEMATH_HOME}/build/bin
+    ${ONEMATH_HOME}/examples/include
+    /home/mikei/docker_env/oneDPL/include
+)
 
-
-# Static libraries
+# --- Static libraries ---
 add_library(int1e STATIC ../src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC ../src_sycl/int2e.dp.cpp)
 
+# Apply SYCL flags to static libraries
+target_compile_options(int1e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(int2e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
 
-set(SOURCES
+# --- GANSU library ---
+set(GANSU_SOURCES
     ../src_sycl/basis_set.cpp
     ../src_sycl/parseXYZ.cpp
     ../src_sycl/hf.dp.cpp
@@ -64,34 +56,37 @@ set(SOURCES
     ../src_sycl/parameter_manager.cpp
     ../src_sycl/eri.dp.cpp
 )
+add_library(gansu STATIC ${GANSU_SOURCES})
+target_compile_options(gansu PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_link_options(gansu PUBLIC -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
 
-find_package(MKL CONFIG REQUIRED)
+# --- oneMKL GPU libraries ---
+link_directories(${ONEMATH_HOME}/build/lib)
+target_link_libraries(gansu PUBLIC
+    int1e
+    int2e
+    onemath
+)
 
-add_library(gansu STATIC ${SOURCES})
-target_link_libraries(gansu ${MKL_LIB}
-        int1e
-        int2e
-	MKL::MKL
-    )
-
-
+# --- Executable ---
 set(TEST_SOURCES
     test_gpu_manager.dp.cpp
     test_gpu_kernels.dp.cpp
 )
-
 add_executable(test_runner ${TEST_SOURCES})
-target_link_libraries(test_runner gansu
-        gtest
-        gtest_main
-    )
+target_compile_options(test_runner PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_link_options(test_runner PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda ${SYCL_CUDA_BACKEND_OPTS})
+target_link_libraries(test_runner PRIVATE
+    gansu
+    gtest
+    gtest_main
+    onemath
+)
 
-if(WIN32)
-    target_link_options(gansu PRIVATE "/Qmkl")
-else()
-    target_link_options(gansu PRIVATE "-qmkl=parallel")
-endif()
+# --- RPATH for runtime libraries ---
+set(CMAKE_INSTALL_RPATH ${ONEMATH_HOME}/build/lib)
 
-# Enable CTest framework
+# --- Enable CTest ---
 enable_testing()
 add_test(NAME GANSU_Tests COMMAND test_runner)
+

@@ -16,7 +16,7 @@
 
 // Helper function: Copy device memory to host
 inline void copyToHost(std::vector<double>& host_data, const double* device_data, size_t size) {
-    sycl::queue& workq = gansu::gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gansu::gpu::GPUHandle::syclqueue();
     workq 
         .memcpy(host_data.data(), device_data, size * sizeof(double))
         .wait();

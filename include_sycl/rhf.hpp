@@ -222,7 +222,7 @@ public:
     void get_new_fock_matrix() override {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
         if (first_iteration_) { // First iteration: no damping, just store the density matrix and the Fock matrix
             first_iteration_ = false;
@@ -310,7 +310,7 @@ public:
     void get_new_fock_matrix() override {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
         // Compute the error matrix
         gpu::computeDIISErrorMatrix(
             hf_.get_overlap_matrix().device_ptr(), 
@@ -472,7 +472,7 @@ public:
         }
 
 //        dpct::get_in_order_queue()
-        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        sycl::queue& workq = gpu::GPUHandle::syclqueue();
             workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
             .wait();
@@ -603,7 +603,7 @@ public:
         }
 
 //        dpct::get_in_order_queue()
-        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        sycl::queue& workq = gpu::GPUHandle::syclqueue();
             workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
             .wait();

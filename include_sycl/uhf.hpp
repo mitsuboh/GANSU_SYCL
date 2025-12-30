@@ -250,22 +250,22 @@ public:
     void get_new_fock_matrix() override {
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
+    sycl::queue &workq = gpu::GPUHandle::syclqueue();
         if (first_iteration_) { // First iteration: no damping, just store the density matrix and the Fock matrix
             first_iteration_ = false;
-            q_ct1.memcpy(prev_density_matrix_a.device_ptr(),
+            workq.memcpy(prev_density_matrix_a.device_ptr(),
                          hf_.get_density_matrix_a().device_ptr(),
                          hf_.get_num_basis() * hf_.get_num_basis() *
                              sizeof(real_t));
-            q_ct1.memcpy(prev_density_matrix_b.device_ptr(),
+            workq.memcpy(prev_density_matrix_b.device_ptr(),
                          hf_.get_density_matrix_b().device_ptr(),
                          hf_.get_num_basis() * hf_.get_num_basis() *
                              sizeof(real_t));
-            q_ct1.memcpy(prev_fock_matrix_a.device_ptr(),
+            workq.memcpy(prev_fock_matrix_a.device_ptr(),
                          hf_.get_fock_matrix_a().device_ptr(),
                          hf_.get_num_basis() * hf_.get_num_basis() *
                              sizeof(real_t));
-            q_ct1.memcpy(prev_fock_matrix_a.device_ptr(),
+            workq.memcpy(prev_fock_matrix_a.device_ptr(),
                          hf_.get_fock_matrix_b().device_ptr(),
                          hf_.get_num_basis() * hf_.get_num_basis() *
                              sizeof(real_t));
@@ -346,7 +346,7 @@ public:
     void get_new_fock_matrix() override {
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
+    sycl::queue &workq = gpu::GPUHandle::syclqueue();
         { // alpha spin
             // Compute the error matrix
             gpu::computeDIISErrorMatrix(
@@ -361,12 +361,12 @@ public:
 
             // Copy the previous error matrix and the previous Fock matrix to the new error matrix and the new Fock matrix at most num_prev matrices
             const int store_prev_index = iteration_ % num_prev_; // Overwrite the previous matrices cyclically
-            q_ct1.memcpy(
+            workq.memcpy(
                 &prev_error_matrices_a
                      .device_ptr()[store_prev_index * num_basis_ * num_basis_],
                 error_matrix_a_or_b.device_ptr(),
                 num_basis_ * num_basis_ * sizeof(real_t));
-            q_ct1.memcpy(
+            workq.memcpy(
                 &prev_fock_matrices_a
                      .device_ptr()[store_prev_index * num_basis_ * num_basis_],
                 hf_.get_fock_matrix_a().device_ptr(),
@@ -398,12 +398,12 @@ public:
 
             // Copy the previous error matrix and the previous Fock matrix to the new error matrix and the new Fock matrix at most num_prev matrices
             const int store_prev_index = iteration_ % num_prev_; // Overwrite the previous matrices cyclically
-            q_ct1.memcpy(
+            workq.memcpy(
                 &prev_error_matrices_b
                      .device_ptr()[store_prev_index * num_basis_ * num_basis_],
                 error_matrix_a_or_b.device_ptr(),
                 num_basis_ * num_basis_ * sizeof(real_t));
-            q_ct1.memcpy(
+            workq.memcpy(
                 &prev_fock_matrices_b
                      .device_ptr()[store_prev_index * num_basis_ * num_basis_],
                 hf_.get_fock_matrix_b().device_ptr(),
@@ -551,7 +551,7 @@ public:
             hf_.get_num_basis()
         );
 
-        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        sycl::queue& workq = gpu::GPUHandle::syclqueue();
         workq.memcpy(
             hf_.get_coefficient_matrix_b().device_ptr(),
             hf_.get_coefficient_matrix_a().device_ptr(),
@@ -583,7 +583,7 @@ public:
             hf_.get_coefficient_matrix_a().device_ptr(),
             hf_.get_num_basis()
         );
-        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        sycl::queue& workq = gpu::GPUHandle::syclqueue();
         workq.memcpy(
             hf_.get_coefficient_matrix_b().device_ptr(),
             hf_.get_coefficient_matrix_a().device_ptr(),
@@ -615,12 +615,12 @@ public:
     void guess() override {
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
+    sycl::queue &workq = gpu::GPUHandle::syclqueue();
         // initial guess from the density matrix given as an argument
-        q_ct1.memcpy(hf_.get_density_matrix_a().device_ptr(), density_matrix_a_,
+        workq.memcpy(hf_.get_density_matrix_a().device_ptr(), density_matrix_a_,
                      hf_.get_num_basis() * hf_.get_num_basis() *
                          sizeof(real_t));
-        q_ct1
+        workq
             .memcpy(hf_.get_density_matrix_b().device_ptr(), density_matrix_b_,
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
             .wait();
@@ -733,7 +733,7 @@ public:
     void guess() override {
 //    dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue &q_ct1 = gpu::GPUHandle::syclsolver();
+    sycl::queue &workq = gpu::GPUHandle::syclqueue();
         // allocate and initialize the density matrices of alpha and beta spins
         std::unique_ptr<real_t[]> density_matrix_alpha(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
         std::unique_ptr<real_t[]> density_matrix_beta(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
@@ -760,10 +760,10 @@ public:
             }
         }
 
-        q_ct1.memcpy(
+        workq.memcpy(
             hf_.get_density_matrix_a().device_ptr(), density_matrix_alpha.get(),
             hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
-        q_ct1
+        workq
             .memcpy(hf_.get_density_matrix_b().device_ptr(),
                     density_matrix_beta.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))

@@ -63,7 +63,7 @@ public:
      * Frees the allocated device and host memory if they exist.
      */
     virtual ~CudaMemoryManager() {
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
         if (device_ptr_) {
             sycl::free(device_ptr_, workq);
         }
@@ -141,7 +141,7 @@ public:
     }
 
     void allocate() override {
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
         if (allocate_host_memory_in_advance) try {
             (this->host_ptr_) = (typename std::remove_reference<
@@ -167,7 +167,7 @@ public:
     }
 
     void toDevice() override {
-        sycl::queue& workq = gpu::GPUHandle::syclsolver();
+        sycl::queue& workq = gpu::GPUHandle::syclqueue();
         if (!this->device_ptr_) {
             allocate();
         }
@@ -180,7 +180,7 @@ public:
     }
 
     void toHost() override {
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
         if (!this->host_ptr_) try {
                 (this->host_ptr_) = (typename std::remove_reference<
                                      decltype(this->host_ptr_)>::type)

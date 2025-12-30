@@ -108,7 +108,7 @@ ScopedTimer::ScopedTimer(const std::string& name) : functionName(name) {
 }
 
 ScopedTimer::~ScopedTimer() {
-    sycl::queue& workq = gpu::GPUHandle::syclsolver();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
     workq.wait_and_throw();
     GlobalProfiler::stop(functionName);
 }

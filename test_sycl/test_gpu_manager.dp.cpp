@@ -28,7 +28,7 @@ using real_t = double;
 
 // Test case for eigenDecomposition
 TEST(gpu_manager_test, eigenDecomposition) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input symmetric matrix
@@ -94,7 +94,7 @@ bool isEqualMatrix(const std::vector<double>& mat1, const std::vector<double>& m
 
 // Unit test for invertMatrix
 TEST(gpu_manager_test, invertMatrix) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int N = 3;
     std::vector<double> h_A = {1, 2, 1, 
                                2, 1, 0, 
@@ -127,7 +127,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case for matrixMatrixProduct
 TEST(gpu_manager_test, matrixMatrixProduct) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input matrices
@@ -167,7 +167,7 @@ auto myQ = GPUHandle::syclsolver();
 }
 
 TEST(gpu_manager_test, matrixMatrixProduct_transposed) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input matrices
@@ -211,7 +211,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case for weightedMatrixSum
 TEST(gpu_manager_test, WeightedMatrixSum) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input matrices
@@ -252,7 +252,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case for matrixAddition
 TEST(gpu_manager_test, matrixAddition) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input matrices
@@ -293,7 +293,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case for matrixSubtraction
 TEST(gpu_manager_test, matrixSubtraction) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 2;
 
     // Input matrices
@@ -335,7 +335,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Perform Cholesky decomposition on a symmetric positive definite matrix
 TEST(gpu_manager_test, choleskyDecomposition) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int N = 3;
 
     // Symmetric Positive Definite (SPD) matrix (row-major order)
@@ -380,7 +380,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Compute the trace of a matrix
 TEST(gpu_manager_test, ComputeMatrixTrace) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int N = 4;
 
     // Define a test matrix (row-major order)
@@ -414,7 +414,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Damping function correctly updates the Fock matrix
 TEST(gpu_manager_test, damping) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int N = 3;
     constexpr real_t alpha = 0.1;
 
@@ -474,7 +474,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Test the computation of the optimal damping factor for RHF
 TEST(gpu_manager_test, computeOptimalDampingFactor_RHF) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int N = 3;
     
     // Define matrices (Fock, previous Fock, density, previous density)

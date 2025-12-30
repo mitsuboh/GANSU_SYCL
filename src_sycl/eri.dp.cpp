@@ -137,7 +137,7 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
 }
 
 void ERI_RI::precomputation() {
-    sycl::queue& q_ct1 = gpu::GPUHandle::syclsolver();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     // compute the intermediate matrix B of the auxiliary basis functions
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();

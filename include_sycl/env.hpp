@@ -31,8 +31,8 @@ namespace gansu{
  */
 inline void display_env_info(){
     // SYCL Platform Version
-    sycl::queue q;
-    auto platform = q.get_device().get_platform();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+    auto platform = workq.get_device().get_platform();
     std::cout << "Platform name: " << platform.get_info<sycl::info::platform::name>() << std::endl;
     std::cout << "Platform version: " << platform.get_info<sycl::info::platform::version>() << std::endl;
 

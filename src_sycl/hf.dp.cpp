@@ -68,7 +68,7 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     geometry_optimization(parameters.get<int>("geometry_optimization")),
     geometry_optimization_method(parameters.get<std::string>("geometry_optimization_method"))
 {
-      sycl::queue& workq = gpu::GPUHandle::syclsolver();
+      sycl::queue& workq = gpu::GPUHandle::syclqueue();
     // print all the values of boys function for the test (temporary implementation)
     if(verbose){
         std::cout << "Messege: grid values for the Boys function is load from the header file." << std::endl;

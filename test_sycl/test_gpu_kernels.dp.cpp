@@ -25,7 +25,7 @@ using real_t = double;
 
 // Test case: invertSqrtElements
 TEST(gpu_kernels_test, InvertSqrtElements) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr size_t size = 4;
     
     // Define input data
@@ -58,7 +58,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Transpose a square matrix in place
 TEST(gpu_kernels_test, TransposeMatrixInPlace) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 3;
     
     // Define input matrix (row-major order)
@@ -101,7 +101,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Create a diagonal matrix from a vector
 TEST(gpu_kernels_test, MakeDiagonalMatrix) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 4;
 
     // Input vector
@@ -143,7 +143,7 @@ auto myQ = GPUHandle::syclsolver();
 
 // Test case: Compute the trace of a square matrix
 TEST(gpu_kernels_test, ComputeMatrixTrace) {
-auto myQ = GPUHandle::syclsolver();
+auto myQ = GPUHandle::syclqueue();
     constexpr int size = 4;
 
     // Input matrix (row-major order)
