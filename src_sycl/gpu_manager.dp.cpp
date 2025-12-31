@@ -367,7 +367,23 @@ void invertSqrtElements(real_t* d_vectors, const size_t size, const double thres
         workq.parallel_for(
             sycl::nd_range<1>(sycl::range<1>(numBlocks) * sycl::range<1>(blockSize), sycl::range<1>(blockSize)),
             [=](sycl::nd_item<1> item_ct1) {
-                inverseSqrt_kernel(d_vectors, size, threshold);
+//                inverseSqrt_kernel(item_ct1, d_vectors, size, threshold);
+
+    size_t idx = item_ct1.get_global_id(0);
+    if (idx < size) {
+        double value = d_vectors[idx];
+        if (value < threshold) {
+            d_vectors[idx] = 0.0; // Avoid division by zero
+        }else{
+            /*
+            DPCT1013:275: The rounding mode could not be specified and the
+            generated code may have different accuracy than the original code.
+            Verify the correctness. SYCL math built-in function rounding mode is
+            aligned with OpenCL C 1.2 standard.
+            */
+            d_vectors[idx] = 1.0 / sycl::sqrt(value);
+        }
+    }
             }).wait();
     }
 }
@@ -388,7 +404,20 @@ void sqrtElements(real_t* d_vectors, const size_t size) {
       workq.parallel_for(
           sycl::nd_range<1>(sycl::range<1>(numBlocks) * sycl::range<1>(blockSize), sycl::range<1>(blockSize)),
           [=](sycl::nd_item<1> item_ct1) {
-              sqrt_kernel(d_vectors, size, 0.);
+//              sqrt_kernel(item_ct1, d_vectors, size, 0.);
+          const double threshold = 0.;
+
+    size_t idx = item_ct1.get_global_id(0);
+    if (idx < size) {
+        double value = d_vectors[idx];
+        if (value < threshold) {
+//            d_eigenvalues[idx] = 0.0; // Avoid division by zero
+            d_vectors[idx] = threshold; // Avoid division by zero
+        }else{
+            d_vectors[idx] = sycl::sqrt(value);
+        }
+    }
+
           }).wait();
     }
 }
@@ -419,7 +448,35 @@ try {
 //    dpct::get_in_order_queue().parallel_for(
         sycl::nd_range<2>(gridSize * blockSize, blockSize),
         [=](sycl::nd_item<2> item_ct1) {
-            transposeMatrixInPlace_kernel(d_matrix, size, s_src, s_dst);
+//            transposeMatrixInPlace_kernel(d_matrix, size, s_src, s_dst);
+
+    const int xid = item_ct1.get_global_id(0);
+    const int yid = item_ct1.get_global_id(1);
+    const int l_xid = item_ct1.get_local_id(0);
+    const int l_yid = item_ct1.get_local_id(1);
+    const int b_xid = item_ct1.get_group(0);
+    const int b_yid = item_ct1.get_group(1);
+
+    bool in_bounds = (xid < size) && (yid < size);
+    bool do_work = in_bounds && !(b_xid < b_yid || xid < yid);
+
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
+    if (do_work) {
+    //__shared__ real_t s_src[WARP_SIZE][WARP_SIZE];
+    //__shared__ real_t s_dst[WARP_SIZE][WARP_SIZE];
+
+    s_src[l_yid][l_xid] = d_matrix[yid * size + xid];
+    s_dst[l_yid][l_xid] = d_matrix[xid * size + yid];
+    }
+
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
+    if (do_work) {
+    d_matrix[yid * size + xid] = s_dst[l_yid][l_xid];
+    d_matrix[xid * size + yid] = s_src[l_yid][l_xid];
+    }
+
     });
     });
     event.wait_and_throw();
@@ -928,7 +985,7 @@ void computeDensityMatrix_RHF(const real_t* d_coefficient_matrix, real_t* d_dens
                               sycl::range<3>(1, 1, threads_per_block),
                           sycl::range<3>(1, 1, threads_per_block)),
         [=](sycl::nd_item<3> item_ct1) {
-            computeDensityMatrix_RHF_kernel(d_coefficient_matrix,
+            computeDensityMatrix_RHF_kernel(item_ct1, d_coefficient_matrix,
                                             d_density_matrix, num_electron,
                                             num_basis);
         });
@@ -959,7 +1016,7 @@ void computeDensityMatrix_UHF(const real_t* d_coefficient_matrix, real_t* d_dens
                               sycl::range<3>(1, 1, threads_per_block),
                           sycl::range<3>(1, 1, threads_per_block)),
         [=](sycl::nd_item<3> item_ct1) {
-            computeDensityMatrix_UHF_kernel(d_coefficient_matrix,
+            computeDensityMatrix_UHF_kernel(item_ct1, d_coefficient_matrix,
                                             d_density_matrix, num_electron,
                                             num_basis);
         });
@@ -991,7 +1048,7 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
                               sycl::range<3>(1, 1, threads_per_block),
                           sycl::range<3>(1, 1, threads_per_block)),
         [=](sycl::nd_item<3> item_ct1) {
-            computeDensityMatrix_ROHF_kernel(
+            computeDensityMatrix_ROHF_kernel(item_ct1,
                 d_coefficient_matrix, d_density_matrix_closed,
                 d_density_matrix_open, d_density_matrix, num_closed, num_open,
                 num_basis);
@@ -1041,7 +1098,7 @@ void computeFockMatrix_RHF(const real_t* d_density_matrix, const real_t* d_core_
     cgh.parallel_for(
         sycl::nd_range<3>(blocks * threads, threads),
         [=](sycl::nd_item<3> item_ct1) {
-            computeFockMatrix_RHF_kernel(d_density_matrix,
+            computeFockMatrix_RHF_kernel(item_ct1, d_density_matrix,
                                          d_core_hamiltonian_matrix, d_eri,
                                          d_fock_matrix, num_basis, s_F_ij);
         });
@@ -1088,7 +1145,7 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     cgh.parallel_for(
         sycl::nd_range<3>(blocks * threads, threads),
         [=](sycl::nd_item<3> item_ct1) {
-            computeFockMatrix_UHF_kernel(d_density_matrix_a, d_density_matrix_b,
+            computeFockMatrix_UHF_kernel(item_ct1, d_density_matrix_a, d_density_matrix_b,
                                          d_core_hamiltonian_matrix, d_eri,
                                          d_fock_matrix_a, d_fock_matrix_b,
                                          num_basis,
@@ -1203,7 +1260,7 @@ void computeFockMatrix_ROHF(
         cgh.parallel_for(
             sycl::nd_range<3>(blocks * threads, threads),
             [=](sycl::nd_item<3> item_ct1) {
-                computeFockMatrix_ROHF_kernel(
+                computeFockMatrix_ROHF_kernel(item_ct1,
                     d_density_matrix_closed, d_density_matrix_open,
                     d_core_hamiltonian_matrix, d_eri, d_fock_matrix_closed,
                     d_fock_matrix_open, num_basis,
@@ -1232,7 +1289,7 @@ void computeFockMatrix_ROHF(
                                   sycl::range<3>(1, 1, threads_per_block),
                               sycl::range<3>(1, 1, threads_per_block)),
             [=](sycl::nd_item<3> item_ct1) {
-                computeUnifiedFockMatrix_ROHF_kernel(
+                computeUnifiedFockMatrix_ROHF_kernel(item_ct1,
                     d_temp_F_MO_closed, d_temp_F_MO_open, ROH_parameters,
                     d_temp_R_MO, num_closed, num_open, num_basis);
             });
@@ -1738,7 +1795,7 @@ catch (sycl::exception const &exc) {
                               sycl::range<3>(1, 1, threads_per_block),
                           sycl::range<3>(1, 1, threads_per_block)),
         [=](sycl::nd_item<3> item_ct1) {
-            computeInitialFockMatrix_GWH_kernel(
+            computeInitialFockMatrix_GWH_kernel(item_ct1,
                 d_core_hamiltonian_matrix, d_overlap_matrix, d_temp_FockMatrix,
                 num_basis, cx);
         });
@@ -2154,7 +2211,7 @@ void computeIntermediateMatrixB(
                               sycl::range<3>(1, 1, num_threads),
                           sycl::range<3>(1, 1, num_threads)),
         [=](sycl::nd_item<3> item_ct1) {
-            computeRIIntermediateMatrixB_kernel(
+            computeRIIntermediateMatrixB_kernel(item_ct1,
                 d_three_center_eri, d_two_center_eri, d_intermediate_matrix_B,
                 num_basis, num_auxiliary_basis);
         });
@@ -2282,7 +2339,7 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
                                              sycl::range<3>(1, 1, num_threads),
                                          sycl::range<3>(1, 1, num_threads)),
                        [=](sycl::nd_item<3> item_ct1) {
-                           computeFockMatrix_RI_RHF_kernel(
+                           computeFockMatrix_RI_RHF_kernel(item_ct1,
                                d_core_hamiltonian_matrix, d_J, d_K,
                                d_fock_matrix, num_basis);
                        });
@@ -2466,7 +2523,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
                                              sycl::range<3>(1, 1, num_threads),
                                          sycl::range<3>(1, 1, num_threads)),
                        [=](sycl::nd_item<3> item_ct1) {
-                           computeFockMatrix_RI_UHF_kernel(
+                           computeFockMatrix_RI_UHF_kernel(item_ct1, 
                                d_core_hamiltonian_matrix, d_J, d_Ka,
                                d_fock_matrix_a, num_basis);
                        });
@@ -2474,7 +2531,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
                                              sycl::range<3>(1, 1, num_threads),
                                          sycl::range<3>(1, 1, num_threads)),
                        [=](sycl::nd_item<3> item_ct1) {
-                           computeFockMatrix_RI_UHF_kernel(
+                           computeFockMatrix_RI_UHF_kernel(item_ct1,
                                d_core_hamiltonian_matrix, d_J, d_Kb,
                                d_fock_matrix_b, num_basis);
                        });
@@ -2714,7 +2771,7 @@ void computeFockMatrix_RI_ROHF(
                                   sycl::range<3>(1, 1, num_threads),
                               sycl::range<3>(1, 1, num_threads)),
             [=](sycl::nd_item<3> item_ct1) {
-                computeFockMatrix_RI_ROHF_kernel(
+                computeFockMatrix_RI_ROHF_kernel(item_ct1,
                     d_core_hamiltonian_matrix, d_J, d_Kclosed, d_Kopen,
                     d_fock_matrix_closed, d_fock_matrix_open, num_basis);
             });
@@ -2747,7 +2804,7 @@ void computeFockMatrix_RI_ROHF(
                                   sycl::range<3>(1, 1, threads_per_block),
                               sycl::range<3>(1, 1, threads_per_block)),
             [=](sycl::nd_item<3> item_ct1) {
-                computeUnifiedFockMatrix_ROHF_kernel(
+                computeUnifiedFockMatrix_ROHF_kernel(item_ct1,
                     d_temp_F_MO_closed, d_temp_F_MO_open, ROH_parameters,
                     d_temp_R_MO, num_closed, num_open, num_basis);
             });
@@ -2839,7 +2896,7 @@ void computeTwoCenterERIs(
             streams[stream_id++].submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
                        [=](sycl::nd_item<3> item_ct1) {
-                gpu::launch_2center_kernel(
+                gpu::launch_2center_kernel(item_ct1,
                     s0, s1, d_two_center_eri,
                     d_auxiliary_primitive_shells, d_auxiliary_cgto_nomalization_factors,
                     shell_s0, shell_s1, num_shell_pairs,

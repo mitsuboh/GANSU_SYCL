@@ -111,8 +111,8 @@ calc_ss_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|s) */
-inline void calc_ss_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -164,8 +164,8 @@ calc_sp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|p) */
-inline void calc_sp_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -216,8 +216,8 @@ calc_sd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|d) */
-inline void calc_sd_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -274,13 +274,13 @@ calc_sf_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_sf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_sf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -330,8 +330,8 @@ calc_pp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (p|p) */
-inline void calc_pp_gpu(real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -387,13 +387,13 @@ calc_pd_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -451,13 +451,13 @@ calc_pf_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -514,13 +514,13 @@ calc_dd_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_dd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_dd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -577,13 +577,13 @@ calc_df_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_df_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_df_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -639,13 +639,13 @@ calc_ff_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_ff_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_ff_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -704,13 +704,13 @@ calc_sg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_sg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -765,13 +765,13 @@ calc_pg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -825,13 +825,13 @@ calc_dg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -886,13 +886,13 @@ calc_fg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -947,13 +947,13 @@ calc_gg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
-        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
 
@@ -993,35 +993,35 @@ void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                          const double schwarz_screening_threshold,
                          int num_auxiliary_basis, const double *g_boys_grid);
 #else
-void calc_sg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_nomalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
@@ -1037,7 +1037,7 @@ MD_int2c2e_1T1SP exceeds 128 bytes and may cause high register pressure. Consult
 with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void MD_int2c2e_1T1SP(real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                       const real_t *d_auxiliary_cgto_nomalization_factors,
                       ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                       int num_shell_pairs, const double *g_upper_bound_factors,
@@ -1048,7 +1048,7 @@ inline void MD_int2c2e_1T1SP(real_t *g_result, const PrimitiveShell *g_pshell_au
 //                      double (*MD_EtArray[])(double, double, double, double,
 //                                             double) *
 //                          *MD_EtArray) {
-auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 {
     // 通し番号indexの計算
     const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
@@ -1319,7 +1319,7 @@ void MD_int2c2e_1T1SP_wrapper(
 
     
 SYCL_EXTERNAL
-inline void launch_2center_kernel(int a, int b,
+inline void launch_2center_kernel(const sycl::nd_item<3>& item_ct1, int a, int b,
                                   real_t* out,
                                   const PrimitiveShell* primitives,
                                   const real_t* coord,
@@ -1337,7 +1337,7 @@ inline void launch_2center_kernel(int a, int b,
 #if !defined(COMPUTE_G_AUX)
         if (a >= 4 || b >= 4) {
             // printf("Caution: calling generic int2c2e kernel.\n");
-            MD_int2c2e_1T1SP(out, primitives, coord, a_info, b_info, num_shell_pairs, g_u_b_factors, schwarz_scrn_th, b, boys_table);
+            MD_int2c2e_1T1SP(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs, g_u_b_factors, schwarz_scrn_th, b, boys_table);
             return;
         }
 #endif
@@ -1345,35 +1345,35 @@ inline void launch_2center_kernel(int a, int b,
         int index = a * N - (a * (a - 1)) / 2 + (b - a);  // 上三角インデックス
 
         switch (index) {
-            case 0:  calc_ss_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 0:  calc_ss_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 1:  calc_sp_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 1:  calc_sp_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 2:  calc_sd_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 2:  calc_sd_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 3:  calc_sf_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 3:  calc_sf_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 4:  calc_sg_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 4:  calc_sg_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 5:  calc_pp_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 5:  calc_pp_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 6:  calc_pd_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 6:  calc_pd_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 7:  calc_pf_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 7:  calc_pf_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 8:  calc_pg_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 8:  calc_pg_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 9:  calc_dd_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 9:  calc_dd_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 10: calc_df_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 10: calc_df_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 11: calc_dg_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 11: calc_dg_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 12: calc_ff_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 12: calc_ff_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 13: calc_fg_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 13: calc_fg_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
-            case 14: calc_gg_gpu(out, primitives, coord, a_info, b_info, num_shell_pairs,
+            case 14: calc_gg_gpu(item_ct1, out, primitives, coord, a_info, b_info, num_shell_pairs,
                      g_u_b_factors, schwarz_scrn_th, num_auxiliary_basis, boys_table); break;
             default: ;
 //                throw std::runtime_error("Invalid 2center index.");
