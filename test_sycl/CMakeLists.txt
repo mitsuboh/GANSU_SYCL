@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
-# --- C++ standard ---
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_SYCL_ARCHITECTURES 80 86)
 
-# --- Download Google Test ---
+# SYCL を有効化
+add_compile_options(-fsycl)
+add_link_options(-fsycl)
+
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -12,38 +15,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-# --- SYCL compile flags for Intel GPU (no CUDA) ---
-set(SYCL_COMMON_COMPILE
-    -fsycl
-    -fsycl-targets=nvptx64-nvidia-cuda
-    -fsycl-device-code-split=per_kernel
-)
+include_directories(../include_sycl)
 
-set(SYCL_CUDA_BACKEND_OPTS
-    -Xsycl-target-backend=nvptx64-nvidia-cuda "--cuda-gpu-arch=sm_70"
-) 
-
-set(ONEMATH_HOME ~/docker_env/oneMath) 
-
-# --- Include directories ---
-include_directories(
-    ../include_sycl
-    ${ONEMATH_HOME}/include
-    ${ONEMATH_HOME}/build/bin
-    ${ONEMATH_HOME}/examples/include
-    /home/mikei/docker_env/oneDPL/include
-)
-
-# --- Static libraries ---
 add_library(int1e STATIC ../src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC ../src_sycl/int2e.dp.cpp)
 
-# Apply SYCL flags to static libraries
-target_compile_options(int1e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
-target_compile_options(int2e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
-
-# --- GANSU library ---
-set(GANSU_SOURCES
+set(SOURCES
     ../src_sycl/basis_set.cpp
     ../src_sycl/parseXYZ.cpp
     ../src_sycl/hf.dp.cpp
@@ -56,37 +33,27 @@ set(GANSU_SOURCES
     ../src_sycl/parameter_manager.cpp
     ../src_sycl/eri.dp.cpp
 )
-add_library(gansu STATIC ${GANSU_SOURCES})
-target_compile_options(gansu PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
-target_link_options(gansu PUBLIC -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
 
-# --- oneMKL GPU libraries ---
-link_directories(${ONEMATH_HOME}/build/lib)
-target_link_libraries(gansu PUBLIC
+find_package(MKL CONFIG REQUIRED)
+
+add_library(gansu STATIC ${SOURCES})
+target_link_libraries(gansu
     int1e
     int2e
-    onemath
+    MKL::MKL_SYCL
 )
 
-# --- Executable ---
 set(TEST_SOURCES
     test_gpu_manager.dp.cpp
     test_gpu_kernels.dp.cpp
 )
+
 add_executable(test_runner ${TEST_SOURCES})
-target_compile_options(test_runner PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
-target_link_options(test_runner PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda ${SYCL_CUDA_BACKEND_OPTS})
-target_link_libraries(test_runner PRIVATE
+target_link_libraries(test_runner
     gansu
     gtest
     gtest_main
-    onemath
 )
 
-# --- RPATH for runtime libraries ---
-set(CMAKE_INSTALL_RPATH ${ONEMATH_HOME}/build/lib)
-
-# --- Enable CTest ---
 enable_testing()
 add_test(NAME GANSU_Tests COMMAND test_runner)
-

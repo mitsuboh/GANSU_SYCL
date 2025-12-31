@@ -1,14 +1,9 @@
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
-# --- C++ / SYCL 設定 ---
-set(CMAKE_CXX_STANDARD 17)
-if(WIN32)
-    set(SYCL_FLAGS "/fsycl /DMKL_ILP64 /Qmkl")
-else()
-    set(SYCL_FLAGS "-fsycl -DMKL_ILP64 -qmkl=parallel")
-endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
+# SYCL を有効化
+add_compile_options(-fsycl)
+add_link_options(-fsycl)
 
 # --- Include directories ---
 include_directories(include_sycl)
@@ -18,6 +13,9 @@ add_library(int1e STATIC src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC src_sycl/int2e.dp.cpp)
 add_library(int2c2e STATIC src_sycl/int2c2e.dp.cpp)
 add_library(int3c2e STATIC src_sycl/int3c2e.dp.cpp)
+
+# --- oneAPI MKL ---
+find_package(MKL CONFIG REQUIRED)
 
 # --- GANSU ライブラリ ---
 set(GANSU_SOURCES
@@ -36,17 +34,8 @@ set(GANSU_SOURCES
 )
 add_library(gansu STATIC ${GANSU_SOURCES})
 target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e)
+target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
 
-# --- oneAPI MKL リンク（Sparse は除く） ---
-find_package(MKL REQUIRED)
-
-# --- リンクオプションに MKL を追加 ---
-if(WIN32)
-    target_link_options(gansu PRIVATE "/Qmkl")
-else()
-    target_link_options(gansu PRIVATE "-qmkl=parallel")
-endif()
 
 # --- 実行ファイル ---
 add_executable(HF_main src_sycl/HF_main.dp.cpp)
