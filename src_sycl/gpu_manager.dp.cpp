@@ -3005,7 +3005,7 @@ void computeThreeCenterERIs(
             const double* schwarz_bound = &d_schwarz_upper_bound_factors[shell_pair_index];
             cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
                        [=](sycl::nd_item<3> item_ct1) {
-                gpu::launch_3center_kernel(
+                gpu::launch_3center_kernel( item_ct1,
                     s0, s1, s2,
                     d_three_center_eri, d_primitive_shells,
                     d_auxiliary_primitive_shells, d_auxiliary_cgto_nomalization_factors,
