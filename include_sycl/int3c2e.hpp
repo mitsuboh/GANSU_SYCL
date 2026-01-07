@@ -50,13 +50,15 @@ __inline__ double calcNormsWOFact2_3center(double alpha, double beta, double gam
 __inline__ void addToResult_3center(double res, double *g_result, int p, int q, int r, int nCGTO, int nAux, bool is_prim_id_not_equal, const real_t* d_cgto_nomalization_factors, const real_t* d_auxiliary_cgto_nomalization_factors){
     res *= d_cgto_nomalization_factors[p] * d_cgto_nomalization_factors[q] * d_auxiliary_cgto_nomalization_factors[r];
 
-    double* addr = &g_result[r * nCGTO * nCGTO + p * nCGTO + q];
+//    double* addr = &g_result[r * nCGTO * nCGTO + p * nCGTO + q];
+    double* addr = &g_result[(size_t)r * nCGTO * nCGTO + p * nCGTO + q];
     sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>
          atomic_val(*addr);
     atomic_val.fetch_add(res);
     if (is_prim_id_not_equal)
     {
-    double* addr2 = &g_result[r * nCGTO * nCGTO + q * nCGTO + p];
+//    double* addr2 = &g_result[r * nCGTO * nCGTO + q * nCGTO + p];
+    double* addr2 = &g_result[(size_t)r * nCGTO * nCGTO + q * nCGTO + p];
     sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>
         atomic_val2(*addr2);
     atomic_val2.fetch_add(res);
@@ -90,8 +92,10 @@ void calc_sss_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {
 
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+//        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
+
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -158,8 +162,7 @@ void calc_ssp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -224,8 +227,7 @@ void calc_ssd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -291,8 +293,7 @@ void calc_ssf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -359,8 +360,7 @@ void calc_sps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -423,8 +423,7 @@ void calc_spp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -487,8 +486,7 @@ void calc_spd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -552,8 +550,7 @@ void calc_spf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -616,8 +613,7 @@ void calc_pps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -682,8 +678,7 @@ void calc_ppp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -748,8 +743,7 @@ void calc_ppd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -814,8 +808,7 @@ void calc_ppf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -881,8 +874,7 @@ void calc_sds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -945,8 +937,7 @@ void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1010,8 +1001,7 @@ void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1075,8 +1065,7 @@ void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1138,8 +1127,7 @@ void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1202,8 +1190,7 @@ void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1267,8 +1254,7 @@ void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1332,8 +1318,7 @@ void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1396,8 +1381,7 @@ void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1462,8 +1446,7 @@ void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1528,8 +1511,7 @@ void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1593,8 +1575,7 @@ void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1820,8 +1801,7 @@ void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1883,8 +1863,7 @@ void calc_pdg_gpu(real_t *g_result, const PrimitiveShell *g_pshell,
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1947,8 +1926,7 @@ void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2054,8 +2032,7 @@ void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2119,8 +2096,7 @@ void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2182,8 +2158,7 @@ void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        size_t idx = item_ct1.get_global_id(2);
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);

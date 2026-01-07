@@ -49,7 +49,16 @@ void generatePrimitiveShellPairIndices(size_t2* d_indices_array, size_t num_thre
     d_indices_array[id] = index1to2(id, is_symmetric, num_basis);
 }
 
+void initializePrimitiveShellPairIndices(sycl::int2* d_indices_array, int num_threads, bool is_symmetric, int num_basis) {
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t id =
+        (size_t)item_ct1.get_local_range(2) * item_ct1.get_group(2) +
+        item_ct1.get_local_id(2);
+    if (id >= num_threads) return;
+    size_t2 index_pair = index1to2(id, is_symmetric, num_basis);
+    d_indices_array[id] = sycl::int2(static_cast<int>(index_pair.x), static_cast<int>(index_pair.y));
 
+}
 
 
 ERI_Stored::ERI_Stored(const HF& hf): 
@@ -128,6 +137,11 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
         auxiliary_primitive_shells_(auxiliary_molecular.get_primitive_shells()),
         auxiliary_cgto_nomalization_factors_(auxiliary_molecular.get_cgto_normalization_factors()),
         intermediate_matrix_B_(num_auxiliary_basis_, num_basis_*num_basis_),
+        d_J_(num_basis_, num_basis_),
+        d_K_(num_basis_, num_basis_),
+        d_W_tmp_(num_auxiliary_basis_),
+        d_T_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
+        d_V_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
         schwarz_upper_bound_factors(hf.get_num_primitive_shell_pairs()),
         auxiliary_schwarz_upper_bound_factors(auxiliary_molecular.get_primitive_shells().size())
 {
@@ -200,30 +214,31 @@ void ERI_RI::precomputation() {
                     });
             });
 
-real_t* keys_begin =
-    &schwarz_upper_bound_factors.device_ptr()
-        [shell_pair_type_infos[pair_idx].start_index];
+            real_t* keys_begin =
+                &schwarz_upper_bound_factors.device_ptr()
+                    [shell_pair_type_infos[pair_idx].start_index];
+            real_t* keys_end = 
+                keys_begin + shell_pair_type_infos[pair_idx].count;
 
-real_t* keys_end = keys_begin + shell_pair_type_infos[pair_idx].count;
+            size_t2* values_begin =
+                &d_primitive_shell_pair_indices
+                    [shell_pair_type_infos[pair_idx].start_index];
 
-size_t2* values_begin =
-    &d_primitive_shell_pair_indices
-        [shell_pair_type_infos[pair_idx].start_index];
-size_t count = shell_pair_type_infos[pair_idx].count;
+            size_t count = shell_pair_type_infos[pair_idx].count;
 
-// zip(keys, values)
-auto zipped_begin = dpl::make_zip_iterator(keys_begin, values_begin);
-auto zipped_end   = dpl::make_zip_iterator(keys_end,   values_begin + count);
+            // zip(keys, values)
+            auto zipped_begin = dpl::make_zip_iterator(keys_begin, values_begin);
+            auto zipped_end   = dpl::make_zip_iterator(keys_end,   values_begin + count);
 
-auto policy = dpl::execution::make_device_policy(q_ct1);
+            auto policy = dpl::execution::make_device_policy(q_ct1);
 
-// ソート（Schwarz bound の降順）
-dpl::sort(policy, zipped_begin, zipped_end,
-          [](const auto& a, const auto& b) {
-              return std::get<0>(a) > std::get<0>(b);
-          });
+            // ソート（Schwarz bound の降順）
+            dpl::sort(policy, zipped_begin, zipped_end,
+                  [](const auto& a, const auto& b) {
+                      return std::get<0>(a) > std::get<0>(b);
+            });
 
-pair_idx++;
+            pair_idx++;
         }
     }
     q_ct1.wait_and_throw();
@@ -302,9 +317,29 @@ pair_idx++;
 ERI_Direct::ERI_Direct(const HF& hf):
     hf_(hf),
     num_basis_(hf.get_num_basis()),
-    schwarz_upper_bound_factors(hf.get_num_primitive_shell_pairs())
+    schwarz_upper_bound_factors(hf.get_num_primitive_shell_pairs()),
+    primitive_shell_pair_indices(hf.get_num_primitive_shell_pairs()),
+    num_fock_replicas_(8)
 {
-    // nothing to do
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    // for distributed atomicAdd operations
+    //cudaMalloc(&fock_matrix_replicas_, sizeof(real_t) * num_basis_ * num_basis_ * num_fock_replicas_);
+    fock_matrix_replicas_ =
+        sycl::malloc_device<real_t>(num_basis_ * num_basis_ * num_fock_replicas_, q_ct1);
+    //cudaMemset(fock_matrix_replicas_, 0.0, sizeof(real_t) * num_basis_ * num_basis_ * num_fock_replicas_);
+}
+
+ERI_Direct::~ERI_Direct() {
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    for (auto p : global_counters_) { if (p) sycl::free(p, q_ct1); }
+    for (auto p : min_skipped_columns_) { if (p) sycl::free(p, q_ct1); }
+    global_counters_.clear();
+    min_skipped_columns_.clear();
+
+    if (fock_matrix_replicas_) {
+        sycl::free(fock_matrix_replicas_, q_ct1);
+        fock_matrix_replicas_ = nullptr;
+    }
 }
 
 void ERI_Direct::precomputation() {
@@ -315,6 +350,40 @@ void ERI_Direct::precomputation() {
     const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
     const int verbose = hf_.get_verbose();
 
+    // for dynamic Schwarz screening
+    const int shell_type_count = shell_type_infos.size();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    const int task_group_size = 16;
+    const int num_braket_types = shell_quadruples.size();
+    global_counters_.resize(num_braket_types, nullptr);
+    min_skipped_columns_.resize(num_braket_types, nullptr);
+    int s0, s1, s2, s3;
+    ShellTypeInfo shell_s0, shell_s1; //shell_s2, shell_s3;
+    int num_bra, num_bra_groups;
+    for (int idx = 0; idx < num_braket_types; ++idx) {
+        std::tie(s0, s1, s2, s3) = shell_quadruples[idx];
+        shell_s0 = shell_type_infos[s0];
+        shell_s1 = shell_type_infos[s1];
+        num_bra = (s0 == s1) ? shell_s0.count * (shell_s0.count + 1) / 2 : shell_s0.count * shell_s1.count;
+        num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
+//        cudaMalloc(&global_counters_[idx], sizeof(int) * num_bra_groups);
+//        cudaMalloc(&min_skipped_columns_[idx], sizeof(int) * num_bra_groups);
+        global_counters_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
+        min_skipped_columns_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
+    }
+
     gpu::computeSchwarzUpperBounds(
         shell_type_infos,
         shell_pair_type_infos,
@@ -324,6 +393,90 @@ void ERI_Direct::precomputation() {
         schwarz_upper_bound_factors.device_ptr(), 
         verbose
         );
+
+    // Create an array for storing pairs of primitive shell indices
+    const size_t num_primitive_shell_pairs = primitive_shells.size() * (primitive_shells.size() + 1) / 2;
+    sycl::int2* d_primitive_shell_pair_indices = primitive_shell_pair_indices.device_ptr();
+
+    // Store the pairs of primitive shell indices and sort them based on the Schwarz upper bound factors
+    int pair_idx = 0;
+    const int threads_per_block = 1024;
+    for(int s0 = 0; s0 < shell_type_infos.size(); s0++){
+        for(int s1 = s0; s1 < shell_type_infos.size(); s1++){
+            const int num_blocks = (shell_pair_type_infos[pair_idx].count + threads_per_block - 1) / threads_per_block; // the number of blocks
+            /*
+            DPCT1049:1: The work-group size passed to the SYCL kernel may exceed
+            the limit. To get the device limit, query
+            info::device::max_work_group_size. Adjust the work-group size if
+            needed.
+            */
+            q_ct1.submit([&](sycl::handler &cgh) {
+                auto
+                    d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0 =
+                        &d_primitive_shell_pair_indices
+                            [shell_pair_type_infos[pair_idx].start_index];
+                int shell_pair_type_infos_pair_idx_count_ct1 =
+                    shell_pair_type_infos[pair_idx].count;
+                auto s0_s1_ct2 = s0 == s1;
+                auto shell_type_infos_s1_count_ct3 = shell_type_infos[s1].count;
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(
+                        sycl::range<3>(1, 1, num_blocks) *
+                            sycl::range<3>(1, 1, threads_per_block),
+                        sycl::range<3>(1, 1, threads_per_block)),
+                    [=](sycl::nd_item<3> item_ct1) {
+                        initializePrimitiveShellPairIndices(
+                            d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0,
+                            shell_pair_type_infos_pair_idx_count_ct1, s0_s1_ct2,
+                            shell_type_infos_s1_count_ct3);
+                    });
+            });
+
+            real_t* keys_begin =
+                schwarz_upper_bound_factors.device_ptr() +
+                    shell_pair_type_infos[pair_idx].start_index;
+            real_t* keys_end = keys_begin + shell_pair_type_infos[pair_idx].count;
+
+            sycl::int2* values_begin =
+                  d_primitive_shell_pair_indices +
+                  shell_pair_type_infos[pair_idx].start_index;
+
+            oneapi::dpl::sort_by_key(
+                oneapi::dpl::execution::make_device_policy(q_ct1),
+                keys_begin, keys_end,
+                values_begin,
+                std::greater<real_t>()
+            );
+
+/*
+            dpct::device_pointer<real_t> keys_begin(
+                &schwarz_upper_bound_factors.device_ptr()
+                     [shell_pair_type_infos[pair_idx].start_index]);
+            dpct::device_pointer<real_t> keys_end(
+                &schwarz_upper_bound_factors.device_ptr()
+                     [shell_pair_type_infos[pair_idx].start_index] +
+                shell_pair_type_infos[pair_idx].count);
+            dpct::device_pointer<sycl::int2> values_begin(
+                &d_primitive_shell_pair_indices[shell_pair_type_infos[pair_idx]
+                                                    .start_index]);
+            dpct::sort(oneapi::dpl::execution::make_device_policy(q_ct1),
+                       keys_begin, keys_end, values_begin,
+                       std::greater<real_t>());
+*/
+
+            pair_idx++;
+        }
+    q_ct1.wait_and_throw();
+    }
+
+
+
+
+
+
+
+
 }
 
 

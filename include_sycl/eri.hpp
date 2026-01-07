@@ -116,6 +116,9 @@ public:
 
     std::string get_algorithm_name() override { return "RI"; } ///< Get the algorithm name
 
+    //suzuki
+    DeviceHostMatrix<real_t>& get_intermediate_matrix_B() { return intermediate_matrix_B_; }
+
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
     const int num_basis_;
@@ -132,6 +135,12 @@ protected:
     DeviceHostMemory<real_t> auxiliary_schwarz_upper_bound_factors;
     // DeviceHostMemory<real_t> two_center_eri_;
     // DeviceHostMemory<real_t> three_center_eri_;
+    DeviceHostMatrix<real_t> d_J_;
+    DeviceHostMatrix<real_t> d_K_;
+    DeviceHostMemory<real_t> d_W_tmp_;
+    DeviceHostMatrix<real_t> d_T_tmp_;
+    DeviceHostMatrix<real_t> d_V_tmp_;
+
 };
 
 
@@ -145,7 +154,8 @@ public:
     ERI_Direct(const HF& hf); ///< Constructor
         
     ERI_Direct(const ERI_Direct&) = delete; ///< copy constructor is deleted
-    virtual ~ERI_Direct() = default; ///< destructor
+    //virtual ~ERI_Direct() = default; ///< destructor
+    virtual ~ERI_Direct();
         
     void precomputation() override;
 
@@ -156,6 +166,11 @@ protected:
     const int num_basis_;
 
     DeviceHostMemory<real_t> schwarz_upper_bound_factors;
+    DeviceHostMemory<sycl::int2> primitive_shell_pair_indices;
+    std::vector<int*> global_counters_;
+    std::vector<int*> min_skipped_columns_;
+    real_t* fock_matrix_replicas_;
+    const int num_fock_replicas_;
 };
 
 

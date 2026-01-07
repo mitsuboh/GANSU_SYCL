@@ -13,6 +13,7 @@ add_library(int1e STATIC src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC src_sycl/int2e.dp.cpp)
 add_library(int2c2e STATIC src_sycl/int2c2e.dp.cpp)
 add_library(int3c2e STATIC src_sycl/int3c2e.dp.cpp)
+add_library(int2e_direct STATIC src_sycl/int2e_direct.dp.cpp)
 
 # --- oneAPI MKL ---
 find_package(MKL CONFIG REQUIRED)
@@ -34,7 +35,8 @@ set(GANSU_SOURCES
 )
 add_library(gansu STATIC ${GANSU_SOURCES})
 target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
+# target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
+target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e int2e_direct MKL::MKL_SYCL)
 
 
 # --- 実行ファイル ---

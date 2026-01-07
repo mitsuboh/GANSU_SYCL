@@ -231,7 +231,7 @@ inline void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
 
     double sum = 0.0;
     for (int j = 0; j < N; ++j) {
-        sum += d_W[j] * d_B[j * M * M + id];  // Apply scalar multiplication and accumulate
+        sum += d_W[j] * d_B[(size_t)j * M * M + id];  // Apply scalar multiplication and accumulate
     }
 
     if(accumulated){
@@ -261,7 +261,7 @@ inline void sum_matrices_kernel(double *d_K, const double *d_B,
 
     double sum = 0.0;
     for (int p = 0; p < N; p++) {
-        sum += d_B[p * M * M + id];  // Apply scalar multiplication and accumulate
+        sum += d_B[(size_t)p * M * M + id];  // Apply scalar multiplication and accumulate
     }
 
     if(accumulated){
@@ -505,7 +505,7 @@ inline void computeUnifiedFockMatrix_ROHF_kernel(sycl::nd_item<3> item_ct1,
  * @param num_basis Number of basis functions
  * @details This function computes the trace of a matrix.
  */
-//SYCL_EXTERNAL void getMatrixTrace(const double *d_matrix, double *d_trace, const int num_basis, double &s_trace);
+//SYCL_EXTERNAL void getMatrixTrace(const double *g_matrix, double *g_trace, const int num_basis, double &s_trace);
 // Embeded into gpu_manager
 
 /**

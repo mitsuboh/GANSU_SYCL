@@ -46,6 +46,7 @@ inline int calc_result_index(int y, int x, int sumCGTO) {
     return (y<=x) ? y*sumCGTO + x : x*sumCGTO + y;
 }
 
+/*
 inline void Matrix_Symmetrization(double *matrix, int n,
                                          sycl::local_accessor<real_t, 2> sh_mem) {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -61,11 +62,13 @@ inline void Matrix_Symmetrization(double *matrix, int n,
             matrix[src_block + item_ct1.get_local_id(1) * n +
                    item_ct1.get_local_id(2)];
     }
+*/
     /*
     DPCT1065:129: Consider replacing sycl::nd_item::barrier() with
     sycl::nd_item::barrier(sycl::access::fence_space::local_space) for better
     performance if there is no access to global memory.
     */
+/*
     item_ct1.barrier();
 
     if (item_ct1.get_group(1) == item_ct1.get_group(2) &&
@@ -76,6 +79,20 @@ inline void Matrix_Symmetrization(double *matrix, int n,
     matrix[dst_block + item_ct1.get_local_id(1) * n +
            item_ct1.get_local_id(2)] =
         sh_mem[item_ct1.get_local_id(2)][item_ct1.get_local_id(1)];
+}
+*/
+
+inline void matrixSymmetrization(const sycl::nd_item<3>& item, double* g_matrix, const int num_basis)
+{
+    size_t idx = item.get_global_id(0);
+
+    int mu = idx / num_basis;
+    int nu = idx % num_basis;
+
+    if (mu < nu) {
+        g_matrix[num_basis * nu + mu] = g_matrix[num_basis * mu + nu];
+    }
+
 }
 
 

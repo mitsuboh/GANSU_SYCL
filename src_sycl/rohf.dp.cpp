@@ -484,7 +484,7 @@ std::vector<std::vector<real_t>> ROHF::compute_mayer_bond_order() const{
 
 
 
-std::vector<std::vector<real_t>> ROHF::compute_wiberg_bond_order() const{
+std::vector<std::vector<real_t>> ROHF::compute_wiberg_bond_order() {
     std::vector<std::vector<real_t>> wiberg_bond_order_matrix(atoms.size(), std::vector<real_t>(atoms.size(), 0.0));
 
     std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store DS (product of density and overlap matrices)
