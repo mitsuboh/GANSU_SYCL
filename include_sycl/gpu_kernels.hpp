@@ -272,7 +272,7 @@ inline void sum_matrices_kernel(double *d_K, const double *d_B,
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_RHF_kernel( const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis, sycl::local_accessor<real_t, 1> s_F_ij);
-inline void computeFockMatrix_RHF_kernel(sycl::nd_item<3> item, const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis,
+inline void computeFockMatrix_RHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis,
       sycl::local_accessor<real_t, 1> sdata)
 {
 //    auto item = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -290,7 +290,7 @@ inline void computeFockMatrix_RHF_kernel(sycl::nd_item<3> item, const real_t* d_
             size_t eid1 = get_1d_indexM4(i, j, k, l, num_basis);
             size_t eid2 = get_1d_indexM4(i, k, j, l, num_basis);
 
-            lsum += (d_eri[eid1] - 0.5 * d_eri[eid2]) *
+            lsum += (d_eri[eid1] - static_cast<real_t>(0.5) * d_eri[eid2]) *
                           d_density_matrix[k * num_basis + l];
         }
     }

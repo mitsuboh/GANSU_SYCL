@@ -19,7 +19,7 @@ namespace gansu::gpu{
 
 // CUDA atomicAdd
 template <typename T>
-inline void atomic_add(T* base, int idx, T value) {
+inline T atomic_add(T* base, int idx, T value) {
     sycl::atomic_ref<
         T,
         sycl::memory_order::relaxed,
@@ -27,8 +27,22 @@ inline void atomic_add(T* base, int idx, T value) {
         sycl::access::address_space::global_space>
         atom(base[idx]);
 
-    atom.fetch_add(value);
+    return atom.fetch_add(value);
 }
+
+// CUDA atomicMIn
+template <typename T>
+inline T atomic_min(T* base, int idx, T value) {
+    sycl::atomic_ref<
+        T,
+        sycl::memory_order::relaxed,
+        sycl::memory_scope::device,
+        sycl::access::address_space::global_space>
+        atom(base[idx]);
+
+    return atom.fetch_min(value);  // returns old value
+}
+
 
 inline 
 void swap_indices(int& mu, int& nu)
@@ -64,8 +78,8 @@ inline void add2fock(
     val *= 0.5 * g_cgto_normalization_factors[mu] * g_cgto_normalization_factors[nu] * g_cgto_normalization_factors[la] * g_cgto_normalization_factors[si];
 
     if (is_sym_bra && is_sym_ket && is_sym_braket) {
-//        atomicAdd(g_fock + num_basis * mu + nu, 1.0 * g_dens[num_basis * la + si] * val);
-        atomic_add(g_fock, num_basis * mu + nu, static_cast<real_t>(1.0) * g_dens[num_basis * la + si] * val);
+	//        atomicAdd(g_fock + num_basis * mu + nu, 1.0 * g_dens[num_basis * la + si] * val);
+		atomic_add(g_fock, num_basis * mu + nu, static_cast<real_t>(1.0) * g_dens[num_basis * la + si] * val);
     }
     else if (is_sym_bra && is_sym_ket) {
         atomic_add(g_fock, num_basis * mu + nu, static_cast<real_t>(2.0) * g_dens[num_basis * la + si] * val);

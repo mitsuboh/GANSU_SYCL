@@ -19,6 +19,7 @@ include_directories(../include_sycl)
 
 add_library(int1e STATIC ../src_sycl/int1e.dp.cpp)
 add_library(int2e STATIC ../src_sycl/int2e.dp.cpp)
+add_library(int2e_direct STATIC ../src_sycl/int2e_direct.dp.cpp)
 
 set(SOURCES
     ../src_sycl/basis_set.cpp
@@ -40,6 +41,7 @@ add_library(gansu STATIC ${SOURCES})
 target_link_libraries(gansu
     int1e
     int2e
+    int2e_direct
     MKL::MKL_SYCL
 )
 

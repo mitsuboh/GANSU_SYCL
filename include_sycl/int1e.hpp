@@ -82,12 +82,11 @@ inline void Matrix_Symmetrization(double *matrix, int n,
 }
 */
 
-inline void matrixSymmetrization(const sycl::nd_item<3>& item, double* g_matrix, const int num_basis)
+inline void matrixSymmetrization(const sycl::id<1>& item, double* g_matrix, const int num_basis)
 {
-    size_t idx = item.get_global_id(0);
-
-    int mu = idx / num_basis;
-    int nu = idx % num_basis;
+    size_t idx = item[0];
+    size_t mu = idx / num_basis;
+    size_t nu = idx % num_basis;
 
     if (mu < nu) {
         g_matrix[num_basis * nu + mu] = g_matrix[num_basis * mu + nu];
