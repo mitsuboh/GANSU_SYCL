@@ -28,7 +28,14 @@
 #include "utils.hpp" // THROW_EXCEPTION
 
 
+
+
+
 namespace gansu{
+
+
+
+
 
 // prototype of classes
 class Convergence_RHF;
@@ -60,6 +67,9 @@ public:
     real_t get_total_spin() override { return 0.0; } // always 0 for RHF
 
     void report() override;
+
+    //suzuki
+    //void compute_RI_RMP2();
 
     void set_convergence_method(std::unique_ptr<Convergence_RHF> convergence_method);
 
@@ -111,6 +121,19 @@ public:
      * @param filename File name
      */
     void export_molden_file(const std::string& filename) override;
+
+    /**
+     * @brief Post process after SCF convergence
+     * @details This function performs post-HF calculations after the SCF convergence, in which the selected post-HF method is applied.
+     * @details This function overrides the virtual function in the base class HF.
+     */
+    void post_process_after_scf() override;
+
+    /**
+     * @brief Get the orbital energies
+     * @return Reference to the orbital energies
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies() { return orbital_energies; } ///< Get the orbital energies
 
 private:
     real_t energy_; ///< Energy
@@ -563,6 +586,13 @@ public:
     ERI_Stored_RHF(const ERI_Stored_RHF&) = delete; ///< copy constructor is deleted
     ~ERI_Stored_RHF() = default; ///< destructor
 
+    real_t compute_mp2_energy() override;
+    real_t compute_mp3_energy() override;
+    real_t compute_mp4_energy() override;
+    real_t compute_ccsd_energy() override;
+    real_t compute_ccsd_t_energy() override;
+
+
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
@@ -606,6 +636,8 @@ public:
     ERI_RI_RHF(const ERI_RI_RHF&) = delete; ///< copy constructor is deleted
     ~ERI_RI_RHF() = default; ///< destructor
 
+    real_t compute_mp2_energy() override;
+
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
@@ -618,7 +650,12 @@ public:
             intermediate_matrix_B_.device_ptr(),
             fock_matrix.device_ptr(),
             num_basis_,
-            num_auxiliary_basis_
+            num_auxiliary_basis_, 
+            d_J_.device_ptr(),
+            d_K_.device_ptr(),
+            d_W_tmp_.device_ptr(),
+            d_T_tmp_.device_ptr(),
+            d_V_tmp_.device_ptr()
         );
 
         { // nan check
@@ -645,6 +682,8 @@ public:
         }
     }
 
+
+
 protected:
     RHF& rhf_; ///< RHF
 };
@@ -666,6 +705,7 @@ public:
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
         const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
+        const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
         const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
         const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
         const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
@@ -677,13 +717,19 @@ public:
             density_matrix.device_ptr(),
             core_hamiltonian_matrix.device_ptr(),
             shell_type_infos, 
+            shell_pair_type_infos,
             primitive_shells.device_ptr(), 
+            primitive_shell_pair_indices.device_ptr(),
             cgto_nomalization_factors.device_ptr(), 
             boys_grid.device_ptr(), 
             schwarz_upper_bound_factors.device_ptr(),
             schwarz_screening_threshold,
             fock_matrix.device_ptr(),
             num_basis_,
+            global_counters_,
+            min_skipped_columns_,
+            fock_matrix_replicas_,
+            num_fock_replicas_,
             verbose
         );
 

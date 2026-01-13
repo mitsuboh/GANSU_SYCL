@@ -16,10 +16,13 @@
 
 #pragma once
 
+#include "post_hf_method.hpp"
+
 #include "hf.hpp"
 #include "types.hpp"
 #include "device_host_memory.hpp"
 
+#include <cuda_runtime.h> // for int2 type
 
 
 namespace gansu{
@@ -60,6 +63,64 @@ public:
      * @details This function must be implemented in the derived class.
     */
     virtual std::string get_algorithm_name() = 0; ///< Get the algorithm name
+
+    /**
+     * @brief Check if the post-HF method is supported
+     * @param method Post-HF method
+     * @return true if the method is supported, false otherwise
+     * @details This function checks if the post-HF method is supported.
+     * @details This function can be overridden in the derived class.
+     */
+    virtual bool supports_post_hf_method(PostHFMethod method) const {
+        return false; // By default, no post-HF methods are supported
+    }
+
+    /**
+     * @brief Compute MP2 energy
+        * @return MP2 energy
+        * @details This function computes the MP2 energy.
+        */
+    virtual real_t compute_mp2_energy(){
+        THROW_EXCEPTION("MP2 energy computation is not supported for the selected ERI method.");
+    }
+
+    /**
+     * @brief Compute MP3 energy
+        * @return MP3 energy
+        * @details This function computes the MP3 energy.
+        */
+    virtual real_t compute_mp3_energy(){
+        THROW_EXCEPTION("MP3 energy computation is not supported for the selected ERI method.");
+    }
+
+    /**
+     * @brief Compute MP4 energy
+        * @return MP4 energy
+        * @details This function computes the MP4 energy.
+        */
+    virtual real_t compute_mp4_energy(){
+        THROW_EXCEPTION("MP4 energy computation is not supported for the selected ERI method.");
+    }
+
+    /**
+     * @brief Compute CCSD energy
+        * @return CCSD energy
+        * @details This function computes the CCSD energy.
+        */
+    virtual real_t compute_ccsd_energy(){
+        THROW_EXCEPTION("CCSD energy computation is not supported for the selected ERI method.");
+    }
+
+    /**
+     * @brief Compute CCSD(T) energy
+        * @return CCSD(T) energy
+        * @details This function computes the CCSD(T) energy.
+        */
+    virtual real_t compute_ccsd_t_energy(){
+        THROW_EXCEPTION("CCSD(T) energy computation is not supported for the selected ERI method.");
+    }
+
+
 };
 
 /**
@@ -84,6 +145,19 @@ public:
     void precomputation() override;
 
     std::string get_algorithm_name() override { return "Stored"; } ///< Get the algorithm name
+
+    bool supports_post_hf_method(PostHFMethod method) const override {
+        if( method == PostHFMethod::None // always supported
+            || method == PostHFMethod::MP2  // The stored ERI method supports MP2
+            || method == PostHFMethod::MP3  // The stored ERI method supports MP3
+            || method == PostHFMethod::MP4  // The stored ERI method supports MP4
+            || method == PostHFMethod::CCSD // The stored ERI method supports CCSD
+            || method == PostHFMethod::CCSD_T // The stored ERI method supports CCSD(T)
+          ){
+            return true;
+        }
+        return false;
+    }
 
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
@@ -112,6 +186,18 @@ public:
 
     std::string get_algorithm_name() override { return "RI"; } ///< Get the algorithm name
 
+    //suzuki
+    DeviceHostMatrix<real_t>& get_intermediate_matrix_B() { return intermediate_matrix_B_; }
+
+    bool supports_post_hf_method(PostHFMethod method) const override {
+        if( method == PostHFMethod::None // always supported
+         || method == PostHFMethod::MP2  // The RI ERI method supports MP2
+          ){
+            return true;
+        }
+        return false;
+    }
+
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
     const int num_basis_;
@@ -128,6 +214,12 @@ protected:
     DeviceHostMemory<real_t> auxiliary_schwarz_upper_bound_factors;
     // DeviceHostMemory<real_t> two_center_eri_;
     // DeviceHostMemory<real_t> three_center_eri_;
+
+    DeviceHostMatrix<real_t> d_J_;
+    DeviceHostMatrix<real_t> d_K_;
+    DeviceHostMemory<real_t> d_W_tmp_;
+    DeviceHostMatrix<real_t> d_T_tmp_;
+    DeviceHostMatrix<real_t> d_V_tmp_;
 };
 
 
@@ -141,17 +233,32 @@ public:
     ERI_Direct(const HF& hf); ///< Constructor
         
     ERI_Direct(const ERI_Direct&) = delete; ///< copy constructor is deleted
-    virtual ~ERI_Direct() = default; ///< destructor
+    //virtual ~ERI_Direct() = default; ///< destructor
+    virtual ~ERI_Direct();
+
         
     void precomputation() override;
 
     std::string get_algorithm_name() override { return "Direct"; } ///< Get the algorithm name
+
+    bool supports_post_hf_method(PostHFMethod method) const override {
+        if( method == PostHFMethod::None // always supported
+          ){
+            return true;
+        }
+        return false;
+    }
     
 protected:
     const HF& hf_; ///< HF. This excludes MOs.
     const int num_basis_;
 
     DeviceHostMemory<real_t> schwarz_upper_bound_factors;
+    DeviceHostMemory<int2> primitive_shell_pair_indices;
+    std::vector<int*> global_counters_;
+    std::vector<int*> min_skipped_columns_;
+    real_t* fock_matrix_replicas_;
+    const int num_fock_replicas_;
 };
 
 
@@ -169,6 +276,14 @@ public:
     void precomputation() override;
 
     std::string get_algorithm_name() override { return "Hash"; } ///< Get the algorithm name
+    
+    bool supports_post_hf_method(PostHFMethod method) const override {
+        if( method == PostHFMethod::None // always supported
+          ){
+            return true;
+        }
+        return false;
+    }
     
 protected:
     const HF& hf_; ///< HF. This excludes MOs.

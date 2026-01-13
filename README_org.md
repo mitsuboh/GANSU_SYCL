@@ -12,11 +12,15 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 
 
 ### Supported computations
-* Hartree-Fock
+* Hartree-Fock methods
     * Restricted Hartree-Fock (RHF) 
     * Unrestricted Hartree-Fock (UHF)
     * Restricted Open-Shell Hartree-Fock (ROHF)
     * RI approximation (Density Fitting) (RHF, UHF, ROHF)
+    * Direct SCF (RHF) 
+* Post-Hartree-Fock methods
+    * Møller-Plesset Perturbation Theory (RMP2, RMP3, RI-RMP2)
+  * Coupled Cluster (RCCSD, RCCSD(T))
 * Initial Guess
     * Core Hamiltonian (RHF, UHF, ROHF) 
     * Generalized Wolfsberg-Helmholz (GWH) (RHF, UHF, ROHF)
@@ -59,13 +63,12 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 * Initial Guess
   * Random
   * Load the precomputed coefficients/Fock matrix
-* Direct SCF
 * Post-Hartree-Fock methods
-  * Integral Transformation (AO -> MO)
   * Configuration Interaction (CI)
-  * Moller-Plesset Perturbation Theory (MP)
-  * Coupled Cluster (CC)
+* Excited State Methods
+  * Algebraic Diagrammatic Construction (ADC)
   * Equation-of-Motion Coupled Cluster (EOM-CC)
+  * Time-Dependent Hartree-Fock (TDHF)
 * Density Functional Theory (DFT)
 * GPU implementation
   * Total spin (UHF)
@@ -104,6 +107,7 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 ├─ test/
 ├─ xyz/
 │   ├─ large_molecular/
+│   ├─ larger_molecular/
 │   └─ monatomic/
 ├─ CMakeLists.txt
 ├─ LICENSE
@@ -125,7 +129,8 @@ GANSU (GPU Accelerated Numerical Simulation Utility) is an open-source quantum c
 | `src/boys/` | Contains a precomputed file for the Boys function |
 | `test/` | Contains the test files |
 | `xyz/` | Contains the XYZ files (e.g., H2O.xyz) |
-| `xyz/large_molecular/` | Contains the XYZ files for large molecules (e.g., fullerene.xyz). RI approximation (density fitting) is neccesary for them. |
+| `xyz/large_molecular/` | Contains the XYZ files for large molecules (e.g., fullerene.xyz). RI approximation (density fitting) may be necessary for them. |
+| `xyz/larger_molecular/` | Contains the XYZ files for larger molecules (e.g., C720.xyz). Direct-SCF may be necessary for them. |
 | `xyz/monatomic/` | Contains the XYZ files for monatomic molecules (e.g., H.xyz) |
 | `CMakeLists.txt` | CMake configuration file |
 | `LICENSE` | License file |
@@ -230,6 +235,7 @@ located in the root directory of this source tree or at:
 https://opensource.org/licenses/BSD-3-Clause
 
 ## Publications
+  1. Kanta Suzuki, Yasuaki Ito, Nobuya Yokogawa, Satoki Tsuji, Koji Nakano, Victor Parque and Akihiko Kasagi, GPU Acceleration of RI-RMP2 Correlation Energy Computation, in Proc. of International Symposium on Computing and Networking, pp. 174-180, Yamagata, Yamagata, November 2025. ([DOI](https://doi.ieeecomputersociety.org/10.1109/CANDAR68384.2025.00031))
   1. Satoki Tsuji, Yasuaki Ito, Haruto Fujii, Nobuya Yokogawa, Kanta Suzuki, Koji Nakano, Victor Parque, Akihiko Kasagi, GPU-Accelerated Fock Matrix Computation with Efficient Reduction, Applied Sciences, vol. 15, no. 9, 4779, April 2025. ([DOI](https://doi.org/10.3390/app15094779))
   1. Haruto Fujii, Yasuaki Ito, Nobuya Yokogawa, Kanta Suzuki, Satoki Tsuji, Koji Nakano, Victor Parque, Akihiko Kasagi, Efficient GPU Implementation of the McMurchie-Davidson Method for Shell-Based ERI Computations, Applied Sciences, vol. 15, no. 5, 2572, February 2025. ([DOI](https://doi.org/10.3390/app15052572))
   1. Satoki Tsuji, Yasuaki Ito, Koji Nakano, Akihiko Kasagi, GPU Acceleration of the Boys Function Evaluation in Computational Quantum Chemistry, Concurrency and Computation: Practice and Experience, vol. 37, no. 2, e8328, 2025. ([DOI](https://doi.org/10.1002/cpe.8328))
