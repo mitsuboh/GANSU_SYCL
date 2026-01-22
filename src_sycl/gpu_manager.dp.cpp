@@ -197,10 +197,15 @@ catch (sycl::exception const &exc) {
     sycl::event ev;
 
     const real_t alpha = 1.0;
-    const real_t beta = 0.0;
+    real_t beta = 0.0;
 
     if (!accumulate){
         workq.memset(d_matrix_C, 0, size * size * sizeof(real_t)).wait();
+        // beta = 0.0 for initialization
+        beta = 0.0; // redundant, but for clarity
+    }else{
+        // beta = 1.0 for accumulation
+        beta = 1.0;
     }
 
     const oneapi::mkl::transpose transA =

@@ -31,6 +31,9 @@ set(GANSU_SOURCES
     src_sycl/profiler.dp.cpp
     src_sycl/parameter_manager.cpp
     src_sycl/eri.dp.cpp
+    src_sycl/eri_ri.dp.cpp
+    src_sycl/eri_stored.dp.cpp
+    src_sycl/eri_stored_mp4.dp.cpp
     src_sycl/utils.cpp
 )
 add_library(gansu STATIC ${GANSU_SOURCES})

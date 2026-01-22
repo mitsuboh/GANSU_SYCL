@@ -85,6 +85,11 @@ RHF::RHF(const Molecular& molecular, const ParameterManager& parameters) :
     }else{
         THROW_EXCEPTION("Invalid ERI method name: " + eri_method);
     }
+
+    // Check if the selected ERI method supports post-HF methods
+    if(!eri_method_->supports_post_hf_method(get_post_hf_method())){
+        THROW_EXCEPTION("The selected ERI method does not support the selected post-HF method.");
+    }
 }
 
 /**
@@ -110,6 +115,29 @@ void RHF::precompute_eri_matrix(){
     PROFILE_FUNCTION();
 
     eri_method_->precomputation();
+}
+
+
+void RHF::post_process_after_scf() {
+    PROFILE_FUNCTION();
+
+    PostHFMethod post_hf_method = get_post_hf_method();
+    if(post_hf_method == PostHFMethod::None){
+        post_hf_energy_ = 0.0;
+        return; // do nothing
+    }else if(post_hf_method == PostHFMethod::MP2){
+        post_hf_energy_ = eri_method_->compute_mp2_energy();
+    }else if(post_hf_method == PostHFMethod::MP3){
+        post_hf_energy_ = eri_method_->compute_mp3_energy();
+    }else if(post_hf_method == PostHFMethod::MP4){
+        post_hf_energy_ = eri_method_->compute_mp4_energy();
+    }else if(post_hf_method == PostHFMethod::CCSD){
+        post_hf_energy_ = eri_method_->compute_ccsd_energy();
+    }else if(post_hf_method == PostHFMethod::CCSD_T){
+        post_hf_energy_ = eri_method_->compute_ccsd_t_energy();
+    }else{
+        THROW_EXCEPTION("Invalid post-HF method.");
+    }
 }
 
 
@@ -336,18 +364,17 @@ void RHF::export_density_matrix(real_t* density_matrix_a, real_t* density_martix
 void RHF::report() {
 
     HF::report(); // prints the information of the input molecular and basis set
-
-    // print the results of the charge analysis
-    std::cout << std::endl;
-    std::cout << "[Charge analysis]" << std::endl;
-    std::cout << "Mulliken population" << std::endl;
-    const auto& mulliken_population = analyze_mulliken_population();
-    for(size_t i=0; i<atoms.size(); i++){
-        std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
+    if(is_mulliken_analysis_){
+        std::cout << std::endl;
+        std::cout << "Mulliken population" << std::endl;
+        const auto& mulliken_population = analyze_mulliken_population();
+        for(size_t i=0; i<atoms.size(); i++){
+            std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
+        }
     }
 
 
-    { // print Mayer bond order matrix
+    if(is_mayer_bond_order_analysis_){ // print Mayer bond order matrix
         std::cout << std::endl;
         std::cout << "[Mayer bond order]" << std::endl;
         const auto& mayer_bond_order_matrix = compute_mayer_bond_order();
@@ -365,7 +392,7 @@ void RHF::report() {
         std::cout.precision(old_precision);
     }
 
-    { // print Wiberg bond order matrix
+    if(is_wiberg_bond_order_analysis_){ // print Wiberg bond order matrix
         std::cout << std::endl;
         std::cout << "[Wiberg bond order]" << std::endl;
         const auto& wiberg_bond_order_matrix = compute_wiberg_bond_order();
@@ -395,9 +422,26 @@ void RHF::report() {
     std::cout << "Energy (without nuclear repulsion): " << std::setprecision(17) << get_energy() << " [hartree]" << std::endl;
     std::cout << "Total Energy: " << std::setprecision(17) << get_total_energy() << " [hartree]" << std::endl;
     std::cout << "Computing time: " << std::setprecision(5) << get_solve_time_in_milliseconds() << " [ms]" << std::endl;
+
+    if(get_post_hf_method() != PostHFMethod::None){
+        std::cout << std::endl;
+        std::cout << "[Calculation Summary (Post-HF)]" << std::endl;
+        std::cout << "Post-HF method: ";
+        if(get_post_hf_method() == PostHFMethod::MP2){
+            std::cout << "MP2" << std::endl;
+        }else if(get_post_hf_method() == PostHFMethod::MP3){
+            std::cout << "MP3" << std::endl;
+        }else if(get_post_hf_method() == PostHFMethod::CCSD){
+            std::cout << "CCSD" << std::endl;
+        }else if(get_post_hf_method() == PostHFMethod::CCSD_T){
+            std::cout << "CCSD(T)" << std::endl;
+        }
+        std::cout << "Post-HF energy correction: " << std::setprecision(17) << get_post_hf_energy() << " [hartree]" << std::endl;
+        std::cout << "Total Energy (including post-HF correction): " << std::setprecision(17) << get_total_energy() + get_post_hf_energy    () << " [hartree]" << std::endl;
+    }
 }
 
-
+/*
 void RHF::export_molden_file(const std::string& filename) {
     std::ofstream ofs(filename);
     if (!ofs) {
@@ -461,6 +505,73 @@ void RHF::export_molden_file(const std::string& filename) {
     ofs.close();
 
 }
+*/
+
+void RHF::export_molden_file(const std::string& filename) {
+    std::ofstream ofs(filename);
+    if (!ofs) {
+        throw std::runtime_error("Failed to open the file: " + filename);
+    }
+    // write the header
+    ofs << "[Molden Format]" << std::endl;
+    ofs << "[Title]" << std::endl;
+    ofs << "generated by GANSU" << std::endl;
+    ofs << "[Atoms] (Angs)" << std::endl;
+    for(size_t i=0; i<atoms.size(); i++){
+        ofs << atomic_number_to_element_name(atoms[i].atomic_number) << " " 
+            << i+1 << " "
+            << atoms[i].atomic_number << " "
+            << bohr_to_angstrom(atoms[i].coordinate.x) << " "
+            << bohr_to_angstrom(atoms[i].coordinate.y) << " "
+            << bohr_to_angstrom(atoms[i].coordinate.z) << std::endl;
+    }
+
+    ofs << "[GTO]" << std::endl;
+    primitive_shells.toHost();
+    std::vector<int> num_primitives(num_basis, 0);
+    std::vector<int> shell_types(num_basis, 0);
+    for(size_t i=0; i<primitive_shells.size(); i++){
+        num_primitives[primitive_shells[i].basis_index]++;
+        shell_types[primitive_shells[i].basis_index] = primitive_shells[i].shell_type;
+    }
+
+    for(size_t i=0; i<atoms.size(); i++){
+        ofs << i+1 << " " << 0 << std::endl;
+        BasisRange basis_range = get_atom_to_basis_range()[i];
+        for(size_t j=basis_range.start_index; j<basis_range.end_index; j++){
+            if(num_primitives[j] == 0){ // skip non-representive basis functions (e.g. py,pz, etc.)
+                continue;
+            }  
+            ofs << " " << shell_type_to_shell_name(shell_types[j]) << " " << num_primitives[j] << " " << "1.00" << std::endl;
+            for(size_t k=0; k<primitive_shells.size(); k++){
+                if(primitive_shells[k].basis_index == j){
+                    ofs << "    " << primitive_shells[k].exponent << " " << primitive_shells[k].coefficient << std::endl;
+                }
+            }
+        }
+        ofs << std::endl; // empty line
+    }
+
+//    ofs << std::endl; // empty line
+    
+    // write the orbital energies
+    ofs << "[MO]" << std::endl;
+    orbital_energies.toHost();
+    coefficient_matrix.toHost();
+    for(size_t i=0; i<num_basis; i++){
+        ofs << "Sym= A" << std::endl;
+        ofs << "Ene= " << orbital_energies[i] << std::endl;
+        ofs << "Spin= Alpha" << std::endl;
+        ofs << "Occup= " << (i < num_electrons/2 ? 2.0 : 0.0) << std::endl;
+        for(size_t j=0; j<num_basis; j++){
+            ofs << " " << j+1 << " " << std::setprecision(17) << coefficient_matrix(j, i) << std::endl;
+        }
+    }
+
+    ofs.close();
+
+}
+
 
 std::vector<real_t> RHF::analyze_mulliken_population() const {
     std::vector<real_t> mulliken_population_basis(num_basis);
@@ -542,7 +653,7 @@ std::vector<std::vector<real_t>> RHF::compute_mayer_bond_order() const{
 }
 
 
-std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() {
+std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() const {
     std::vector<std::vector<real_t>> wiberg_bond_order_matrix(atoms.size(), std::vector<real_t>(atoms.size(), 0.0));
 
     std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store DS (product of density and overlap matrices)

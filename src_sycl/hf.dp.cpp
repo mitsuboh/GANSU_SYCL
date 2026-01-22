@@ -66,9 +66,39 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     convergence_energy_threshold(parameters.get<double>("convergence_energy_threshold")),
     schwarz_screening_threshold(parameters.get<double>("schwarz_screening_threshold")),
     geometry_optimization(parameters.get<int>("geometry_optimization")),
-    geometry_optimization_method(parameters.get<std::string>("geometry_optimization_method"))
+    geometry_optimization_method(parameters.get<std::string>("geometry_optimization_method")),
+    post_hf_energy_(0.0),
+    is_mulliken_analysis_(parameters.get<bool>("mulliken")),
+    is_mayer_bond_order_analysis_(parameters.get<bool>("mayer")),
+    is_wiberg_bond_order_analysis_(parameters.get<bool>("wiberg")),
+    is_export_molden_(parameters.get<bool>("export_molden"))
 {
       sycl::queue& workq = gpu::GPUHandle::syclqueue();
+    // Set the post-HF method
+    std::string post_hf_method_str = parameters.get<std::string>("post_hf_method");
+    if(post_hf_method_str == "none"){
+        std::cout << "Messege: Post-HF method is not selected." << std::endl;
+        post_hf_method_ = PostHFMethod::None;
+    }else if(post_hf_method_str == "mp2"){
+        std::cout << "Messege: Post-HF method is MP2." << std::endl;
+        post_hf_method_ = PostHFMethod::MP2;
+    }else if(post_hf_method_str == "mp3"){
+        std::cout << "Messege: Post-HF method is MP3." << std::endl;
+        post_hf_method_ = PostHFMethod::MP3;
+    }else if(post_hf_method_str == "mp4"){
+        std::cout << "Messege: Post-HF method is MP4." << std::endl;
+        post_hf_method_ = PostHFMethod::MP4;
+    }else if(post_hf_method_str == "ccsd"){
+        std::cout << "Messege: Post-HF method is CCSD." << std::endl;
+        post_hf_method_ = PostHFMethod::CCSD;
+    }else if(post_hf_method_str == "ccsd_t"){
+        std::cout << "Messege: Post-HF method is CCSD(T)." << std::endl;
+        post_hf_method_ = PostHFMethod::CCSD_T;
+    }else{
+        throw std::runtime_error("Error: Unknown post-HF method: " + post_hf_method_str);
+    }
+
+
     // print all the values of boys function for the test (temporary implementation)
     if(verbose){
         std::cout << "Messege: grid values for the Boys function is load from the header file." << std::endl;
@@ -300,7 +330,11 @@ real_t HF::single_point_energy(const real_t* density_matrix_alpha, const real_t*
         std::cout << "---- Iteration: " << iter_ << " ----  ";
         std::cout << "Energy: " << std::setprecision(17) << energy << " ";
         std::cout << "Total energy: " << std::setprecision(17) << get_total_energy() << " ";
-        std::cout << "Difference: " << energy_difference_ << std::endl;
+        if(iter_ > 0){
+            std::cout << "Energy difference: " << std::setprecision(10) << energy_difference_ << " ";
+        }
+        std::cout << std::endl;
+
 
         if(energy_difference_ < convergence_energy_threshold){
             break;
@@ -313,6 +347,8 @@ real_t HF::single_point_energy(const real_t* density_matrix_alpha, const real_t*
         // Update the Fock matrix
         update_fock_matrix();
     }
+
+    post_process_after_scf(); // post process after SCF convergence (Post-HF calculations, etc.)
 
     solve_time_in_milliseconds_ = timer.elapsed_milliseconds();
 
@@ -434,6 +470,11 @@ void HF::report(){
         auto& auxiliary_primitive_shells = ri_ptr->get_auxiliary_primitive_shells(); // get the auxiliary basis set
         std::cout << "Number of auxiliary basis functions: " << ri_ptr->get_num_auxiliary_basis() << std::endl;
         std::cout << "Number of primitive auxiliary basis functions: " << auxiliary_primitive_shells.size() << std::endl;
+    }
+
+
+    if(is_export_molden_){
+        export_molden_file("output.molden"); // Export the molecular orbitals to a molden file
     }
 }
 

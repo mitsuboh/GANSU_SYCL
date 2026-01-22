@@ -75,7 +75,7 @@ public:
 
     std::vector<std::vector<real_t>> compute_mayer_bond_order() const override;
 
-    std::vector<std::vector<real_t>> compute_wiberg_bond_order() override;
+    std::vector<std::vector<real_t>> compute_wiberg_bond_order() const override;
 
     /**
      * @brief Get the reference to the coefficient matrix
@@ -117,6 +117,19 @@ public:
      * @param filename File name
      */
     void export_molden_file(const std::string& filename) override;
+ 
+    /**
+     * @brief Post process after SCF convergence
+     * @details This function performs post-HF calculations after the SCF convergence, in which the selected post-HF method is applied.
+     * @details This function overrides the virtual function in the base class HF.
+     */
+    void post_process_after_scf() override;
+
+    /**
+     * @brief Get the orbital energies
+     * @return Reference to the orbital energies
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies() { return orbital_energies; } ///< Get the orbital energies
 
 private:
     real_t energy_; ///< Energy
@@ -639,6 +652,13 @@ public:
     ERI_Stored_RHF(const ERI_Stored_RHF&) = delete; ///< copy constructor is deleted
     ~ERI_Stored_RHF() = default; ///< destructor
 
+    real_t compute_mp2_energy() override;
+    real_t compute_mp3_energy() override;
+    real_t compute_mp4_energy() override;
+    real_t compute_ccsd_energy() override;
+    real_t compute_ccsd_t_energy() override;
+
+
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
@@ -681,6 +701,8 @@ public:
     ERI_RI_RHF(RHF& rhf, const Molecular& auxiliary_molecular): ERI_RI(rhf, auxiliary_molecular), rhf_(rhf) {} ///< Constructor
     ERI_RI_RHF(const ERI_RI_RHF&) = delete; ///< copy constructor is deleted
     ~ERI_RI_RHF() = default; ///< destructor
+
+    real_t compute_mp2_energy() override;
 
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();

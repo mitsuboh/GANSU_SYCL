@@ -320,14 +320,55 @@ void ROHF::export_density_matrix(real_t* density_matrix_a, real_t* density_matri
     
     HF::report(); // prints the information of the input molecular and basis set
 
-    // print the results of the charge analysis
-    std::cout << std::endl;
-    std::cout << "[Charge analysis]" << std::endl;
-    std::cout << "Mulliken population" << std::endl;
-    const auto& mulliken_population = analyze_mulliken_population();
-    for(size_t i=0; i<atoms.size(); i++){
-        std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
+    if(is_mulliken_analysis_){
+        std::cout << std::endl;
+        std::cout << "[Mulliken population]" << std::endl;
+        const auto& mulliken_population = analyze_mulliken_population();
+        for(size_t i=0; i<atoms.size(); i++){
+            std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
+        }
     }
+
+    if(is_mayer_bond_order_analysis_){ // print Mayer bond order matrix
+        std::cout << std::endl;
+        std::cout << "[Mayer bond order]" << std::endl;
+        const auto& mayer_bond_order_matrix = compute_mayer_bond_order();
+
+        // save the current format flags and precision
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_precision = std::cout.precision();
+
+        for(size_t i=0; i<atoms.size(); i++){
+            for(size_t j=0; j<atoms.size(); j++){
+                std::cout << std::fixed << std::setprecision(3) << mayer_bond_order_matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        // restore the format flags and precision
+        std::cout.flags(old_flags);
+        std::cout.precision(old_precision);
+    }
+
+    if(is_wiberg_bond_order_analysis_){ // print Wiberg bond order matrix
+        std::cout << std::endl;
+        std::cout << "[Wiberg bond order]" << std::endl;
+        const auto& wiberg_bond_order_matrix = compute_wiberg_bond_order();
+
+        // save the current format flags and precision
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_precision = std::cout.precision();
+
+        for(size_t i=0; i<atoms.size(); i++){
+            for(size_t j=0; j<atoms.size(); j++){
+                std::cout << std::fixed << std::setprecision(3) << wiberg_bond_order_matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        // restore the format flags and precision
+        std::cout.flags(old_flags);
+        std::cout.precision(old_precision);
+    }
+
 
     std::cout << std::endl;
     std::cout << "[Calculation Summary]" << std::endl;
@@ -484,7 +525,7 @@ std::vector<std::vector<real_t>> ROHF::compute_mayer_bond_order() const{
 
 
 
-std::vector<std::vector<real_t>> ROHF::compute_wiberg_bond_order() {
+std::vector<std::vector<real_t>> ROHF::compute_wiberg_bond_order() const{
     std::vector<std::vector<real_t>> wiberg_bond_order_matrix(atoms.size(), std::vector<real_t>(atoms.size(), 0.0));
 
     std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store DS (product of density and overlap matrices)
