@@ -14,7 +14,7 @@
 
 #define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include <algorithm>
 
 #include <cstdlib>  // std::getenv
@@ -26,7 +26,7 @@
 #include "rhf.hpp"
 #include <oneapi/mkl.hpp>
 #include <oneapi/mkl/lapack.hpp>
-#include <dpct/blas_utils.hpp>
+//#include <dpct/blas_utils.hpp>
 
 
 #include <cmath>
@@ -316,10 +316,11 @@ void ri_rmp2_kernel_body<energy_kernel1>(sycl::nd_item<1> item, int nocc, int no
                                         double* d_iajb, double* d_eps, double* d_energy, sycl::local_accessor<double, 1> sh_tmp)
 {
     size_t tid = item.get_global_linear_id();
+    size_t lid = item.get_local_id(0);
     size_t total_threads = ((size_t)nocc_block * nocc_stride + nocc_block*(nocc_block-1)/2) * nvir*(nvir-1)/2;
-//    if (tid >= total_threads) return;
 
-    if (item.get_local_id(0) == 0) sh_tmp[0] = 0.0;
+//    if (tid >= total_threads) return; ==> shm_tmp[0] =0
+    sh_tmp[lid] = 0.0;
     item.barrier(sycl::access::fence_space::local_space);
 
     size_t id = tid;
@@ -339,17 +340,23 @@ void ri_rmp2_kernel_body<energy_kernel1>(sycl::nd_item<1> item, int nocc, int no
 
     // --- sub_group reduction ---
     auto sg = item.get_sub_group();
+    int sg_id = sg.get_group_id(); 
+    size_t sub_group_size = sg.get_local_range().size();
+
     val = sycl::reduce_over_group(sg, val, sycl::plus<double>());
-
-    // block-wide reduction
-    if (sg.leader())
-        atomic_add_local(&sh_tmp[0],val);
-
+    sh_tmp[lid] = val;
     item.barrier(sycl::access::fence_space::local_space);
 
+
+    if (lid == 0) {
+        double block_sum = 0.0;
+    // block-wide reduction
+        for (size_t i = 0; i < sub_group_size; ++i) {
+            block_sum += sh_tmp[i];
+        }
     // device-wide reduction
-    if (item.get_local_id(0) == 0)
-        atomic_add(d_energy,sh_tmp[0]);
+        atomic_add(d_energy, block_sum);
+   }
 
 }
 /*
@@ -590,20 +597,38 @@ void calc_RI_RMP2_energy_kernel4_wrapper(int nocc, int nocc_block, int nvir,
     });
 }
 */
+/*
 int search_maximime_k(int mocc, int mvir) {
     size_t free_mem_bytes, total_mem_bytes;
+*/
     /*
     DPCT1106:65: 'cudaMemGetInfo' was migrated with the Intel extensions for
     device information which may not be supported by all compilers or runtimes.
     You may need to adjust the code.
     */
+/*
     dpct::get_current_device().get_memory_info(free_mem_bytes, total_mem_bytes);
 
     return std::min(free_mem_bytes/(mocc * mvir * mvir * sizeof(double)), (size_t)mocc);    
 }
+*/
+int search_maximime_k(sycl::queue& workq, int mocc, int mvir) {
+    if (mocc <= 0 || mvir <= 0) return 0;
+
+    size_t total_mem = workq.get_device().get_info<sycl::info::device::global_mem_size>();
+    size_t usable_mem = total_mem * 7 / 10;
+
+    const size_t bytes_per_k = static_cast<size_t>(mocc) * static_cast<size_t>(mvir)
+                             * static_cast<size_t>(mvir) * sizeof(double);
+
+    size_t max_k = std::min( usable_mem / bytes_per_k, static_cast<size_t>(mocc));
+
+    return static_cast<int>(max_k);
+}
+
 
 void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
-    k = search_maximime_k(mocc, mvir);
+    k = search_maximime_k(workq, mocc, mvir);
 
     while (true) {
         try {

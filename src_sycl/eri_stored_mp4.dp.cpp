@@ -1,6 +1,5 @@
 #define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <iomanip>
 #include <iostream>
 #include <assert.h>
@@ -4037,7 +4036,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     q_ct1.memcpy(h_mp3_energy, d_mp3_energy, sizeof(real_t) * 3).wait();
     q_ct1.wait_and_throw();
 
-    dpct::dpct_free(d_mp3_energy, q_ct1);
+    sycl::free(d_mp3_energy, q_ct1);
 
     std::cout << "4h2p term: " << h_mp3_energy[0] << " Hartree" << std::endl;
     std::cout << "2h4p term: " << h_mp3_energy[1] << " Hartree" << std::endl;
@@ -4135,8 +4134,8 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
 
 #endif
 
-    dpct::dpct_free(d_mp4_energy, q_ct1);
-    dpct::dpct_free(d_eri_mo, q_ct1);
+    sycl::free(d_mp4_energy, q_ct1);
+    sycl::free(d_eri_mo, q_ct1);
 
     real_t mp4_corr_energy = 0.0;
     for(int i=0; i<num_mp4_terms; i++){

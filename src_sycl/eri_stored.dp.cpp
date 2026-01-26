@@ -14,7 +14,6 @@
 
 #define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <iomanip>
 #include <iostream>
 #include <assert.h>
@@ -183,7 +182,8 @@ void transform_ao_eri_to_mo_eri_full(const double *d_eri_ao, const double *d_C,
 
 
 //// debug for MO ERI
-void check_moeri_kernel(const double* __restrict__ eri_mo,
+void check_moeri_kernel(
+    const double* __restrict__ eri_mo,
     const double* __restrict__ eri_ao,
     const double* __restrict__ C,
     int num_basis,
@@ -1366,7 +1366,10 @@ real_t T_ijab(const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab
     return sum;
 }
 
-void compute_F_ae_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab,
+void compute_F_ae_kernel(
+                                    const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
                                     const int num_basis,
                                     const int num_spin_occ,
                                     const int num_spin_vir,
@@ -1422,7 +1425,10 @@ void compute_F_ae_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __re
     }
 }
 
-void compute_F_mi_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab,
+void compute_F_mi_kernel(
+                                    const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
                                     const int num_basis,
                                     const int num_spin_occ,
                                     const int num_spin_vir,
@@ -1478,7 +1484,10 @@ void compute_F_mi_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __re
     }
 }
 
-void compute_F_me_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab,
+void compute_F_me_kernel(
+                                    const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
                                     const int num_basis,
                                     const int num_spin_occ,
                                     const int num_spin_vir,
@@ -1517,7 +1526,10 @@ void compute_F_me_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __re
     }
 }
 
-void compute_W_mnij_kernel(const real_t* __restrict__ d_eri_mo, const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab,
+void compute_W_mnij_kernel(
+                                    const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
                                     const int num_basis,
                                     const int num_spin_occ,
                                     const int num_spin_vir,
@@ -1577,7 +1589,8 @@ compute_W_abef_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_W_abef_kernel(const real_t *__restrict__ d_eri_mo,
+void compute_W_abef_kernel(
+                           const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
                            const real_t *__restrict__ t_ijab,
                            const int num_basis, const int num_spin_occ,
@@ -1641,7 +1654,8 @@ compute_W_mbej_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_W_mbej_kernel(const real_t *__restrict__ d_eri_mo,
+void compute_W_mbej_kernel(
+                           const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
                            const real_t *__restrict__ t_ijab,
                            const int num_basis, const int num_spin_occ,
@@ -1713,7 +1727,8 @@ compute_t_ia_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_t_ia_kernel(const real_t *__restrict__ d_eri_mo,
+void compute_t_ia_kernel(
+                         const real_t *__restrict__ d_eri_mo,
                          const real_t *__restrict__ d_eps,
                          const real_t *__restrict__ t_ia_old,
                          const real_t *__restrict__ t_ijab_old,
@@ -2058,45 +2073,43 @@ void compute_t_ijab_kernel(
     }
 }
 
-void compute_t_amplitude_max_norm_kernel(const real_t* __restrict__ t_ia_new,
+void compute_t_amplitude_max_norm_kernel(
+                                        sycl::nd_item<1> item, 
+                                        const real_t* __restrict__ t_ia_new,
                                         const real_t* __restrict__ t_ijab_new,
                                         const real_t* __restrict__ t_ia_old,
                                         const real_t* __restrict__ t_ijab_old,
                                         const int num_spin_occ,
                                         const int num_spin_vir,
                                         real_t* max_norm,
-                                        real_t &local_max)
+                                        sycl::local_accessor<real_t, 1> local_max)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+        const size_t total_ia   = (size_t)num_spin_occ * num_spin_vir;
+        const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
 
-    if (item_ct1.get_local_id(2) == 0) {
-        local_max = 0.0;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
+        size_t gid = item.get_global_linear_id();
+        size_t local_id = item.get_local_linear_id();
 
-    size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+        if (local_id == 0)
+            local_max[0] = 0.0;
 
-    if(gid < total_ia){
-        real_t diff = sycl::fabs(t_ia_new[gid] - t_ia_old[gid]);
-        dpct::atomic_fetch_max<sycl::access::address_space::generic_space>(
-            (unsigned long long int *)&local_max,
-            sycl::bit_cast<long long>(diff));
-    }
-    size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    if(gid < total_ijab){
-        real_t diff = sycl::fabs(t_ijab_new[gid] - t_ijab_old[gid]);
-        dpct::atomic_fetch_max<sycl::access::address_space::generic_space>(
-            (unsigned long long int *)&local_max,
-            sycl::bit_cast<long long>(diff));
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-    if (item_ct1.get_local_id(2) == 0) {
-        dpct::atomic_fetch_max<sycl::access::address_space::generic_space>(
-            (unsigned long long int *)max_norm,
-            sycl::bit_cast<long long>(local_max));
-    }
+        item.barrier(sycl::access::fence_space::local_space);
+
+        if (gid < total_ia) {
+            real_t diff = sycl::fabs(t_ia_new[gid] - t_ia_old[gid]);
+            atomic_max_fp_local(&local_max[0], diff);
+        }
+
+        if (gid < total_ijab) {
+            real_t diff = sycl::fabs(t_ijab_new[gid] - t_ijab_old[gid]);
+            atomic_max_fp_local(&local_max[0], diff);
+        }
+
+        item.barrier(sycl::access::fence_space::local_space);
+
+        if (local_id == 0)
+            atomic_max_fp_global(max_norm, local_max[0]);
+
 }
 
 void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
@@ -2290,28 +2303,27 @@ real_t compute_t_amplitude_diff(const real_t* __restrict__ t_ia_new, const real_
     }
     q_ct1.memset(d_max_norm, 0.0, sizeof(real_t)).wait();
 
-    const size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
-    const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
+    const size_t total_ia   = static_cast<size_t>(num_spin_occ) * num_spin_vir;
+    const size_t total_ijab = static_cast<size_t>(num_spin_occ) * num_spin_occ * num_spin_vir * num_spin_vir;
     const size_t total = (total_ia > total_ijab) ? total_ia : total_ijab;
+
     const int num_threads = 256;
     const int num_blocks = (total + num_threads - 1) / num_threads;
     q_ct1.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<real_t, 0> local_max_acc_ct1(cgh);
+        sycl::local_accessor<real_t, 1> local_max_acc(sycl::range<1>(1), cgh);
 
         cgh.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_t_amplitude_max_norm_kernel(
+            sycl::nd_range<1>(sycl::range<1>(num_blocks * num_threads), sycl::range<1>(num_threads)),
+            [=](sycl::nd_item<1> item) {
+                compute_t_amplitude_max_norm_kernel(item,
                     t_ia_new, t_ijab_new, t_ia_old, t_ijab_old, num_spin_occ,
-                    num_spin_vir, d_max_norm, local_max_acc_ct1);
+                    num_spin_vir, d_max_norm, local_max_acc);
             });
     });
     q_ct1.wait_and_throw();
 
     q_ct1.memcpy(&h_max_norm, d_max_norm, sizeof(real_t)).wait();
-    sycl:free(d_max_norm, q_ct1);
+    sycl::free(d_max_norm, q_ct1);
 
     return h_max_norm;
 
@@ -2320,13 +2332,47 @@ real_t compute_t_amplitude_diff(const real_t* __restrict__ t_ia_new, const real_
 
 
 
-void compute_t_amplitude_rms_kernel(const real_t* __restrict__ t_ia_new,
+void compute_t_amplitude_rms_kernel(
+                                        sycl::nd_item<1> item, 
+                                        const real_t* __restrict__ t_ia_new,
                                         const real_t* __restrict__ t_ijab_new,
                                         const real_t* __restrict__ t_ia_old,
                                         const real_t* __restrict__ t_ijab_old,
                                         const int num_spin_occ,
                                         const int num_spin_vir,
-                                        real_t* rms,
+                                        real_t* rms
+                                        )
+{
+        const size_t total_ia   = (size_t)num_spin_occ * num_spin_vir;
+        const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
+
+        size_t gid = item.get_global_linear_id();
+        size_t lid = item.get_local_linear_id();
+
+        real_t thread_rms = 0.0;
+
+        if (gid < total_ia) {
+            real_t diff = t_ia_new[gid] - t_ia_old[gid];
+            thread_rms += diff * diff;
+        }
+
+        if (gid < total_ijab) {
+            real_t diff = t_ijab_new[gid] - t_ijab_old[gid];
+            thread_rms += diff * diff;
+        }
+
+        auto wg = item.get_group();
+        real_t wg_sum = sycl::reduce_over_group(wg, thread_rms, sycl::plus<real_t>());
+
+        if (lid == 0)
+            atomic_add(rms, wg_sum);
+}
+
+
+
+
+/*
+=============================================================
                                         real_t &local_rms)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -2357,6 +2403,7 @@ void compute_t_amplitude_rms_kernel(const real_t* __restrict__ t_ia_new,
             rms, local_rms);
     }
 }
+*/
 
 real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t* __restrict__ t_ijab_new,
                                     const real_t* __restrict__ t_ia_old, const real_t* __restrict__ t_ijab_old,
@@ -2380,16 +2427,14 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
     const int num_threads = 256;
     const int num_blocks = (total + num_threads - 1) / num_threads;
     q_ct1.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<real_t, 0> local_rms_acc_ct1(cgh);
+//        sycl::local_accessor<real_t, 0> local_rms_acc_ct1(cgh);
 
         cgh.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_t_amplitude_rms_kernel(
+            sycl::nd_range<1>(sycl::range<1>(num_blocks * num_threads), sycl::range<1>(num_threads)),
+            [=](sycl::nd_item<1> item) {
+                compute_t_amplitude_rms_kernel( item,
                     t_ia_new, t_ijab_new, t_ia_old, t_ijab_old, num_spin_occ,
-                    num_spin_vir, d_rms, local_rms_acc_ct1);
+                    num_spin_vir, d_rms);
             });
     });
     q_ct1.wait_and_throw();
@@ -2401,7 +2446,8 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
 }
 
 
-void update_t_amplitude_dumping_kernel(const real_t* __restrict__ t_new,
+void update_t_amplitude_dumping_kernel(
+                                                const real_t* __restrict__ t_new,
                                                 real_t* __restrict__ t_old,
                                                 const int dim1,
                                                 const int dim2,
@@ -2460,13 +2506,59 @@ void update_t_amplitude_dumping(const real_t* t_ia_new, const real_t* t_ijab_new
     q_ct1.wait_and_throw();
 }
 
-void compute_ccsd_energy_kernel(const real_t* __restrict__ d_eri_mo,
+void compute_ccsd_energy_kernel(
+                                            sycl::nd_item<1> item, 
+                                            const real_t* __restrict__ d_eri_mo,
                                             const int num_basis,
                                             const int num_spin_occ,
                                             const int num_spin_vir,
                                             const real_t* __restrict__ t_ia,
                                             const real_t* __restrict__ t_ijab,
-                                            real_t* d_ccsd_energy,
+                                            real_t* d_ccsd_energy
+                                            )
+{
+    size_t gid = item.get_global_linear_id();
+    size_t lid = item.get_local_linear_id();
+    const size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
+    const int local_size = item.get_local_range(0);
+
+    // thread-local sum
+    real_t thread_sum = 0.0;
+
+    if(gid < total){
+        size_t t = gid;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int j  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int a = num_spin_occ + a_;
+        int b = num_spin_occ + b_;
+
+        // <ij||ab> = (ia|jb) - (ib|ja)
+        real_t ijab = antisym_eri(d_eri_mo, num_basis, i, j, a, b);
+        
+        real_t t_ijab_val = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, i, j, a_, b_);
+        real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, a_);
+        real_t t_jb_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, b_);
+
+        thread_sum += 0.5 * ijab * t_ia_val * t_jb_val + 0.25 * ijab * t_ijab_val;
+    }
+
+    // グループ内 reduction
+    auto wg = item.get_group();
+    real_t block_sum = sycl::reduce_over_group(wg, thread_sum, sycl::plus<real_t>());
+
+    // block 0 のスレッドが atomic add
+    if(lid == 0)
+        atomic_add(d_ccsd_energy, block_sum);
+}
+
+
+
+
+/*
+=================================================================
                                             real_t *local_sum)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
@@ -2516,6 +2608,7 @@ assert(sycl::ext::oneapi::this_work_item::get_nd_item<3>().get_local_range(2) <=
             d_ccsd_energy, block_sum);
     }
 }
+*/
 
 
 real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
@@ -2534,7 +2627,6 @@ real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
     if(!d_ccsd_energy){
         THROW_EXCEPTION("cudaMalloc failed for d_ccsd_energy.");
     }
-    q_ct1.memset(d_ccsd_energy, 0.0, sizeof(real_t)).wait();
 
     const size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     const int num_threads = 256;
@@ -2543,20 +2635,12 @@ real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
         require_fp64(q_ct1);
 
         q_ct1.submit([&](sycl::handler &cgh) {
-            sycl::local_accessor<real_t, 1> local_sum_acc_ct1(
-                sycl::range<1>(256), cgh);
-
             cgh.parallel_for(
-                sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                      sycl::range<3>(1, 1, num_threads),
-                                  sycl::range<3>(1, 1, num_threads)),
-                [=](sycl::nd_item<3> item_ct1) {
-                    compute_ccsd_energy_kernel(
+                sycl::nd_range<1>(num_blocks*num_threads, num_threads),
+                [=](sycl::nd_item<1> item){
+                    compute_ccsd_energy_kernel(item,
                         d_eri_mo, num_basis, num_spin_occ, num_spin_vir, t_ia,
-                        t_ijab, d_ccsd_energy,
-                        local_sum_acc_ct1
-                            .get_multi_ptr<sycl::access::decorated::no>()
-                            .get());
+                        t_ijab, d_ccsd_energy);
                 });
         });
     }
@@ -2669,7 +2753,8 @@ void deallocate_ccsd_amplitudes(real_t* __restrict__ t_ia_new,
                                       // they are in the same buffer
 }
 
-void initialize_ccsd_amplitudes_kernel(const real_t* __restrict__ d_eri_mo,
+void initialize_ccsd_amplitudes_kernel(
+                                    const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ d_eps,
                                     const int num_basis,
                                     const int num_spin_occ,
@@ -2767,19 +2852,19 @@ void intialize_ccsd_amplitudes(const real_t* __restrict__ d_eri_mo,
 
 
 // Precomputed permutations for 3 indices P(i|jk)f(ijk) = f(ijk) - f(jik) - f(kji)
-inline dpct::constant_memory<int, 2> perms3(sycl::range<2>(3, 3),
+constexpr int perms3[3][3] =
                                             {
                                                 {0, 1, 2}, // f(ijk)
                                                 {1, 0, 2}, // -f(jik)
                                                 {2, 1, 0}  // -f(kji)
-                                            });
+                                            };
 
-inline dpct::constant_memory<int, 1> parity3(sycl::range<1>(3),
+constexpr int parity3[3] =
                                              {
                                                  +1, // f(ijk)
                                                  -1, // -f(jik)
                                                  -1  //  -f(kji)
-                                             });
+                                             };
 
 /*
 DPCT1110:26: The total declared local variable size in device function
@@ -2789,23 +2874,26 @@ available and adjust the code, or use smaller sub-group size to avoid high
 register pressure.
 */
 void compute_ccsd_t_energy_kernel(
+    sycl::nd_item<1> item,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
     const int num_basis, const int num_spin_occ, const int num_spin_vir,
     const real_t *__restrict__ t_ia, const real_t *__restrict__ t_ijab,
-    real_t *d_ccsd_t_energy, dpct::accessor<int, dpct::constant, 2> perms3,
-    int const *parity3, real_t *local_sum)
+    real_t *d_ccsd_t_energy,
+    const int perms3[3][3],
+    const int parity3[3]
+    )
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
                    num_spin_vir * num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = item.get_global_linear_id();
+    size_t lid = item.get_local_linear_id();
 
      // assuming max 256 threads per block
-    if (item_ct1.get_local_id(2) < 256) {
-        local_sum[item_ct1.get_local_id(2)] = 0.0;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
+//    if (item_ct1.get_local_id(2) < 256) {
+//        local_sum[item_ct1.get_local_id(2)] = 0.0;
+//    }
+//    item_ct1.barrier(sycl::access::fence_space::local_space);
+    real_t thread_sum = 0;
 
     if(gid < total){
         size_t t = gid;
@@ -2932,17 +3020,15 @@ void compute_ccsd_t_energy_kernel(
 
         }
 
-        local_sum[item_ct1.get_local_id(2)] += contrib;
+//        local_sum[item_ct1.get_local_id(2)] += contrib;
+        thread_sum += contrib;
     }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-    if (item_ct1.get_local_id(2) == 0) {
-        real_t block_sum = 0.0;
-        for (int i = 0; i < item_ct1.get_local_range(2); ++i) {
-            block_sum += local_sum[i];
-        }
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            d_ccsd_t_energy, block_sum);
-    }
+    auto wg = item.get_group();
+    real_t block_sum = sycl::reduce_over_group(wg, thread_sum, sycl::plus<real_t>());
+    
+    if(lid == 0)
+        atomic_add(d_ccsd_t_energy, block_sum);
+
 }
 
 
@@ -2971,30 +3057,19 @@ real_t compute_ccsd_t_energy(const real_t* __restrict__ d_eri_mo,
     const int num_threads = 256;
     const int num_blocks = (total + num_threads - 1) / num_threads;
     {
-        perms3.init();
-        parity3.init();
+//        perms3.init();
+//        parity3.init();
 
         require_fp64(q_ct1);
 
         q_ct1.submit([&](sycl::handler &cgh) {
-            auto parity3_ptr_ct1 = parity3.get_ptr();
-
-            sycl::local_accessor<real_t, 1> local_sum_acc_ct1(
-                sycl::range<1>(256), cgh);
-            auto perms3_acc_ct1 = perms3.get_access(cgh);
-
-            cgh.parallel_for(
-                sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                      sycl::range<3>(1, 1, num_threads),
-                                  sycl::range<3>(1, 1, num_threads)),
-                [=](sycl::nd_item<3> item_ct1) {
-                    compute_ccsd_t_energy_kernel(
+            cgh.parallel_for(sycl::nd_range<1>(num_blocks*num_threads, num_threads),
+                         [=](sycl::nd_item<1> item){
+                    compute_ccsd_t_energy_kernel( item,
                         d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir,
-                        t_ia, t_ijab, d_E_CCSD_T, perms3_acc_ct1,
-                        parity3_ptr_ct1,
-                        local_sum_acc_ct1
-                            .get_multi_ptr<sycl::access::decorated::no>()
-                            .get());
+                        t_ia, t_ijab, d_E_CCSD_T, perms3,
+                        parity3
+                        );
                 });
         });
     }

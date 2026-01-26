@@ -16,7 +16,7 @@
 #define INT2E_DIRECT_CUH
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "boys.hpp"
 #include "types.hpp"
 #include "utils_cuda.hpp"
