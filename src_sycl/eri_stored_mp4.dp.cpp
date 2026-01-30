@@ -4064,7 +4064,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     streams.reserve(num_mp4_terms);
     for(int i = 0; i < num_mp4_terms; ++i) {
 //        streams.emplace_back(GPUHandle::syclqueue());
-        queues.emplace_back(
+        streams.emplace_back(
             sycl::default_selector_v,
             sycl::property::queue::in_order{}
         );
@@ -4083,18 +4083,26 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
         get_mp4_term_num_block_thread_shmem(i, num_spin_occ, num_spin_vir, num_threads, num_blocks, shmem);
 
         // Launch the kernel for the i-th MP4 term
-        mp4_term_kernel_t kernel = mp4_term_kernels[i];
-        kernel<<<num_blocks, num_threads, shmem, streams[i]>>>(d_eri_mo, d_orbital_energies, num_basis, num_spin_occ, num_spin_vir, &d_mp4_energy[i]);
+//        mp4_term_kernel_t kernel = mp4_term_kernels[i];
+//        kernel<<<num_blocks, num_threads, shmem, streams[i]>>>(d_eri_mo, d_orbital_energies, num_basis, num_spin_occ, num_spin_vir, &d_mp4_energy[i]);
+        sycl::nd_range<1> nd_range(num_blocks * num_threads, num_threads);
+        launch_mp4_kernel_dispatch(streams[i], i, nd_range, d_eri_mo, d_orbital_energies,
+                               num_basis, num_spin_occ, num_spin_vir,
+                               &d_mp4_energy[i]);
     }
-
-
-    real_t h_mp4_energy[num_mp4_terms];
-    cudaMemcpy(h_mp4_energy, d_mp4_energy, sizeof(real_t)*num_mp4_terms, cudaMemcpyDeviceToHost);
-    cudaDeviceSynchronize();
 
     for(int i = 0; i < num_mp4_terms; ++i) {
-        cudaStreamDestroy(streams[i]);
+        streams[i].wait();
     }
+    
+    real_t h_mp4_energy[num_mp4_terms];
+    q_ct1.memcpy(h_mp4_energy, d_mp4_energy, sizeof(real_t) * num_mp4_terms).wait();
+//    cudaMemcpy(h_mp4_energy, d_mp4_energy, sizeof(real_t)*num_mp4_terms, cudaMemcpyDeviceToHost);
+//    cudaDeviceSynchronize();
+
+//    for(int i = 0; i < num_mp4_terms; ++i) {
+//        cudaStreamDestroy(streams[i]);
+//    }
 
     for(int i=0; i<num_mp4_terms; i++){
         std::cout << "MP4 term " << (i+1) << ": " << h_mp4_energy[i] << " Hartree" << std::endl;
@@ -4136,7 +4144,6 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
 
     sycl::free(d_mp4_energy, q_ct1);
     sycl::free(d_eri_mo, q_ct1);
-
     real_t mp4_corr_energy = 0.0;
     for(int i=0; i<num_mp4_terms; i++){
         mp4_corr_energy += h_mp4_energy[i];

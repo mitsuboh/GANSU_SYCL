@@ -656,7 +656,7 @@ void ssss2e_direct(real_t *g_fock_matrix,
     */
     int cd =
         sycl::vec<double, 1>{
-            ((sycl::sqrt(sycl::vec<long long, 1>{(8 * idx_linear + 1)}
+            ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1) }
                              .convert<double, sycl::rounding_mode::rte>()[0]) -
               1) /
              2)}
@@ -862,7 +862,7 @@ void spsp2e_direct(real_t *g_fock_matrix,
     */
     int cd =
         sycl::vec<double, 1>{
-            ((sycl::sqrt(sycl::vec<long long, 1>{(8 * idx_linear + 1)}
+            ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1)}
                              .convert<double, sycl::rounding_mode::rte>()[0]) -
               1) /
              2)}
@@ -1000,7 +1000,7 @@ void pppp2e_direct(real_t *g_fock_matrix,
     */
     int cd =
         sycl::vec<double, 1>{
-            ((sycl::sqrt(sycl::vec<long long, 1>{(8 * idx_linear + 1)}
+            ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1)}
                              .convert<double, sycl::rounding_mode::rte>()[0]) -
               1) /
              2)}

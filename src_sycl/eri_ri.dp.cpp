@@ -323,14 +323,17 @@ void ri_rmp2_kernel_body<energy_kernel1>(sycl::nd_item<1> item, int nocc, int no
     sh_tmp[lid] = 0.0;
     item.barrier(sycl::access::fence_space::local_space);
 
-    size_t id = tid;
-    size_t2 ab = index1to2_upper_wo_trace(id % (nvir * (nvir-1) / 2), nvir);
-    id /= (nvir * (nvir-1) / 2);
-
-    const size_t i = calc_i(id, nocc_stride, nocc_block); // full-rangeの値が出てくる(0~kでなく、stride~stride+k)
-    const size_t j = calc_j(id, i, nocc_stride);
     double val = 0.0;
+
     if (tid  < total_threads){
+        size_t id = tid;
+
+        size_t2 ab = index1to2_upper_wo_trace(id % (nvir * (nvir-1) / 2), nvir);
+        id /= (nvir * (nvir-1) / 2);
+
+        const size_t i = calc_i(id, nocc_stride, nocc_block); // full-rangeの値が出てくる(0~kでなく、stride~stride+k)
+        const size_t j = calc_j(id, i, nocc_stride);
+
         if(i < nocc){
             double iajb = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + ab.x*nocc*nvir + j*nvir + ab.y];
             double ibja = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + ab.y*nocc*nvir + j*nvir + ab.x];        
@@ -338,54 +341,22 @@ void ri_rmp2_kernel_body<energy_kernel1>(sycl::nd_item<1> item, int nocc, int no
         }
     }
 
-    // --- sub_group reduction ---
-    auto sg = item.get_sub_group();
-    int sg_id = sg.get_group_id(); 
-    size_t sub_group_size = sg.get_local_range().size();
+    size_t group_size = item.get_local_range().size();
 
-    val = sycl::reduce_over_group(sg, val, sycl::plus<double>());
     sh_tmp[lid] = val;
     item.barrier(sycl::access::fence_space::local_space);
 
-
     if (lid == 0) {
         double block_sum = 0.0;
-    // block-wide reduction
-        for (size_t i = 0; i < sub_group_size; ++i) {
+        for (size_t i = 0; i < group_size; ++i) {
             block_sum += sh_tmp[i];
         }
     // device-wide reduction
         atomic_add(d_energy, block_sum);
-   }
+    }
 
 }
-/*
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_RI_RMP2_energy_kernel1_wrapper(int nocc, int nocc_block, int nvir,
-                                         int nocc_stride, int naux,
-                                         double *d_iajb, double *d_eps,
-                                         double *energy) {
-    sycl::queue queue = *dpct::kernel_launcher::_que;
-    unsigned int localMemSize = dpct::kernel_launcher::_local_mem_size;
-    sycl::nd_range<3> nr = dpct::kernel_launcher::_nr;
 
-    dpct::has_capability_or_fail(queue.get_device(), {sycl::aspect::fp64});
-
-    queue.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<double, 1> sh_tmp_acc_ct1(sycl::range<1>(1), cgh);
-
-        cgh.parallel_for(
-            nr,
-            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(32)]] {
-                calc_RI_RMP2_energy_kernel1(
-                    nocc, nocc_block, nvir, nocc_stride, naux, d_iajb, d_eps,
-                    energy,
-                    sh_tmp_acc_ct1.get_multi_ptr<sycl::access::decorated::no>()
-                        .get());
-            });
-    });
-}
-*/
 // i>j, a
 
 //void calc_RI_RMP2_energy_kernel2(int nocc, int nocc_block, int nvir, int nocc_stride, int naux, double* d_iajb, double* d_eps, double* energy,
@@ -395,69 +366,47 @@ void ri_rmp2_kernel_body<energy_kernel2>(sycl::nd_item<1> item, int nocc, int no
                                         double* d_iajb, double* d_eps, double* d_energy, sycl::local_accessor<double, 1> sh_tmp)
 {
     size_t tid = item.get_global_linear_id();
+    size_t lid = item.get_local_id(0);
     size_t total_threads = ((size_t)nocc_block * nocc_stride + nocc_block*(nocc_block-1)/2) * nvir;
-//    if (tid >= total_threads) return;
 
-    if (item.get_local_id(0) == 0) sh_tmp[0] = 0.0;
+//    if (tid >= total_threads) return;
+    sh_tmp[0] = 0.0;
     item.barrier(sycl::access::fence_space::local_space);
 
-    size_t id = tid;
-    const size_t a = id % nvir;
-    id /= nvir;
-
-    const size_t i = calc_i(id, nocc_stride, nocc_block); // full-rangeの値が出てくる(0~kでなく、stride~stride+k)
-    const size_t j = calc_j(id, i, nocc_stride);
-
     double val = 0.0;
+
     if (tid  < total_threads){
+        size_t id = tid;
+
+        const size_t a = id % nvir;
+        id /= nvir;
+
+        const size_t i = calc_i(id, nocc_stride, nocc_block); // full-rangeの値が出てくる(0~kでなく、stride~stride+k)
+        const size_t j = calc_j(id, i, nocc_stride);
+
         if(i < nocc){
             double iaja = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + a*nocc*nvir + j*nvir + a];     
             val = 2.0*iaja*iaja / (d_eps[i] + d_eps[j] - 2.0*d_eps[a+nocc]);
         }
     }
 
-    // --- sub_group reduction ---
-    auto sg = item.get_sub_group();
-    val = sycl::reduce_over_group(sg, val, sycl::plus<double>());
+    size_t group_size = item.get_local_range().size();
 
-    // block-wide reduction
-    if (sg.leader())
-        atomic_add_local(&sh_tmp[0],val);
-
+    sh_tmp[lid] = val;
     item.barrier(sycl::access::fence_space::local_space);
 
+    if (lid == 0) {
+        double block_sum = 0.0;
+        for (size_t i = 0; i < group_size; ++i) {
+            block_sum += sh_tmp[i];
+        }
     // device-wide reduction
-    if (item.get_local_id(0) == 0)
-        atomic_add(d_energy,sh_tmp[0]);
+        atomic_add(d_energy, block_sum);
+    }
 
 }
-/*
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_RI_RMP2_energy_kernel2_wrapper(int nocc, int nocc_block, int nvir,
-                                         int nocc_stride, int naux,
-                                         double *d_iajb, double *d_eps,
-                                         double *energy) {
-    sycl::queue queue = *dpct::kernel_launcher::_que;
-    unsigned int localMemSize = dpct::kernel_launcher::_local_mem_size;
-    sycl::nd_range<3> nr = dpct::kernel_launcher::_nr;
 
-    dpct::has_capability_or_fail(queue.get_device(), {sycl::aspect::fp64});
 
-    queue.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<double, 1> sh_tmp_acc_ct1(sycl::range<1>(1), cgh);
-
-        cgh.parallel_for(
-            nr,
-            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(32)]] {
-                calc_RI_RMP2_energy_kernel2(
-                    nocc, nocc_block, nvir, nocc_stride, naux, d_iajb, d_eps,
-                    energy,
-                    sh_tmp_acc_ct1.get_multi_ptr<sycl::access::decorated::no>()
-                        .get());
-            });
-    });
-}
-*/
 // i, a>b
 
 //void calc_RI_RMP2_energy_kernel3(int nocc, int nocc_block, int nvir, int nocc_stride, int naux, double* d_iajb, double* d_eps, double* energy,
@@ -467,70 +416,47 @@ void ri_rmp2_kernel_body<energy_kernel3>(sycl::nd_item<1> item, int nocc, int no
                                         double* d_iajb, double* d_eps, double* d_energy, sycl::local_accessor<double, 1> sh_tmp)
 {
     size_t tid = item.get_global_linear_id();
+    size_t lid = item.get_local_id(0);
     size_t total_threads = (uint64_t)nocc_block * nvir * (nvir - 1.0) / 2;
 //    if (tid >= total_threads) return;
 
-    if (item.get_local_id(0) == 0) sh_tmp[0] = 0.0;
+    sh_tmp[0] = 0.0;
     item.barrier(sycl::access::fence_space::local_space);
 
-    size_t id = tid;
-    size_t2 ab = index1to2_upper_wo_trace(id % (nvir * (nvir-1) / 2), nvir);
-    const size_t a = ab.x, b = ab.y;
-
-    const size_t i = id / (nvir * (nvir-1) / 2);  // このiは0~k-1
-
     double val = 0.0;
+
     if (tid  < total_threads){
+        size_t id = tid;
+
+        size_t2 ab = index1to2_upper_wo_trace(id % (nvir * (nvir-1) / 2), nvir);
+        const size_t a = ab.x, b = ab.y;
+
+        const size_t i = id / (nvir * (nvir-1) / 2);  // このiは0~k-1
+
         if((i + nocc_stride) < nocc){
             double iaib = d_iajb[i*nvir*nocc*nvir + a*nocc*nvir + (i+nocc_stride)*nvir + b];     
             val = 2.0*iaib*iaib / (2.0*d_eps[i+nocc_stride] - d_eps[a+nocc] - d_eps[b+nocc]);
         }
     }
 
-    // --- sub_group reduction ---
-    auto sg = item.get_sub_group();
-    val = sycl::reduce_over_group(sg, val, sycl::plus<double>());
+    size_t group_size = item.get_local_range().size();
 
-    // block-wide reduction
-    if (sg.leader())
-        atomic_add_local(&sh_tmp[0],val);
-
+    sh_tmp[lid] = val;
     item.barrier(sycl::access::fence_space::local_space);
 
+    if (lid == 0) {
+        double block_sum = 0.0;
+        for (size_t i = 0; i < group_size; ++i) {
+            block_sum += sh_tmp[i];
+        }
     // device-wide reduction
-    if (item.get_local_id(0) == 0)
-        atomic_add(d_energy,sh_tmp[0]);
+        atomic_add(d_energy, block_sum);
+    }
 
-}
-/*
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_RI_RMP2_energy_kernel3_wrapper(int nocc, int nocc_block, int nvir,
-                                         int nocc_stride, int naux,
-                                         double *d_iajb, double *d_eps,
-                                         double *energy) {
-    sycl::queue queue = *dpct::kernel_launcher::_que;
-    unsigned int localMemSize = dpct::kernel_launcher::_local_mem_size;
-    sycl::nd_range<3> nr = dpct::kernel_launcher::_nr;
-
-    dpct::has_capability_or_fail(queue.get_device(), {sycl::aspect::fp64});
-
-    queue.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<double, 1> sh_tmp_acc_ct1(sycl::range<1>(1), cgh);
-
-        cgh.parallel_for(
-            nr,
-            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(32)]] {
-                calc_RI_RMP2_energy_kernel3(
-                    nocc, nocc_block, nvir, nocc_stride, naux, d_iajb, d_eps,
-                    energy,
-                    sh_tmp_acc_ct1.get_multi_ptr<sycl::access::decorated::no>()
-                        .get());
-            });
-    });
 }
 
 // i, a
-*/
+
 //void calc_RI_RMP2_energy_kernel4(int nocc, int nocc_block, int nvir, int nocc_stride, int naux, double* d_iajb, double* d_eps, double* energy,
 //                                 double *sh_tmp){
 template <>
@@ -538,65 +464,42 @@ void ri_rmp2_kernel_body<energy_kernel4>(sycl::nd_item<1> item, int nocc, int no
                                         double* d_iajb, double* d_eps, double* d_energy, sycl::local_accessor<double, 1> sh_tmp)
 {
     size_t tid = item.get_global_linear_id();
+    size_t lid = item.get_local_id(0);
     size_t total_threads = (uint64_t)nocc_block * nvir;
 //    if (tid >= total_threads) return;
 
-    if (item.get_local_id(0) == 0) sh_tmp[0] = 0.0;
+    sh_tmp[0] = 0.0;
     item.barrier(sycl::access::fence_space::local_space);
 
-    size_t id = tid;
-    const size_t a = id % nvir;
-    const size_t i = id / nvir;  // このiは0~k-1
-
     double val = 0.0;
+
     if (tid  < total_threads){
+        size_t id = tid;
+        const size_t a = id % nvir;
+        const size_t i = id / nvir;  // このiは0~k-1
+
         if((i + nocc_stride) < nocc){
             double iaia = d_iajb[i*nvir*nocc*nvir + a*nocc*nvir + (i+nocc_stride)*nvir + a];     
             val = 0.5*iaia*iaia / (d_eps[i+nocc_stride] - d_eps[a+nocc]);
         }
     }
 
-    // --- sub_group reduction ---
-    auto sg = item.get_sub_group();
-    val = sycl::reduce_over_group(sg, val, sycl::plus<double>());
+    size_t group_size = item.get_local_range().size();
 
-    // block-wide reduction
-    if (sg.leader())
-        atomic_add_local(&sh_tmp[0],val);
-
+    sh_tmp[lid] = val;
     item.barrier(sycl::access::fence_space::local_space);
 
+    if (lid == 0) {
+        double block_sum = 0.0;
+        for (size_t i = 0; i < group_size; ++i) {
+            block_sum += sh_tmp[i];
+        }
     // device-wide reduction
-    if (item.get_local_id(0) == 0)
-        atomic_add(d_energy,sh_tmp[0]);
+        atomic_add(d_energy, block_sum);
+    }
 }
-/*
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_RI_RMP2_energy_kernel4_wrapper(int nocc, int nocc_block, int nvir,
-                                         int nocc_stride, int naux,
-                                         double *d_iajb, double *d_eps,
-                                         double *energy) {
-    sycl::queue queue = *dpct::kernel_launcher::_que;
-    unsigned int localMemSize = dpct::kernel_launcher::_local_mem_size;
-    sycl::nd_range<3> nr = dpct::kernel_launcher::_nr;
 
-    dpct::has_capability_or_fail(queue.get_device(), {sycl::aspect::fp64});
 
-    queue.submit([&](sycl::handler &cgh) {
-        sycl::local_accessor<double, 1> sh_tmp_acc_ct1(sycl::range<1>(1), cgh);
-
-        cgh.parallel_for(
-            nr,
-            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(32)]] {
-                calc_RI_RMP2_energy_kernel4(
-                    nocc, nocc_block, nvir, nocc_stride, naux, d_iajb, d_eps,
-                    energy,
-                    sh_tmp_acc_ct1.get_multi_ptr<sycl::access::decorated::no>()
-                        .get());
-            });
-    });
-}
-*/
 /*
 int search_maximime_k(int mocc, int mvir) {
     size_t free_mem_bytes, total_mem_bytes;
@@ -784,166 +687,6 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
 
     return energy;
 }
-
-
-
-
-/*
-using RI_RMP2_energy_kernel_t = void(*)(int, int, int, int, int, double*, double*, double*);
-struct KernelPair{
-    RI_RMP2_energy_kernel_t kernel;
-    size_t num_blocks;
-};
-
-real_t ERI_RI_RHF::compute_mp2_energy() {
-  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    PROFILE_FUNCTION();
-
-    const int nocc = rhf_.get_num_electrons() / 2;
-    const int nvir = rhf_.get_num_basis() - nocc;
-    DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
-    DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
-
-
-    real_t *d_C = coefficient_matrix.device_ptr();
-    real_t *d_eps = orbital_energies.device_ptr();
-    real_t *d_intermediate_matrix_B = intermediate_matrix_B_.device_ptr();
-    const int num_auxiliary_basis = num_auxiliary_basis_;
-
-
-    real_t* d_tmp;
-    d_tmp = (real_t *)sycl::malloc_device(
-        sizeof(double) * num_auxiliary_basis * num_basis_ * num_basis_, q_ct1);
-
-    double *d_energy;
-    d_energy = sycl::malloc_device<double>(1, q_ct1);
-    q_ct1.memset(d_energy, 0.0, sizeof(double)).wait();
-
-    const int num_threads = 1024;
-    dpct::event_ptr events[2];
-    for (int i = 0; i < 2; i++) events[i] = new sycl::event();
-
-    dpct::queue_ptr streams[4];
-    for (int i = 0; i < 4; i++) streams[i] = dev_ct1.create_queue();
-
-    double *d_iajb = nullptr;
-    int nocc_block;
-
-    dpct::blas::descriptor_ptr handle;
-    cublasCreate(&handle);
-    cublasSetStream(handle, streams[0]);
-
-
-
-
-    search_k_and_cudamalloc_4cERI(nocc, nvir, nocc_block, &d_iajb, streams[0]);
-
-    transform_intermediate_matrix(num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
-    dpct::dpct_free(d_tmp, q_ct1);
-
-    size_t num_blocks_3 = ((size_t)(nocc_block * nvir * (nvir - 1.0) / 2) + num_threads - 1) / num_threads, 
-        num_blocks_4 = ((size_t)(nocc_block * nvir) + num_threads - 1) / num_threads;
-
-
-    // int nocc_block =  std::stoi(std::getenv("NUM"));
-
-
-
-    int niter = ((double)nocc + nocc_block - 1) / nocc_block;
-    dpct::event_ptr *events_for_sync = new dpct::event_ptr[niter * 4];
-    for (int i = 0; i < niter * 4; i++) events_for_sync[i] = new sycl::event();
-
-    std::vector<KernelPair> num_blocks_list{
-        {calc_RI_RMP2_energy_kernel1_wrapper, 0},
-        {calc_RI_RMP2_energy_kernel2_wrapper, 0},
-        {calc_RI_RMP2_energy_kernel3_wrapper, num_blocks_3},
-        {calc_RI_RMP2_energy_kernel4_wrapper, num_blocks_4}};
-
-    int iter_count = 0;
-    const double alpha = 1.0;
-    const double beta = 0.0;
-
-    dev_ct1.queues_wait_and_throw();
-
-    dpct::sync_barrier(events[0], streams[0]);
-    for(int i = 0; i < nocc; i+=nocc_block){  // iは資料でいう「stride」
-        num_blocks_list[0].num_blocks = (((size_t)(nocc_block*i + nocc_block*(nocc_block-1)/2) *  nvir*(nvir-1)/2) + num_threads -1) / num_threads;
-        num_blocks_list[1].num_blocks = (((size_t)(nocc_block*i + nocc_block*(nocc_block-1)/2) *  nvir) + num_threads - 1) / num_threads;
-
-        cublasDgemm(
-            handle, 
-            CUBLAS_OP_N, CUBLAS_OP_T, 
-            nocc * nvir,  
-            ((nocc_block < nocc - i) ? nocc_block : nocc - i) * nvir ,  
-            num_auxiliary_basis,  
-            &alpha, 
-            d_intermediate_matrix_B, nocc * nvir, 
-            &d_intermediate_matrix_B[i * nvir], nocc * nvir,
-            &beta, 
-            d_iajb, nocc * nvir
-        );
-
-        dpct::sync_barrier(events_for_sync[iter_count * 4 + 0], streams[0]);
-        for (int s = 1; s < 4; s++) streams[s]->ext_oneapi_submit_barrier(
-            {*events_for_sync[iter_count * 4 + 0]});
-
-        for (int j = 0; j < num_blocks_list.size(); j++){
-            dpct::kernel_launcher::launch(
-                num_blocks_list[j].kernel, num_blocks_list[j].num_blocks,
-                num_threads, 0, streams[j], nocc, nocc_block, nvir, i,
-                num_auxiliary_basis, d_iajb, d_eps, d_energy);
-            dpct::sync_barrier(events_for_sync[iter_count * 4 + j], streams[j]);
-            streams[0]->ext_oneapi_submit_barrier(
-                {*events_for_sync[iter_count * 4 + j]});
-        }
-
-        iter_count++;
-    }
-
-    dpct::sync_barrier(events[1], streams[0]);
-    events[1]->wait_and_throw();
-
-    dpct::dpct_free(d_iajb, q_ct1);
-    cublasDestroy(handle);
-
-
-
-
-
-
-    // cudaStreamSynchronize(streams[0]);
-    double energy;
-    q_ct1.memcpy(&energy, d_energy, sizeof(double)).wait();
-    printf("RMP2_energy: %.10f\n", energy);
-    printf("RMP2_total_energy: %.10f\n", rhf_.get_total_energy() + energy);
-
-
-
-    // timeに、エネルギー計算部分の実行時間
-    float time;
-    time =
-        (events[1]
-             ->get_profiling_info<sycl::info::event_profiling::command_end>() -
-         events[0]
-             ->get_profiling_info<
-                 sycl::info::event_profiling::command_start>()) /
-        1000000.0f;
-    std::cout << "Execution time: " << std::setprecision(15) << time / 1000.0 << " [s]" << std::endl;
-
-
-    printf("(nocc, nvir, naux) = (%d, %d, %d)\n",nocc, nvir, num_auxiliary_basis);
-    dpct::dpct_free(d_energy, q_ct1);
-
-    for (int i = 0; i < 4; i++) dev_ct1.destroy_queue(streams[i]);
-
-    // events_for_sync
-    for (int i = 0; i < niter * 4; i++) dpct::destroy_event(events_for_sync[i]);
-    for (int i = 0; i < 2; i++) dpct::destroy_event(events[i]);
-
-    return energy;
-}
-*/
 
 
 } // namespace gansu
