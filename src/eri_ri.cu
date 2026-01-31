@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -81,7 +81,7 @@ void mu2i_(short norbs, short nocc, short nvir, short naux, double* d_C, double*
     const double alpha = 1.0;
     const double beta = 0.0;
 
-    cudaMemset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double));
+    cudaMemset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double));
 	
 
     cublasDgemm(
@@ -107,7 +107,7 @@ void mu2i_dgemm(short norbs, short nocc, short nvir, short naux, double* d_C, do
     const double alpha = 1.0;
     const double beta = 0.0;
 
-    cudaMemset(d_B_p_i_a, 0, norbs * norbs * naux * sizeof(double));
+    cudaMemset(d_B_p_i_a, 0, norbs * nvir * naux * sizeof(double));
 
     int row = naux * norbs, col = nvir;
     cublasDgeam(
@@ -174,7 +174,7 @@ void transform_intermediate_matrix(short norbs, short nocc, short nvir, short na
     const double alpha = 1.0;
     const double beta = 0.0;
 
-    cudaMemset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double));
+    cudaMemset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double));
 	
 
     cublasDgemm(
@@ -200,7 +200,7 @@ void mu2i_dgemm(short norbs, short nocc, short nvir, short naux, double* d_C, do
     const double alpha = 1.0;
     const double beta = 0.0;
 
-    cudaMemset(d_B_p_i_a, 0, norbs * norbs * naux * sizeof(double));
+    cudaMemset(d_B_p_i_a, 0, norbs * nvir * naux * sizeof(double));
 
     int row = naux * norbs, col = nvir;
     cublasDgeam(
@@ -462,7 +462,7 @@ void calc_RI_RMP2_energy_kernel4(int nocc, int nocc_block, int nvir, int nocc_st
 
 
 
-int search_maximime_k(int mocc, int mvir) {
+int search_maximum_k(int mocc, int mvir) {
     size_t free_mem_bytes, total_mem_bytes;
     cudaMemGetInfo(&free_mem_bytes, &total_mem_bytes);
     
@@ -475,7 +475,7 @@ int search_maximime_k(int mocc, int mvir) {
 
 
 void search_k_and_cudamalloc_4cERI(int mocc, int mvir, int &k, double **d_iajb, cudaStream_t &stream) {
-    k = search_maximime_k(mocc, mvir);
+    k = search_maximum_k(mocc, mvir);
     // k = (int)(k*mvir / 32) * 32;
     // k = 10;
 
@@ -512,7 +512,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
 
 
     real_t* d_tmp;
-    cudaMalloc((void**)&d_tmp, sizeof(double) * num_auxiliary_basis*num_basis_*num_basis_);
+    cudaMalloc((void**)&d_tmp, sizeof(double) * num_basis_ * nvir * num_auxiliary_basis);
 
     double *d_energy;
     cudaMalloc((void**)&d_energy, sizeof(double));

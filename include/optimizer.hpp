@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -27,7 +27,7 @@ public:
     Optimizer() = default;
     virtual ~Optimizer() = default;
 
-    // Optimeze the structure of the molecule
+    // Optimize the structure of the molecule
     virtual void optimize(const std::vector<Atom>& initial_atoms) = 0;
     
 };

@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]){
     ParameterManager parameters;
     parameters.parse_command_line_args(argc, argv); // Parse the command line arguments
 
-    real_t energy = HFBuilder::buildOtimizer(parameters);
+    real_t energy = HFBuilder::buildOptimizer(parameters);
 
     std::cout << "Geometry optimization is completed." << std::endl;
     std::cout << "Final energy: " << energy << std::endl;

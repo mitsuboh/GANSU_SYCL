@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -190,9 +190,9 @@ public:
     const DeviceHostMemory<real_t>& get_boys_grid() const { return boys_grid; }
 
     /**
-     * @brief Get cgto_nomalization_factors
+     * @brief Get cgto_normalization_factors
      */
-    const DeviceHostMemory<real_t>& get_cgto_nomalization_factors() const { return cgto_nomalization_factors; }
+    const DeviceHostMemory<real_t>& get_cgto_normalization_factors() const { return cgto_normalization_factors; }
 
     /**
      * @brief Get the Schwartz screening threshold
@@ -236,6 +236,21 @@ public:
      */
     real_t get_post_hf_energy() const { return post_hf_energy_; } ///< Get the post-HF energy
 
+    /**
+     * @brief Get whether the coefficient matrix has been computed
+     */
+    bool get_hasMatrixC() const { return hasMatrixC_; }
+
+
+    /**
+     * @brief Function to compute the coefficient matrix and set hasMatrixC_ to true
+     * @details This function computes the coefficient matrix by calling compute_coefficient_matrix()
+     * and sets hasMatrixC_ to true.
+    */
+    void compute_coefficient_matrix(){
+        compute_coefficient_matrix_impl();
+        hasMatrixC_ = true;
+    }
 protected:
     long long solve_time_in_milliseconds_; ///< Time to solve the HF equation
 
@@ -263,12 +278,14 @@ protected:
     DeviceHostMemory<real_t> boys_grid; ///< grid values for the Boys function
     DeviceHostMatrix<real_t> overlap_matrix; ///< Overlap matrix
     DeviceHostMatrix<real_t> core_hamiltonian_matrix; ///< Core Hamiltonian matrix (kinetic energy + nuclear attraction)
-    DeviceHostMemory<real_t> cgto_nomalization_factors; ///< Normalization factors of the contracted Gauss functions
+    DeviceHostMemory<real_t> cgto_normalization_factors; ///< Normalization factors of the contracted Gauss functions
 
 
     DeviceHostMatrix<real_t> transform_matrix; ///< Transformation matrix
 
     real_t nuclear_repulsion_energy_; ///< Nuclear repulsion energy
+
+    bool hasMatrixC_ = false; ///< Flag indicating whether the coefficient matrix has been computed. Once computed, it is set to true.
 
     // Post-HF methods
     PostHFMethod post_hf_method_; ///< Post-HF method
@@ -320,7 +337,10 @@ protected:
      * @details This function computes the coefficient matrix.
      * @details This function must be implemented in the derived class.
     */
-    virtual void compute_coefficient_matrix()=0;
+    virtual void compute_coefficient_matrix_impl()=0;
+
+
+
 
     /**
      * @brief Virtual function to compute the energy
