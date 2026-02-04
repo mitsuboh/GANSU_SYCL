@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -2082,7 +2082,7 @@ inline void writeMatrixToFile(std::string filename, double* array, size_t size) 
  * @param d_cgto_normalization_factors Pointer to the normalization factors of the CGTOs in device memory
  * @param auxiliary_shell_type_infos Information about the auxiliary basis functions
  * @param d_auxiliary_primitive_shells Pointer to the primitive shells of the auxiliary basis functions in device memory
- * @param d_auxiliary_cgto_nomalization_factors Pointer to the normalization factors of the auxiliary CGTOs in device memory
+ * @param d_auxiliary_cgto_normalization_factors Pointer to the normalization factors of the auxiliary CGTOs in device memory
  * @param d_intermediate_matrix_B Pointer to the intermediate matrix B in device memory
  * @param num_basis Number of basis functions
  * @param num_auxiliary_basis Number of auxiliary basis functions
@@ -2100,7 +2100,7 @@ void compute_RI_IntermediateMatrixB(
     const real_t *d_cgto_normalization_factors,
     const std::vector<ShellTypeInfo> &auxiliary_shell_type_infos,
     const PrimitiveShell *d_auxiliary_primitive_shells,
-    const real_t *d_auxiliary_cgto_nomalization_factors,
+    const real_t *d_auxiliary_cgto_normalization_factors,
     real_t *d_intermediate_matrix_B,
     const size_t2 *d_primitive_shell_pair_indices,
     const real_t *d_schwarz_upper_bound_factors,
@@ -2131,7 +2131,7 @@ void compute_RI_IntermediateMatrixB(
     computeTwoCenterERIs(
         auxiliary_shell_type_infos,
         d_auxiliary_primitive_shells,
-        d_auxiliary_cgto_nomalization_factors,
+        d_auxiliary_cgto_normalization_factors,
         d_two_center_eri,
         num_auxiliary_basis,
         d_boys_grid,
@@ -2169,7 +2169,7 @@ void compute_RI_IntermediateMatrixB(
         d_cgto_normalization_factors,
         auxiliary_shell_type_infos,
         d_auxiliary_primitive_shells,
-        d_auxiliary_cgto_nomalization_factors,
+        d_auxiliary_cgto_normalization_factors,
         d_three_center_eri,
         d_primitive_shell_pair_indices,
         num_basis,
@@ -2796,7 +2796,7 @@ catch (sycl::exception const &exc) {
 void computeTwoCenterERIs(
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
     const PrimitiveShell* d_auxiliary_primitive_shells, 
-    const real_t* d_auxiliary_cgto_nomalization_factors, 
+    const real_t* d_auxiliary_cgto_normalization_factors, 
     real_t* d_two_center_eri, 
     const int num_auxiliary_basis,
     const real_t* d_boys_grid,
@@ -2857,7 +2857,7 @@ void computeTwoCenterERIs(
                        [=](sycl::nd_item<3> item_ct1) {
                 gpu::launch_2center_kernel(item_ct1,
                     s0, s1, d_two_center_eri,
-                    d_auxiliary_primitive_shells, d_auxiliary_cgto_nomalization_factors,
+                    d_auxiliary_primitive_shells, d_auxiliary_cgto_normalization_factors,
                     shell_s0, shell_s1, num_shell_pairs,
                     d_auxiliary_schwarz_upper_bound_factors, 
                     schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
@@ -2893,10 +2893,10 @@ void computeThreeCenterERIs(
     const std::vector<ShellTypeInfo>& shell_type_infos,
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
     const PrimitiveShell* d_primitive_shells,
-    const real_t* d_cgto_nomalization_factors,
+    const real_t* d_cgto_normalization_factors,
     const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos,
     const PrimitiveShell* d_auxiliary_primitive_shells,
-    const real_t* d_auxiliary_cgto_nomalization_factors,
+    const real_t* d_auxiliary_cgto_normalization_factors,
     real_t* d_three_center_eri,
     const size_t2* d_primitive_shell_pair_indices,
     const int num_basis,
@@ -2970,8 +2970,8 @@ void computeThreeCenterERIs(
                 gpu::launch_3center_kernel( item_ct1,
                     s0, s1, s2,
                     d_three_center_eri, d_primitive_shells,
-                    d_auxiliary_primitive_shells, d_auxiliary_cgto_nomalization_factors,
-                    d_auxiliary_cgto_nomalization_factors, shell_s0, shell_s1, shell_s2,
+                    d_auxiliary_primitive_shells, d_auxiliary_cgto_normalization_factors,
+                    d_auxiliary_cgto_normalization_factors, shell_s0, shell_s1, shell_s2,
                     num_tasks, num_basis, 
 //                    &d_primitive_shell_pair_indices[shell_pair_type_infos
 //                      [calcIdx_triangular_(s0, s1, shell_type_count)] .start_index],

@@ -1,9 +1,7 @@
-#include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -13,6 +11,9 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+
+#include <sycl/sycl.hpp>
+#include <dpct/dpct.hpp>
 
 // Helper function: Copy device memory to host
 inline void copyToHost(std::vector<double>& host_data, const double* device_data, size_t size) {

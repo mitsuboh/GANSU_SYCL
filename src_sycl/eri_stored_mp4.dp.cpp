@@ -1044,7 +1044,7 @@ real_t mp4_from_aoeri_via_full_moeri(const real_t* d_eri_ao, const real_t* d_coe
 
 
 /////////////////////////////////////////////////////////////////////////////////// factorization MP4 kernels
-// Note: The number of kernels may be small. So, CUDA streams shuld be used to overlap their executions.
+// Note: The number of kernels may be small. So, CUDA streams should be used to overlap their executions.
 
 /*
 DPCT1110:27: The total declared local variable size in device function

@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -501,7 +501,7 @@ void ri_rmp2_kernel_body<energy_kernel4>(sycl::nd_item<1> item, int nocc, int no
 
 
 /*
-int search_maximime_k(int mocc, int mvir) {
+int search_maximum_k(int mocc, int mvir) {
     size_t free_mem_bytes, total_mem_bytes;
 */
     /*
@@ -515,7 +515,7 @@ int search_maximime_k(int mocc, int mvir) {
     return std::min(free_mem_bytes/(mocc * mvir * mvir * sizeof(double)), (size_t)mocc);    
 }
 */
-int search_maximime_k(sycl::queue& workq, int mocc, int mvir) {
+int search_maximum_k(sycl::queue& workq, int mocc, int mvir) {
     if (mocc <= 0 || mvir <= 0) return 0;
 
     size_t total_mem = workq.get_device().get_info<sycl::info::device::global_mem_size>();
@@ -531,7 +531,7 @@ int search_maximime_k(sycl::queue& workq, int mocc, int mvir) {
 
 
 void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
-    k = search_maximime_k(workq, mocc, mvir);
+    k = search_maximum_k(workq, mocc, mvir);
 
     while (true) {
         try {
