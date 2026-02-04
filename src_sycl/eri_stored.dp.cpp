@@ -2462,12 +2462,12 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
 }
 
 
-void update_t_amplitude_dumping_kernel(
+void update_t_amplitude_damping_kernel(
                                                 const real_t* __restrict__ t_new,
                                                 real_t* __restrict__ t_old,
                                                 const int dim1,
                                                 const int dim2,
-                                                const real_t dumping_factor)
+                                                const real_t damping_factor)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)dim1 * dim2;
@@ -2475,20 +2475,20 @@ void update_t_amplitude_dumping_kernel(
                  item_ct1.get_local_id(2);
 
     if(gid < total){
-        t_old[gid] = (1.0 - dumping_factor) * t_old[gid] + dumping_factor * t_new[gid];
+        t_old[gid] = (1.0 - damping_factor) * t_old[gid] + damping_factor * t_new[gid];
     }
 }
 
-void update_t_amplitude_dumping(const real_t* t_ia_new, const real_t* t_ijab_new,
+void update_t_amplitude_damping(const real_t* t_ia_new, const real_t* t_ijab_new,
                                 real_t* t_ia_old, real_t* t_ijab_old,
                                 const int num_spin_occ,
                                 const int num_spin_vir,
-                                const real_t dumping_factor)
+                                const real_t damping_factor)
 {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
-    // t_ia_old = (1 - dumping_factor) * t_ia_old + dumping_factor * t_ia_new
+    // t_ia_old = (1 - damping_factor) * t_ia_old + damping_factor * t_ia_new
     const size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
     const int num_threads = 256;
     const int num_blocks_ia = (total_ia + num_threads - 1) / num_threads;
@@ -2496,13 +2496,13 @@ void update_t_amplitude_dumping(const real_t* t_ia_new, const real_t* t_ijab_new
                                              sycl::range<3>(1, 1, num_threads),
                                          sycl::range<3>(1, 1, num_threads)),
                        [=](sycl::nd_item<3> item_ct1) {
-                           update_t_amplitude_dumping_kernel(
+                           update_t_amplitude_damping_kernel(
                                t_ia_new, t_ia_old, num_spin_occ, num_spin_vir,
-                               dumping_factor);
+                               damping_factor);
                        });
     q_ct1.wait_and_throw();
 
-    // t_ijab_old = (1 - dumping_factor) * t_ijab_old + dumping_factor * t_ijab_new
+    // t_ijab_old = (1 - damping_factor) * t_ijab_old + damping_factor * t_ijab_new
     const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     const int num_blocks_ijab = (total_ijab + num_threads - 1) / num_threads;
     q_ct1.submit([&](sycl::handler &cgh) {
@@ -2514,9 +2514,9 @@ void update_t_amplitude_dumping(const real_t* t_ia_new, const real_t* t_ijab_new
                                   sycl::range<3>(1, 1, num_threads),
                               sycl::range<3>(1, 1, num_threads)),
             [=](sycl::nd_item<3> item_ct1) {
-                update_t_amplitude_dumping_kernel(
+                update_t_amplitude_damping_kernel(
                     t_ijab_new, t_ijab_old, num_spin_occ_num_spin_occ_ct2,
-                    num_spin_vir_num_spin_vir_ct3, dumping_factor);
+                    num_spin_vir_num_spin_vir_ct3, damping_factor);
             });
     });
     q_ct1.wait_and_throw();
@@ -3888,10 +3888,10 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
             auto h_t_diis = diis.extrapolate();
             h_t_new = h_t_diis; // update new amplitudes with DIIS result
         }else{
-            // dumping if DIIS is not used
-            real_t dumping_factor = 0.3; // 0.0 ~ 1.0
+            // damping if DIIS is not used
+            real_t damping_factor = 0.3; // 0.0 ~ 1.0
             for(size_t idx = 0; idx < num_ccsd_amplitudes; ++idx){
-                h_t_new[idx] = (1.0 - dumping_factor) * h_t_old[idx] + dumping_factor * h_t_new[idx];
+                h_t_new[idx] = (1.0 - damping_factor) * h_t_old[idx] + damping_factor * h_t_new[idx];
             }
         }
         // Copy back to device
@@ -3903,7 +3903,7 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
         h_t_old = h_t_new; // update host old amplitudes
 
     
-        // check convergence and dumping
+        // check convergence and damping
         /*
         E_CCSD_new = compute_ccsd_energy(d_eri_mo, num_basis, num_spin_occ, num_spin_vir, t_ia_new, t_ijab_new);
         diff = compute_t_amplitude_diff(t_ia_new, t_ijab_new,
@@ -3916,14 +3916,14 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
             break;
         }
 
-        // update amplitudes by dumping
-        real_t dumping_factor = 0.6;//0.9; // 0.0 ~ 1.0
-        // t_old = (1 - dumping_factor) * t_old + dumping_factor * t_new
-        update_t_amplitude_dumping(t_ia_new, t_ijab_new,
+        // update amplitudes by damping
+        real_t damping_factor = 0.6;//0.9; // 0.0 ~ 1.0
+        // t_old = (1 - damping_factor) * t_old + damping_factor * t_new
+        update_t_amplitude_damping(t_ia_new, t_ijab_new,
                                     t_ia_old, t_ijab_old,
                                     num_spin_occ,
                                     num_spin_vir,
-                                    dumping_factor);
+                                    damping_factor);
         */
     }
 
@@ -4012,8 +4012,6 @@ real_t ERI_Stored_RHF::compute_ccsd_t_energy() {
     std::cout << "CCSD(T) correction energy: " << E_CCSD+ccsd_t_energy << " Hartree" << std::endl;
 
     return E_CCSD+ccsd_t_energy;
-
-    return 0.0;
 }
 
 

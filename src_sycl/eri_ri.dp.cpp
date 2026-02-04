@@ -91,7 +91,7 @@ void nu2a_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
     const double beta = 0.0;
 
 //    workq.memset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double)).wait();
-    workq.memset(d_B_p_mu_a, 0, nvir * naux * norbs * sizeof(double)).wait();
+    workq.memset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::gemm(
         workq,
@@ -133,12 +133,12 @@ void mu2i_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
         row, col,
         alpha,
         d_B_p_mu_a, row,
-        d_B_p_i_a, norbs
+        d_B_p_i_a, col
     ).wait();
 
     // GEMM
 //    workq.memset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double)).wait();
-    workq.memset(d_B_p_mu_a, 0, nocc * naux * nvir * sizeof(double)).wait();
+    workq.memset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::gemm(
         workq,
@@ -185,7 +185,7 @@ void nu2a_dgemm( short norbs, short nocc, short nvir, short naux, double* d_C, d
     const double beta  = 0.0;
 
     workq.memset( d_B_p_mu_a, 0,
-        nvir * norbs * naux * sizeof(double)
+        norbs * nvir * naux * sizeof(double)
 //        norbs * norbs * naux * sizeof(double) // bug?
     ).wait();
 
@@ -214,7 +214,7 @@ void mu2i_dgemm(short norbs, short nocc, short nvir, short naux, double* d_C, do
     const double beta  = 0.0;
 
     double* d_B_mu_pa = sycl::malloc_device<double>(norbs * naux * nvir, workq);
-    workq.memset( d_B_mu_pa, 0, norbs * naux * nvir * sizeof(double)).wait();
+    workq.memset( d_B_mu_pa, 0, norbs * nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::omatcopy(
         workq,
@@ -604,10 +604,11 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     real_t *d_C = coefficient_matrix.device_ptr();
     real_t *d_eps = orbital_energies.device_ptr();
     real_t *d_intermediate_matrix_B = intermediate_matrix_B_.device_ptr();
-    const int naux = num_auxiliary_basis_;
+    const int num_auxiliary_basis = num_auxiliary_basis_;
 
     // 中間バッファ
-    real_t* d_tmp = sycl::malloc_device<real_t>(naux * num_basis_ * num_basis_, workq);
+//    real_t* d_tmp = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis_ * num_basis_, workq);
+    real_t* d_tmp = sycl::malloc_device<real_t>(num_basis_ * nvir * num_auxiliary_basis, workq);
 
     // エネルギー用スカラー
     real_t* d_energy = sycl::malloc_device<real_t>(1, workq);
@@ -621,7 +622,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     search_k_and_syclmalloc_4cERI(workq, nocc, nvir, nocc_block, &d_iajb);
 
     // intermediate matrix 変換
-    transform_intermediate_matrix(workq, num_basis_, nocc, nvir, naux, d_C, d_intermediate_matrix_B, d_tmp);
+    transform_intermediate_matrix(workq, num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
     sycl::free(d_tmp, workq);
 
     const int num_threads = 1024;
@@ -640,7 +641,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
         oneapi::mkl::blas::column_major::gemm(
             workq,
             oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::trans,
-            nocc * nvir, curr_block * nvir, naux,
+            nocc * nvir, curr_block * nvir, num_auxiliary_basis,
             1.0,                      // alpha
             d_intermediate_matrix_B, nocc * nvir,
             &d_intermediate_matrix_B[i * nvir], nocc * nvir,
@@ -651,25 +652,25 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
         // RI-RMP2 カーネル呼び出し相当
         launch_ri_rmp2_kernel<energy_kernel1>(
             workq, num_blocks_1, num_threads,
-            nocc, nocc_block, nvir, i, naux,
+            nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
         launch_ri_rmp2_kernel<energy_kernel2>(
             workq, num_blocks_2, num_threads,
-            nocc, nocc_block, nvir, i, naux,
+            nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
         launch_ri_rmp2_kernel<energy_kernel3>(
             workq, num_blocks_3, num_threads,
-            nocc, nocc_block, nvir, i, naux,
+            nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
         launch_ri_rmp2_kernel<energy_kernel4>(
             workq, num_blocks_4, num_threads,
-            nocc, nocc_block, nvir, i, naux,
+            nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
@@ -683,7 +684,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
 
     printf("RMP2_energy: %.10f\n", energy);
     printf("RMP2_total_energy: %.10f\n", rhf_.get_total_energy() + energy);
-    printf("(nocc, nvir, naux) = (%d, %d, %d)\n", nocc, nvir, naux);
+    printf("(nocc, nvir, naux) = (%d, %d, %d)\n", nocc, nvir, num_auxiliary_basis);
 
     return energy;
 }
