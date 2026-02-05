@@ -1,5 +1,6 @@
 ## Updates
 
+- Feb 05 2026: Merged GANSU updates upto update eri_stored(d758e7) are included into sycl.
 - Jan 31 2026: Merged GANSU updates upto support RMP4(35ec9a) are included into sycl but not tested new features.
 - Jan 13 2026: Merged GANSU updates but only upto Direct-SCF (0f5733b) are included into sycl.
 - Dec 24 2025: Merged GANSU updates. Confirmed this sycl version runs both on Intel GPU and NVidia GPU (llvm + oneMath on culbas).
