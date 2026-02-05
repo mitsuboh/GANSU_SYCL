@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -154,7 +154,7 @@ inline void computeDensityMatrix_ROHF_kernel(sycl::nd_item<3> item_ct1,
     for (size_t k = 0; k < num_closed; k++) {
         sum_closed += d_coefficient_matrix[i * num_basis + k] * d_coefficient_matrix[j * num_basis + k];
     }
-    sum_closed *= 2.0; // closedd shell (2 electrons per orbital)
+    sum_closed *= 2.0; // closed shell (2 electrons per orbital)
     d_density_matrix_closed[id] = sum_closed; 
 
     real_t sum_open = 0.0;

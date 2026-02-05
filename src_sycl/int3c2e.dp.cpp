@@ -93,8 +93,8 @@ the code, or use smaller sub-group size to avoid high register pressure.
 /*
 void MD_int3c2e_1T1SP(real_t *g_result, const PrimitiveShell *g_pshell,
                       const PrimitiveShell *g_pshell_aux,
-                      const real_t *d_cgto_nomalization_factors,
-                      const real_t *d_auxiliary_cgto_nomalization_factors,
+                      const real_t *d_cgto_normalization_factors,
+                      const real_t *d_auxiliary_cgto_normalization_factors,
                       ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                       ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis,
                       const size_t2 *d_primitive_shell_pair_indices,

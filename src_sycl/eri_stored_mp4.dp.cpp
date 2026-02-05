@@ -1,4 +1,3 @@
-#define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
 #include <iomanip>
 #include <iostream>
@@ -67,9 +66,21 @@ void compute_mp4_body(
     real_t* __restrict__ d_mp4_energy
 );
 
+template <typename Term>
+void compute_mp4_vir2_body(
+    sycl::nd_item<1> item,
+    const real_t* __restrict__ eri_mo,
+    const real_t* __restrict__ orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    const int vir_b,
+    const int vir_c,
+    real_t* __restrict__ d_mp4_energy
+);
 
 // Defined in eri_stored_mp4.cu
-void transform_ao_eri_to_mo_eri_full(const double* d_eri_ao, const double* d_C, int nao, double* d_eri_mo);
+void transform_ao_eri_to_mo_eri_full(const double* d_eri_ao, const double* d_C, int nao, double* d_eri_mg);
 SYCL_EXTERNAL void mp2_moeri_kernel(
                                     sycl::nd_item<1> item_ct1,
                                     const double *__restrict__ eri_mo,
@@ -1033,7 +1044,7 @@ real_t mp4_from_aoeri_via_full_moeri(const real_t* d_eri_ao, const real_t* d_coe
 
 
 /////////////////////////////////////////////////////////////////////////////////// factorization MP4 kernels
-// Note: The number of kernels may be small. So, CUDA streams shuld be used to overlap their executions.
+// Note: The number of kernels may be small. So, CUDA streams should be used to overlap their executions.
 
 /*
 DPCT1110:27: The total declared local variable size in device function
@@ -2256,6 +2267,80 @@ void compute_mp4_body<mp4_E3_1>(
 }
 
 /*
+DPCT1110:46: The total declared local variable size in device function
+compute_mp4_E3_1_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_1>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_1)
+{
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int c = c_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int a = a_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over d
+        for(int d_ = 0; d_ < num_spin_vir; ++d_){
+            int d = d_ + num_spin_occ;
+
+            real_t eri_jdab = antisym_eri(eri_mo, num_basis, j, d, a, b);
+            real_t eri_klcd = antisym_eri(eri_mo, num_basis, k, l, c, d);
+            real_t e_klcd = orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_jklabc += eri_jdab * eri_klcd / e_klcd;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_acij = antisym_eri(eri_mo, num_basis, a, c, i, j);
+            real_t eri_ibkl = antisym_eri(eri_mo, num_basis, i, b, k, l);
+            real_t e_ijac = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[c/2];
+
+            T_jklabc += eri_acij * eri_ibkl / e_ijac;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) / (2.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_1, block_sum);
+    }
+}
+
+/*
 DPCT1110:42: The total declared local variable size in device function
 compute_mp4_E3_2_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2280,6 +2365,79 @@ void compute_mp4_body<mp4_E3_2>(
         size_t t = gid;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int c = c_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int a = a_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over d
+        for(int d_ = 0; d_ < num_spin_vir; ++d_){
+            int d = d_ + num_spin_occ;
+
+            real_t eri_jdab = antisym_eri(eri_mo, num_basis, j, d, a, b);
+            real_t eri_klcd = antisym_eri(eri_mo, num_basis, k, l, c, d);
+            real_t e_klcd = orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_jklabc += eri_jdab * eri_klcd / e_klcd;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_ickl = antisym_eri(eri_mo, num_basis, i, c, k, l);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_jklabc += eri_abij * eri_ickl / e_ijab;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += - (1.0) / (4.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_2, block_sum);
+    }
+}
+
+/*
+DPCT1110:48: The total declared local variable size in device function
+compute_mp4_E3_2_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_2>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_2)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; //(int)(t % num_spin_vir); t /= num_spin_vir;
         int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int l = (int)(t % num_spin_occ); t /= num_spin_occ;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -2398,6 +2556,79 @@ void compute_mp4_body<mp4_E3_3>(
 }
 
 /*
+DPCT1110:50: The total declared local variable size in device function
+compute_mp4_E3_3_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_3>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_3)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over l
+        for(int l = 0; l < num_spin_occ; ++l){
+
+            real_t eri_ijbl = antisym_eri(eri_mo, num_basis, i, j, b, l);
+            real_t eri_klcd = antisym_eri(eri_mo, num_basis, k, l, c, d);
+            real_t e_klcd = orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_ijkbcd += eri_ijbl * eri_klcd / e_klcd;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_cdak = antisym_eri(eri_mo, num_basis, c, d, a, k);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_ijkbcd += eri_abij * eri_cdak / e_ijab;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += - (1.0) / (4.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_3, block_sum);
+    }
+}
+
+/*
 DPCT1110:44: The total declared local variable size in device function
 compute_mp4_E3_4_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2422,6 +2653,78 @@ void compute_mp4_body<mp4_E3_4>(
         size_t t = gid;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over m
+        for(int m = 0; m < num_spin_occ; ++m){
+
+            real_t eri_jkam = antisym_eri(eri_mo, num_basis, j, k, a, m);
+            real_t eri_lmbc = antisym_eri(eri_mo, num_basis, l, m, b, c);
+            real_t e_lmbc = orbital_energies[l/2] + orbital_energies[m/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            S_jklabc += eri_jkam * eri_lmbc / e_lmbc;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_ickl = antisym_eri(eri_mo, num_basis, i, c, k, l);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_jklabc += eri_abij * eri_ickl / e_ijab;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_4, block_sum);
+    }
+}
+
+/*
+DPCT1110:52: The total declared local variable size in device function
+compute_mp4_E3_4_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_4>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_4)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c;//(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b;//(int)(t % num_spin_vir); t /= num_spin_vir;
         int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int l = (int)(t % num_spin_occ); t /= num_spin_occ;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -2539,6 +2842,79 @@ void compute_mp4_body<mp4_E3_5>(
 }
 
 /*
+DPCT1110:54: The total declared local variable size in device function
+compute_mp4_E3_5_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_5>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_5)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d;//(int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c;//(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over l
+        for(int l = 0; l < num_spin_occ; ++l){
+
+            real_t eri_ikbl = antisym_eri(eri_mo, num_basis, i, k, b, l);
+            real_t eri_jlcd = antisym_eri(eri_mo, num_basis, j, l, c, d);
+            real_t e_jlcd = orbital_energies[j/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_ijkbcd += eri_ikbl * eri_jlcd / e_jlcd;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_cdak = antisym_eri(eri_mo, num_basis, c, d, a, k);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_ijkbcd += eri_abij * eri_cdak / e_ijab;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) / (2.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_5, block_sum);
+    }
+}
+
+/*
 DPCT1110:46: The total declared local variable size in device function
 compute_mp4_E3_6_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2563,6 +2939,78 @@ void compute_mp4_body<mp4_E3_6>(
         size_t t = gid;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over m
+        for(int m = 0; m < num_spin_occ; ++m){
+
+            real_t eri_jkam = antisym_eri(eri_mo, num_basis, j, k, a, m);
+            real_t eri_lmbc = antisym_eri(eri_mo, num_basis, l, m, b, c);
+            real_t e_lmbc = orbital_energies[l/2] + orbital_energies[m/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            S_jklabc += eri_jkam * eri_lmbc / e_lmbc;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_bcij = antisym_eri(eri_mo, num_basis, b, c, i, j);
+            real_t eri_iakl = antisym_eri(eri_mo, num_basis, i, a, k, l);
+            real_t e_ijbc = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            T_jklabc += eri_bcij * eri_iakl / e_ijbc;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) / (2.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_6, block_sum);
+    }
+}
+
+/*
+DPCT1110:56: The total declared local variable size in device function
+compute_mp4_E3_6_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_6>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_6)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ =  vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ =  vir_b; // (int)(t % num_spin_vir); t /= num_spin_vir;
         int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int l = (int)(t % num_spin_occ); t /= num_spin_occ;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -2679,6 +3127,78 @@ void compute_mp4_body<mp4_E3_7>(
 }
 
 /*
+DPCT1110:58: The total declared local variable size in device function
+compute_mp4_E3_7_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_7>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_7)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over m
+        for(int m = 0; m < num_spin_occ; ++m){
+
+            real_t eri_klam = antisym_eri(eri_mo, num_basis, k, l, a, m);
+            real_t eri_jmbc = antisym_eri(eri_mo, num_basis, j, m, b, c);
+            real_t e_jmbc = orbital_energies[j/2] + orbital_energies[m/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            S_jklabc += eri_klam * eri_jmbc / e_jmbc;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_bcij = antisym_eri(eri_mo, num_basis, b, c, i, j);
+            real_t eri_iakl = antisym_eri(eri_mo, num_basis, i, a, k, l);
+            real_t e_ijbc = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            T_jklabc += eri_bcij * eri_iakl / e_ijbc;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) / (4.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_7, block_sum);
+    }
+}
+
+/*
 DPCT1110:48: The total declared local variable size in device function
 compute_mp4_E3_8_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2703,6 +3223,80 @@ void compute_mp4_body<mp4_E3_8>(
         size_t t = gid;
         int d_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over e
+        for(int e_ = 0; e_ < num_spin_vir; ++e_){
+            int e = e_ + num_spin_occ;
+
+            real_t eri_iebc = antisym_eri(eri_mo, num_basis, i, e, b, c);
+            real_t eri_jkde = antisym_eri(eri_mo, num_basis, j, k, d, e);
+            real_t e_jkde = orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[d/2] - orbital_energies[e/2];
+
+            S_ijkbcd += eri_iebc * eri_jkde / e_jkde;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_adij = antisym_eri(eri_mo, num_basis, a, d, i, j);
+            real_t eri_bcak = antisym_eri(eri_mo, num_basis, b, c, a, k);
+            real_t e_ijad = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[d/2];
+
+            T_ijkbcd += eri_adij * eri_bcak / e_ijad;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) / (2.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_8, block_sum);
+    }
+}
+
+/*
+DPCT1110:60: The total declared local variable size in device function
+compute_mp4_E3_8_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_8>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_8)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
         int j = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -2822,6 +3416,79 @@ void compute_mp4_body<mp4_E3_9>(
 }
 
 /*
+DPCT1110:62: The total declared local variable size in device function
+compute_mp4_E3_9_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_9>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_9)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over l
+        for(int l = 0; l < num_spin_occ; ++l){
+
+            real_t eri_ikbl = antisym_eri(eri_mo, num_basis, i, k, b, l);
+            real_t eri_jlcd = antisym_eri(eri_mo, num_basis, j, l, c, d);
+            real_t e_jlcd = orbital_energies[j/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_ijkbcd += eri_ikbl * eri_jlcd / e_jlcd;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_acij = antisym_eri(eri_mo, num_basis, a, c, i, j);
+            real_t eri_bdak = antisym_eri(eri_mo, num_basis, b, d, a, k);
+            real_t e_ijac = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[c/2];
+
+            T_ijkbcd += eri_acij * eri_bdak / e_ijac;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += - (1.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_9, block_sum);
+    }
+}
+
+/*
 DPCT1110:50: The total declared local variable size in device function
 compute_mp4_E3_10_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2846,6 +3513,80 @@ void compute_mp4_body<mp4_E3_10>(
         size_t t = gid;
         int d_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over e
+        for(int e_ = 0; e_ < num_spin_vir; ++e_){
+            int e = e_ + num_spin_occ;
+
+            real_t eri_iebc = antisym_eri(eri_mo, num_basis, i, e, b, c);
+            real_t eri_jkde = antisym_eri(eri_mo, num_basis, j, k, d, e);
+            real_t e_jkde = orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[d/2] - orbital_energies[e/2];
+
+            S_ijkbcd += eri_iebc * eri_jkde / e_jkde;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_cdak = antisym_eri(eri_mo, num_basis, c, d, a, k);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_ijkbcd += eri_abij * eri_cdak / e_ijab;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_10, block_sum);
+    }
+}
+
+/*
+DPCT1110:64: The total declared local variable size in device function
+compute_mp4_E3_10_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_10>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_10)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
         int j = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -2966,6 +3707,80 @@ void compute_mp4_body<mp4_E3_11>(
 }
 
 /*
+DPCT1110:66: The total declared local variable size in device function
+compute_mp4_E3_11_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_11>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_11)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; // (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over e
+        for(int e_ = 0; e_ < num_spin_vir; ++e_){
+            int e = e_ + num_spin_occ;
+
+            real_t eri_kebc = antisym_eri(eri_mo, num_basis, k, e, b, c);
+            real_t eri_ijde = antisym_eri(eri_mo, num_basis, i, j, d, e);
+            real_t e_ijde = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[d/2] - orbital_energies[e/2];
+
+            S_ijkbcd += eri_kebc * eri_ijde / e_ijde;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_cdak = antisym_eri(eri_mo, num_basis, c, d, a, k);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_ijkbcd += eri_abij * eri_cdak / e_ijab;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) / (2.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_11, block_sum);
+    }
+}
+
+/*
 DPCT1110:52: The total declared local variable size in device function
 compute_mp4_E3_12_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -2990,6 +3805,79 @@ void compute_mp4_body<mp4_E3_12>(
         size_t t = gid;
         int d_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over l
+        for(int l = 0; l < num_spin_occ; ++l){
+
+            real_t eri_ijbl = antisym_eri(eri_mo, num_basis, i, j, b, l);
+            real_t eri_klcd = antisym_eri(eri_mo, num_basis, k, l, c, d);
+            real_t e_klcd = orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_ijkbcd += eri_ijbl * eri_klcd / e_klcd;
+        }
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_acij = antisym_eri(eri_mo, num_basis, a, c, i, j);
+            real_t eri_bdak = antisym_eri(eri_mo, num_basis, b, d, a, k);
+            real_t e_ijac = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[c/2];
+
+            T_ijkbcd += eri_acij * eri_bdak / e_ijac;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) / (2.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_12, block_sum);
+    }
+}
+
+/*
+DPCT1110:68: The total declared local variable size in device function
+compute_mp4_E3_12_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_12>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_12)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
         int j = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -3107,6 +3995,78 @@ void compute_mp4_body<mp4_E3_13>(
 }
 
 /*
+DPCT1110:70: The total declared local variable size in device function
+compute_mp4_E3_13_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_13>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_13)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over m
+        for(int m = 0; m < num_spin_occ; ++m){
+
+            real_t eri_klam = antisym_eri(eri_mo, num_basis, k, l, a, m);
+            real_t eri_jmbc = antisym_eri(eri_mo, num_basis, j, m, b, c);
+            real_t e_jmbc = orbital_energies[j/2] + orbital_energies[m/2] - orbital_energies[b/2] - orbital_energies[c/2];
+
+            S_jklabc += eri_klam * eri_jmbc / e_jmbc;
+        }
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_ickl = antisym_eri(eri_mo, num_basis, i, c, k, l);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_jklabc += eri_abij * eri_ickl / e_ijab;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) / (2.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_13, block_sum);
+    }
+}
+
+/*
 DPCT1110:54: The total declared local variable size in device function
 compute_mp4_E3_14_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -3131,6 +4091,80 @@ void compute_mp4_body<mp4_E3_14>(
         size_t t = gid;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over d
+        for(int d_ = 0; d_ < num_spin_vir; ++d_){
+            int d = d_ + num_spin_occ;
+
+            real_t eri_kdab = antisym_eri(eri_mo, num_basis, k, d, a, b);
+            real_t eri_jlcd = antisym_eri(eri_mo, num_basis, j, l, c, d);
+            real_t e_jlcd = orbital_energies[j/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_jklabc += eri_kdab * eri_jlcd / e_jlcd;
+        }
+
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_acij = antisym_eri(eri_mo, num_basis, a, c, i, j);
+            real_t eri_ibkl = antisym_eri(eri_mo, num_basis, i, b, k, l);
+            real_t e_ijac = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[c/2];
+
+            T_jklabc += eri_acij * eri_ibkl / e_ijac;
+        }
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += - (1.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_14, block_sum);
+    }
+}
+
+/*
+DPCT1110:72: The total declared local variable size in device function
+compute_mp4_E3_14_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_14>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_14)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; //(int)(t % num_spin_vir); t /= num_spin_vir;
         int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int l = (int)(t % num_spin_occ); t /= num_spin_occ;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -3252,6 +4286,81 @@ void compute_mp4_body<mp4_E3_15>(
 }
 
 /*
+DPCT1110:74: The total declared local variable size in device function
+compute_mp4_E3_15_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_15>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_c,
+                             const int vir_d,
+                             real_t *__restrict__ d_mp4_energy_E3_15)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int d_ = vir_d; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+        int d = d_ + num_spin_occ;
+
+        // S_ijkbcd
+        real_t S_ijkbcd = 0.0;
+
+        // sum over e
+        for(int e_ = 0; e_ < num_spin_vir; ++e_){
+            int e = e_ + num_spin_occ;
+
+            real_t eri_kebc = antisym_eri(eri_mo, num_basis, k, e, b, c);
+            real_t eri_ijde = antisym_eri(eri_mo, num_basis, i, j, d, e);
+            real_t e_ijde = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[d/2] - orbital_energies[e/2];
+
+            S_ijkbcd += eri_kebc * eri_ijde / e_ijde;
+        }
+
+
+        // T_ijkbcd
+        real_t T_ijkbcd = 0.0;
+
+        // sum over a
+        for(int a_ = 0; a_ < num_spin_vir; ++a_){
+            int a = a_ + num_spin_occ;
+
+            real_t eri_adij = antisym_eri(eri_mo, num_basis, a, d, i, j);
+            real_t eri_bcak = antisym_eri(eri_mo, num_basis, b, c, a, k);
+            real_t e_ijad = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[d/2];
+
+            T_ijkbcd += eri_adij * eri_bcak / e_ijad;
+        }
+
+        real_t e_ijkbcd = orbital_energies[i/2] + orbital_energies[j/2] + orbital_energies[k/2] - orbital_energies[b/2] - orbital_energies[c/2] - orbital_energies[d/2];
+        contrib += (1.0) / (4.0) * S_ijkbcd * T_ijkbcd / e_ijkbcd;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_15, block_sum);
+    }
+}
+
+/*
 DPCT1110:56: The total declared local variable size in device function
 compute_mp4_E3_16_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
@@ -3276,6 +4385,81 @@ void compute_mp4_body<mp4_E3_16>(
         size_t t = gid;
         int c_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int l = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int k = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ);
+
+        int a = a_ + num_spin_occ;
+        int b = b_ + num_spin_occ;
+        int c = c_ + num_spin_occ;
+
+        // S_jklabc
+        real_t S_jklabc = 0.0;
+
+        // sum over d
+        for(int d_ = 0; d_ < num_spin_vir; ++d_){
+            int d = d_ + num_spin_occ;
+
+            real_t eri_kdab = antisym_eri(eri_mo, num_basis, k, d, a, b);
+            real_t eri_jlcd = antisym_eri(eri_mo, num_basis, j, l, c, d);
+            real_t e_jlcd = orbital_energies[j/2] + orbital_energies[l/2] - orbital_energies[c/2] - orbital_energies[d/2];
+
+            S_jklabc += eri_kdab * eri_jlcd / e_jlcd;
+        }
+
+
+        // T_jklabc
+        real_t T_jklabc = 0.0;
+
+        // sum over i
+        for(int i = 0; i < num_spin_occ; ++i){
+
+            real_t eri_abij = antisym_eri(eri_mo, num_basis, a, b, i, j);
+            real_t eri_ickl = antisym_eri(eri_mo, num_basis, i, c, k, l);
+            real_t e_ijab = orbital_energies[i/2] + orbital_energies[j/2] - orbital_energies[a/2] - orbital_energies[b/2];
+
+            T_jklabc += eri_abij * eri_ickl / e_ijab;
+        }
+
+
+        real_t e_jklabc = orbital_energies[j/2] + orbital_energies[k/2] + orbital_energies[l/2] - orbital_energies[a/2] - orbital_energies[b/2] - orbital_energies[c/2];
+        contrib += (1.0) / (2.0) * S_jklabc * T_jklabc / e_jklabc;
+    }
+
+    double block_sum = sycl::reduce_over_group(item_ct1.get_group(), contrib, sycl::plus<>());
+    if (item_ct1.get_local_id() == 0) {
+        atomic_add(d_mp4_energy_E3_16, block_sum);
+    }
+}
+
+/*
+DPCT1110:76: The total declared local variable size in device function
+compute_mp4_E3_16_vir2_kernel exceeds 128 bytes and may cause high register
+pressure. Consult with your hardware vendor to find the total register size
+available and adjust the code, or use smaller sub-group size to avoid high
+register pressure.
+*/
+template <>
+void compute_mp4_vir2_body<mp4_E3_16>(
+                             sycl::nd_item<1> item_ct1,
+                             const real_t *__restrict__ eri_mo,
+                             const real_t *__restrict__ orbital_energies,
+                             const int num_basis, const int num_spin_occ,
+                             const int num_spin_vir, const int vir_b,
+                             const int vir_c,
+                             real_t *__restrict__ d_mp4_energy_E3_16)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
+                   num_spin_vir; // * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
+
+    double contrib = 0.0;
+    if(gid < total){
+
+        size_t t = gid;
+        int c_ = vir_c; //(int)(t % num_spin_vir); t /= num_spin_vir;
+        int b_ = vir_b; //(int)(t % num_spin_vir); t /= num_spin_vir;
         int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
         int l = (int)(t % num_spin_occ); t /= num_spin_occ;
         int k = (int)(t % num_spin_occ); t /= num_spin_occ;
@@ -3623,7 +4807,12 @@ void compute_mp4_body<mp4_E4_4>(
     }
 }
 
-const int num_mp4_terms = 36; // 4+12+16+4 = 36 terms hoisted from below
+const int num_mp4_terms_single   = 4;
+const int num_mp4_terms_double   = 12;
+const int num_mp4_terms_triple   = 16;
+const int num_mp4_terms_quadrule   = 4;
+
+//const int num_mp4_terms = 36; // 4+12+16+4 = 36 terms hoisted from below
 /*
 // define the kernel functions as function pointers for mp4 terms
 using mp4_term_kernel_t = void (*)(const real_t*, const real_t*, const int, const int, const int num_spin_vir, real_t* __restrict__);
@@ -3694,6 +4883,34 @@ void launch_mp4_kernel(
     });
 }
 
+template <typename Term>
+void launch_mp4_vir2_kernel(
+    sycl::queue& q,
+    sycl::nd_range<1> nd_range,
+    const real_t* eri_mo,
+    const real_t* orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    int bc,
+    int cd,
+    real_t* d_mp4_energy_term)
+{
+    q.submit([&](sycl::handler& h) {
+        h.parallel_for<Term>(
+            nd_range,
+            [=](sycl::nd_item<1> item) {
+                compute_mp4_vir2_body<Term>(
+                    item,
+                    eri_mo, orbital_energies,
+                    num_basis, num_spin_occ, num_spin_vir,
+                    bc, cd,
+                    d_mp4_energy_term
+                    );
+            });
+    });
+}
+/*
 void launch_mp4_kernel_dispatch(
     sycl::queue& q,
     int term_id,
@@ -3753,7 +4970,116 @@ void launch_mp4_kernel_dispatch(
         default: throw std::runtime_error("Invalid MP4 term id");
     }
 }
+*/
+void launch_mp4_kernel_dispatch_s(
+    sycl::queue& q,
+    int term_id,
+    sycl::nd_range<1> nd_range,
+    const real_t* eri_mo,
+    const real_t* orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    real_t* d_mp4_energy_term)
+{
+    switch (term_id) {
+        // E1
+        case 0: launch_mp4_kernel<mp4_E1_1>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 1: launch_mp4_kernel<mp4_E1_2>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 2: launch_mp4_kernel<mp4_E1_3>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 3: launch_mp4_kernel<mp4_E1_4>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
 
+        default: throw std::runtime_error("Invalid MP4 term id");
+    }
+}
+
+void launch_mp4_kernel_dispatch_d(
+    sycl::queue& q,
+    int term_id,
+    sycl::nd_range<1> nd_range,
+    const real_t* eri_mo,
+    const real_t* orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    real_t* d_mp4_energy_term)
+{
+    switch (term_id) {
+        // E2
+        case 0:  launch_mp4_kernel<mp4_E2_1>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 1:  launch_mp4_kernel<mp4_E2_2>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 2:  launch_mp4_kernel<mp4_E2_3>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 3:  launch_mp4_kernel<mp4_E2_4>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 4:  launch_mp4_kernel<mp4_E2_5>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 5:  launch_mp4_kernel<mp4_E2_6>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 6:  launch_mp4_kernel<mp4_E2_7>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 7:  launch_mp4_kernel<mp4_E2_8>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 8:  launch_mp4_kernel<mp4_E2_9>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 9:  launch_mp4_kernel<mp4_E2_10>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 10:  launch_mp4_kernel<mp4_E2_11>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 11:  launch_mp4_kernel<mp4_E2_12>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+
+        default: throw std::runtime_error("Invalid MP4 term id");
+    }
+}
+
+void launch_mp4_kernel_dispatch_t(
+    sycl::queue& q,
+    int term_id,
+    sycl::nd_range<1> nd_range,
+    const real_t* eri_mo,
+    const real_t* orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    int bc,
+    int cd,
+    real_t* d_mp4_energy_term)
+{
+    switch (term_id) {
+        // E1
+        case 0: launch_mp4_vir2_kernel<mp4_E3_1>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 1: launch_mp4_vir2_kernel<mp4_E3_2>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 2: launch_mp4_vir2_kernel<mp4_E3_3>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 3: launch_mp4_vir2_kernel<mp4_E3_4>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 4: launch_mp4_vir2_kernel<mp4_E3_5>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 5: launch_mp4_vir2_kernel<mp4_E3_6>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 6: launch_mp4_vir2_kernel<mp4_E3_7>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 7: launch_mp4_vir2_kernel<mp4_E3_8>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 8: launch_mp4_vir2_kernel<mp4_E3_9>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 9: launch_mp4_vir2_kernel<mp4_E3_10>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 10: launch_mp4_vir2_kernel<mp4_E3_11>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 11: launch_mp4_vir2_kernel<mp4_E3_12>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 12: launch_mp4_vir2_kernel<mp4_E3_13>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 13: launch_mp4_vir2_kernel<mp4_E3_14>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 14: launch_mp4_vir2_kernel<mp4_E3_15>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+        case 15: launch_mp4_vir2_kernel<mp4_E3_16>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, bc, cd, d_mp4_energy_term); break;
+
+        default: throw std::runtime_error("Invalid MP4 term id");
+    }
+}
+
+void launch_mp4_kernel_dispatch_q(
+    sycl::queue& q,
+    int term_id,
+    sycl::nd_range<1> nd_range,
+    const real_t* eri_mo,
+    const real_t* orbital_energies,
+    int num_basis,
+    int num_spin_occ,
+    int num_spin_vir,
+    real_t* d_mp4_energy_term)
+{
+    switch (term_id) {
+        // E1
+        case 0: launch_mp4_kernel<mp4_E4_1>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 1: launch_mp4_kernel<mp4_E4_2>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 2: launch_mp4_kernel<mp4_E4_3>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+        case 3: launch_mp4_kernel<mp4_E4_4>(q, nd_range, eri_mo, orbital_energies, num_basis, num_spin_occ, num_spin_vir, d_mp4_energy_term); break;
+
+        default: throw std::runtime_error("Invalid MP4 term id");
+    }
+}
 
 
 void get_mp4_term_num_block_thread_shmem(int term_index, const int num_spin_occ, const int num_spin_vir, int& num_threads, int& num_blocks, size_t& shared_mem_size) {
@@ -4048,6 +5374,202 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     // ------------------------------------------------------------
     // 5) compute MP4 energy
     // ------------------------------------------------------------
+    int num_spin_occ = num_occ * 2;
+    int num_spin_vir = (num_basis - num_occ) * 2;
+
+
+    real_t h_mp4_energy[4]; // single, double, triple, quadruple
+    memset(h_mp4_energy, 0, sizeof(real_t)*4);
+   
+    { // single excitation terms
+        std::string str = "Launch kernels of MP4 single excitation terms... ";
+        PROFILE_ELAPSED_TIME(str);
+        int num_threads;
+        int num_blocks;
+        size_t shmem;
+
+        int kernel_offset = 0;
+
+        real_t* d_contrib;
+        d_contrib = sycl::malloc_device<real_t>(1, q_ct1);
+        q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
+
+        // Launch the kernel for single excitation terms
+        for(int i=0; i<num_mp4_terms_single; i++){
+            // Get the number of blocks, threads, and shared memory size for single excitation terms
+            get_mp4_term_num_block_thread_shmem(kernel_offset + i, num_spin_occ, num_spin_vir, num_threads, num_blocks, shmem);
+
+//            mp4_term_kernel_t kernel = mp4_term_kernels_single[i];
+//            dpct::kernel_launcher::launch(
+//                kernel, num_blocks, num_threads, shmem, 0, d_eri_mo,
+//                d_orbital_energies, num_basis, num_spin_occ, num_spin_vir,
+//                d_contrib);
+//            dev_ct1.queues_wait_and_throw();
+            sycl::nd_range<1> nd_range(num_blocks * num_threads, num_threads);
+            launch_mp4_kernel_dispatch_s(q_ct1, i, nd_range, d_eri_mo, d_orbital_energies,
+                                   num_basis, num_spin_occ, num_spin_vir,
+                                   d_contrib);
+            q_ct1.wait_and_throw();
+
+            real_t h_contrib;
+            q_ct1.memcpy(&h_contrib, d_contrib, sizeof(real_t)).wait();
+
+            std::cout << "  E1 " << i+1 << " contribution: " << h_contrib << " Hartree" << std::endl;
+
+            h_mp4_energy[0] += h_contrib;
+        }
+
+        std::cout << "Total MP4 Single excitation energy: " << h_mp4_energy[0] << " Hartree" << std::endl;
+    }
+    { // double excitation terms
+        std::string str = "Launch kernels of MP4 double excitation terms... ";
+        PROFILE_ELAPSED_TIME(str);
+        int num_threads;
+        int num_blocks;
+        size_t shmem;
+
+        int kernel_offset = num_mp4_terms_single;
+
+        real_t* d_contrib;
+        d_contrib = sycl::malloc_device<real_t>(1, q_ct1);
+        q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
+
+        // Launch the kernel for double excitation terms
+        for(int i=0; i<num_mp4_terms_double; i++){
+            
+            // Get the number of blocks, threads, and shared memory size for double excitation terms
+            get_mp4_term_num_block_thread_shmem(kernel_offset + i, num_spin_occ, num_spin_vir, num_threads, num_blocks, shmem);
+
+//            mp4_term_kernel_t kernel = mp4_term_kernels_double[i];
+//            dpct::kernel_launcher::launch(
+//                kernel, num_blocks, num_threads, shmem, 0, d_eri_mo,
+//                d_orbital_energies, num_basis, num_spin_occ, num_spin_vir,
+//                d_contrib);
+//            dev_ct1.queues_wait_and_throw();
+            sycl::nd_range<1> nd_range(num_blocks * num_threads, num_threads);
+            launch_mp4_kernel_dispatch_d(q_ct1, i, nd_range, d_eri_mo, d_orbital_energies,
+                                   num_basis, num_spin_occ, num_spin_vir,
+                                   d_contrib);
+            q_ct1.wait_and_throw();
+
+            real_t h_contrib;
+            q_ct1.memcpy(&h_contrib, d_contrib, sizeof(real_t)).wait();
+
+            std::cout << "  E2 " << i+1 << " contribution: " << h_contrib << " Hartree" << std::endl;
+
+            h_mp4_energy[1] += h_contrib;
+        }
+
+        std::cout << "Total MP4 Double excitation energy: " << h_mp4_energy[1] << " Hartree" << std::endl;
+    }
+    { // triple excitation terms
+        std::string str = "Launch kernels of MP4 triple excitation terms... ";
+        PROFILE_ELAPSED_TIME(str);
+        int num_threads;
+        int num_blocks;
+        size_t shmem;
+
+        int kernel_offset = num_mp4_terms_single + num_mp4_terms_double;
+
+        real_t* d_contrib;
+        d_contrib = sycl::malloc_device<real_t>(1, q_ct1);
+        q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
+
+        // Launch the kernel for triple excitation terms
+        for(int i=0; i<num_mp4_terms_triple; i++){
+            // Get the number of blocks, threads, and shared memory size for triple excitation terms
+            get_mp4_term_num_block_thread_shmem(kernel_offset + i, num_spin_occ, num_spin_vir, num_threads, num_blocks, shmem);
+
+//            mp4_term_vir2_kernel_t kernel = mp4_term_kernels_triple[i];
+            for(int v1=0; v1<num_spin_vir; v1++){
+                for(int v2=0; v2<num_spin_vir; v2++){
+//                    dpct::kernel_launcher::launch(
+//                        kernel, num_blocks, num_threads, shmem, 0, d_eri_mo,
+//                        d_orbital_energies, num_basis, num_spin_occ,
+//                        num_spin_vir, v1, v2, d_contrib);
+                    sycl::nd_range<1> nd_range(num_blocks * num_threads, num_threads);
+                    launch_mp4_kernel_dispatch_t(q_ct1, i, nd_range, d_eri_mo, d_orbital_energies,
+                                           num_basis, num_spin_occ, num_spin_vir, v1, v2,
+                                          d_contrib);
+                }
+            }
+//            dev_ct1.queues_wait_and_throw();
+            q_ct1.wait_and_throw();
+
+            real_t h_contrib;
+            q_ct1.memcpy(&h_contrib, d_contrib, sizeof(real_t)).wait();
+
+            std::cout << "  E3 " << i+1 << " contribution: " << h_contrib << " Hartree" << std::endl;
+
+            h_mp4_energy[2] += h_contrib;
+        }
+
+        std::cout << "Total MP4 Triple excitation energy: " << h_mp4_energy[2] << " Hartree" << std::endl;
+    }
+    { // quadruple excitation terms
+        std::string str = "Launch kernels of MP4 quadruple excitation terms... ";
+        PROFILE_ELAPSED_TIME(str);
+        int num_threads;
+        int num_blocks;
+        size_t shmem;
+
+        int kernel_offset = num_mp4_terms_single + num_mp4_terms_double + num_mp4_terms_triple;
+
+        real_t* d_contrib;
+        d_contrib = sycl::malloc_device<real_t>(1, q_ct1);
+        q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
+
+        // Launch the kernel for quadruple excitation terms
+        for(int i=0; i<num_mp4_terms_quadrule; i++){
+            // Get the number of blocks, threads, and shared memory size for quadruple excitation terms
+            get_mp4_term_num_block_thread_shmem(kernel_offset + i, num_spin_occ, num_spin_vir, num_threads, num_blocks, shmem);
+
+//            mp4_term_kernel_t kernel = mp4_term_kernels_quadrule[i];
+//            dpct::kernel_launcher::launch(
+//                kernel, num_blocks, num_threads, shmem, 0, d_eri_mo,
+//                d_orbital_energies, num_basis, num_spin_occ, num_spin_vir,
+//                d_contrib);
+//            dev_ct1.queues_wait_and_throw();
+            sycl::nd_range<1> nd_range(num_blocks * num_threads, num_threads);
+            launch_mp4_kernel_dispatch_q(q_ct1, i, nd_range, d_eri_mo, d_orbital_energies,
+                                   num_basis, num_spin_occ, num_spin_vir,
+                                   d_contrib);
+            q_ct1.wait_and_throw();
+
+            real_t h_contrib;
+            q_ct1.memcpy(&h_contrib, d_contrib, sizeof(real_t)).wait();
+
+            std::cout << "  E4 " << i+1 << " contribution: " << h_contrib << " Hartree" << std::endl;
+
+            h_mp4_energy[3] += h_contrib;
+        }
+
+        std::cout << "Total MP4 Quadruple excitation energy: " << h_mp4_energy[3] << " Hartree" << std::endl;
+    }
+
+    real_t mp4_corr_energy = 0.0;
+    std::cout << "  E_S = " << h_mp4_energy[0] << " Hartree" << std::endl;
+    std::cout << "  E_D = " << h_mp4_energy[1] << " Hartree" << std::endl;
+    std::cout << "  E_T = " << h_mp4_energy[2] << " Hartree" << std::endl;
+    std::cout << "  E_Q = " << h_mp4_energy[3] << " Hartree" << std::endl;
+
+    for(int i=0; i<4; i++){
+        mp4_corr_energy += h_mp4_energy[i];
+    }
+    //std::cout << "E_MP4 = E_S + E_D + E_T + E_Q = " << mp4_corr_energy << " Hartree" << std::endl;
+
+    sycl::free(d_eri_mo, q_ct1);
+
+    std::cout << "MP4 correlation energy: " << mp4_corr_energy << " Hartree" << std::endl;
+    real_t mp4_total_energy = mp3_energy + mp4_corr_energy;
+    std::cout << "MP4 total energy: " << mp4_total_energy << " Hartree" << std::endl;
+
+    return mp4_total_energy;
+}
+
+/*
+
+
     real_t* d_mp4_energy;
     d_mp4_energy = sycl::malloc_device<real_t>(
         num_mp4_terms, q_ct1); // Allocate space for all MP4 terms
@@ -4156,7 +5678,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     return mp4_total_energy;
 }
 
-
+*/
 
 
 real_t ERI_Stored_RHF::compute_mp4_energy() {

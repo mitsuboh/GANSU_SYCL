@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -77,7 +77,7 @@ void ERI_Stored::precomputation() {
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
     const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
-    const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
+    const DeviceHostMemory<real_t>& cgto_normalization_factors = hf_.get_cgto_normalization_factors();
     const real_t schwarz_screening_threshold = hf_.get_schwarz_screening_threshold();
     const int verbose = hf_.get_verbose();
 
@@ -87,20 +87,20 @@ void ERI_Stored::precomputation() {
         shell_pair_type_infos,
         primitive_shells.device_ptr(), 
         boys_grid.device_ptr(), 
-        cgto_nomalization_factors.device_ptr(), 
+        cgto_normalization_factors.device_ptr(), 
         schwarz_upper_bound_factors.device_ptr(), 
         verbose
         );
 
 
-    //gpu::computeERIMatrix(shell_type_infos, primitive_shells.device_ptr(), boys_grid.device_ptr(), cgto_nomalization_factors.device_ptr(), eri_matrix_.device_ptr(), schwarz_screening_threshold, num_basis_, verbose);
+    //gpu::computeERIMatrix(shell_type_infos, primitive_shells.device_ptr(), boys_grid.device_ptr(), cgto_normalization_factors.device_ptr(), eri_matrix_.device_ptr(), schwarz_screening_threshold, num_basis_, verbose);
 
     gpu::computeERIMatrix(
         shell_type_infos, 
         shell_pair_type_infos, 
         primitive_shells.device_ptr(), 
         boys_grid.device_ptr(),
-        cgto_nomalization_factors.device_ptr(),   
+        cgto_normalization_factors.device_ptr(),   
         eri_matrix_.device_ptr(), 
         schwarz_upper_bound_factors.device_ptr(),
         schwarz_screening_threshold, 
@@ -135,7 +135,7 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
         num_auxiliary_basis_(auxiliary_molecular.get_num_basis()),
         auxiliary_shell_type_infos_(auxiliary_molecular.get_shell_type_infos()),
         auxiliary_primitive_shells_(auxiliary_molecular.get_primitive_shells()),
-        auxiliary_cgto_nomalization_factors_(auxiliary_molecular.get_cgto_normalization_factors()),
+        auxiliary_cgto_normalization_factors_(auxiliary_molecular.get_cgto_normalization_factors()),
         intermediate_matrix_B_(num_auxiliary_basis_, num_basis_*num_basis_),
         d_J_(num_basis_, num_basis_),
         d_K_(num_basis_, num_basis_),
@@ -147,7 +147,7 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
 {
     // to device memory
     auxiliary_primitive_shells_.toDevice();
-    auxiliary_cgto_nomalization_factors_.toDevice();
+    auxiliary_cgto_normalization_factors_.toDevice();
 }
 
 void ERI_RI::precomputation() {
@@ -155,7 +155,7 @@ void ERI_RI::precomputation() {
     // compute the intermediate matrix B of the auxiliary basis functions
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
-    const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
+    const DeviceHostMemory<real_t>& cgto_normalization_factors = hf_.get_cgto_normalization_factors();
     const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
     const int verbose = hf_.get_verbose();
 
@@ -168,7 +168,7 @@ void ERI_RI::precomputation() {
         shell_pair_type_infos,
         primitive_shells.device_ptr(), 
         boys_grid.device_ptr(), 
-        cgto_nomalization_factors.device_ptr(), 
+        cgto_normalization_factors.device_ptr(), 
         schwarz_upper_bound_factors.device_ptr(),   // schwarz_upper_bound_factorsに√(pq|pq)の値がはいっている
         verbose
     );
@@ -248,7 +248,7 @@ void ERI_RI::precomputation() {
         auxiliary_shell_type_infos_, 
         auxiliary_primitive_shells_.device_ptr(), 
         boys_grid.device_ptr(), 
-        auxiliary_cgto_nomalization_factors_.device_ptr(), 
+        auxiliary_cgto_normalization_factors_.device_ptr(), 
         auxiliary_schwarz_upper_bound_factors.device_ptr(),   // auxiliary_schwarz_upper_bound_factorsに√(pq|pq)の値がはいっている
         verbose
     );
@@ -275,10 +275,10 @@ void ERI_RI::precomputation() {
         shell_type_infos, 
         shell_pair_type_infos,
         primitive_shells.device_ptr(), 
-        cgto_nomalization_factors.device_ptr(), 
+        cgto_normalization_factors.device_ptr(), 
         auxiliary_shell_type_infos_, 
         auxiliary_primitive_shells_.device_ptr(), 
-        auxiliary_cgto_nomalization_factors_.device_ptr(), 
+        auxiliary_cgto_normalization_factors_.device_ptr(), 
         intermediate_matrix_B_.device_ptr(), 
         d_primitive_shell_pair_indices,
         schwarz_upper_bound_factors.device_ptr(),
@@ -346,7 +346,7 @@ void ERI_Direct::precomputation() {
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
-    const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
+    const DeviceHostMemory<real_t>& cgto_normalization_factors = hf_.get_cgto_normalization_factors();
     const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
     const int verbose = hf_.get_verbose();
 
@@ -389,7 +389,7 @@ void ERI_Direct::precomputation() {
         shell_pair_type_infos,
         primitive_shells.device_ptr(), 
         boys_grid.device_ptr(), 
-        cgto_nomalization_factors.device_ptr(), 
+        cgto_normalization_factors.device_ptr(), 
         schwarz_upper_bound_factors.device_ptr(), 
         verbose
         );
@@ -491,7 +491,7 @@ void ERI_Hash::precomputation() {
     const std::vector<ShellTypeInfo>& shell_type_infos = hf_.get_shell_type_infos();
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
     const DeviceHostMemory<PrimitiveShell>& primitive_shells = hf_.get_primitive_shells();
-    const DeviceHostMemory<real_t>& cgto_nomalization_factors = hf_.get_cgto_nomalization_factors();
+    const DeviceHostMemory<real_t>& cgto_normalization_factors = hf_.get_cgto_normalization_factors();
     const DeviceHostMemory<real_t>& boys_grid = hf_.get_boys_grid();
     const int verbose = hf_.get_verbose();
 
@@ -500,7 +500,7 @@ void ERI_Hash::precomputation() {
         shell_pair_type_infos,
         primitive_shells.device_ptr(), 
         boys_grid.device_ptr(), 
-        cgto_nomalization_factors.device_ptr(), 
+        cgto_normalization_factors.device_ptr(), 
         // Hash memoryのポインタを渡す
         verbose
     );

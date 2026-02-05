@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -84,8 +84,8 @@ constexpr int loop_to_ang_RI[7][28][3] =
     }
     
 
-    __inline__ void addToResult_2center(double res, double *g_result, int p, int r, int nAux, bool is_prim_id_not_equal, const real_t* d_auxiliary_cgto_nomalization_factors){
-        res *= d_auxiliary_cgto_nomalization_factors[p] * d_auxiliary_cgto_nomalization_factors[r];
+    __inline__ void addToResult_2center(double res, double *g_result, int p, int r, int nAux, bool is_prim_id_not_equal, const real_t* d_auxiliary_cgto_normalization_factors){
+        res *= d_auxiliary_cgto_normalization_factors[p] * d_auxiliary_cgto_normalization_factors[r];
 
         double* addr = &g_result[p * nAux + r];
         sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space> 
@@ -104,14 +104,14 @@ constexpr int loop_to_ang_RI[7][28][3] =
 /*
 SYCL_EXTERNAL void
 calc_ss_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
             const double *g_boys_grid);
 */
 /* (s|s) */
-inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
@@ -148,7 +148,7 @@ inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_ss_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -157,14 +157,14 @@ void calc_ss_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_sp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
             const double *g_boys_grid);
 */
 /* (s|p) */
-inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
@@ -200,7 +200,7 @@ inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_sp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -209,14 +209,14 @@ void calc_sp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_sd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
             const double *g_boys_grid);
 */
 /* (s|d) */
-inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
@@ -252,7 +252,7 @@ inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_sd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -261,7 +261,7 @@ void calc_sd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_sf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -275,7 +275,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_sf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -313,7 +313,7 @@ inline void calc_sf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_sf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -323,14 +323,14 @@ void calc_sf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_pp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
             const double *g_boys_grid);
 */
 /* (p|p) */
-inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
         uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                        item_ct1.get_local_id(2);
@@ -365,7 +365,7 @@ inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_pp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -374,7 +374,7 @@ void calc_pp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_pd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -388,7 +388,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_pd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -429,7 +429,7 @@ inline void calc_pd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_pd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -438,7 +438,7 @@ void calc_pd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_pf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -452,7 +452,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_pf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -491,7 +491,7 @@ inline void calc_pf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_pf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -501,7 +501,7 @@ void calc_pf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_dd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -515,7 +515,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_dd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -555,7 +555,7 @@ inline void calc_dd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_dd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -564,7 +564,7 @@ void calc_dd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_df_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -578,7 +578,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_df_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -616,7 +616,7 @@ inline void calc_df_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_df_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -626,7 +626,7 @@ void calc_df_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_ff_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -640,7 +640,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_ff_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -678,7 +678,7 @@ inline void calc_ff_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_ff_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -691,7 +691,7 @@ void calc_ff_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_sg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -705,7 +705,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -743,7 +743,7 @@ inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_sg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -752,7 +752,7 @@ void calc_sg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -766,7 +766,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -803,7 +803,7 @@ inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 }
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_pg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -812,7 +812,7 @@ void calc_pg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -826,7 +826,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -864,7 +864,7 @@ inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_dg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -873,7 +873,7 @@ void calc_dg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -887,7 +887,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -925,7 +925,7 @@ inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_fg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -934,7 +934,7 @@ void calc_fg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /*
 SYCL_EXTERNAL void
 calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-            const real_t *d_auxiliary_cgto_nomalization_factors,
+            const real_t *d_auxiliary_cgto_normalization_factors,
             ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs,
             const double *g_upper_bound_factors,
             const double schwarz_screening_threshold, int num_auxiliary_basis,
@@ -948,7 +948,7 @@ your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -986,7 +986,7 @@ inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
 
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_nomalization_factors,
+                         const real_t *d_auxiliary_cgto_normalization_factors,
                          ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                          int num_shell_pairs,
                          const double *g_upper_bound_factors,
@@ -994,35 +994,35 @@ void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                          int num_auxiliary_basis, const double *g_boys_grid);
 #else
 void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
 void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
 void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
 void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
 void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                 const real_t *d_auxiliary_cgto_nomalization_factors,
+                 const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
@@ -1038,7 +1038,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                      const real_t *d_auxiliary_cgto_nomalization_factors,
+                      const real_t *d_auxiliary_cgto_normalization_factors,
                       ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                       int num_shell_pairs, const double *g_upper_bound_factors,
                       const double schwarz_screening_threshold,
@@ -1272,7 +1272,7 @@ inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result,
                                         size_a+lmn_a, size_b+lmn_b,
                                         num_auxiliary_basis,
                                         is_prim_id_not_equal,
-                                        d_auxiliary_cgto_nomalization_factors
+                                        d_auxiliary_cgto_normalization_factors
                                 );
 
             }
@@ -1284,7 +1284,7 @@ inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result,
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
 void MD_int2c2e_1T1SP_wrapper(
     real_t *g_result, const PrimitiveShell *g_pshell_aux,
-    const real_t *d_auxiliary_cgto_nomalization_factors, ShellTypeInfo shell_s0,
+    const real_t *d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0,
     ShellTypeInfo shell_s1, int num_shell_pairs,
     const double *g_upper_bound_factors,
     const double schwarz_screening_threshold, int num_auxiliary_basis,

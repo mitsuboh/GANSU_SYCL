@@ -1,7 +1,7 @@
 /*
- * GANSU: GPU Acclerated Numerical Simulation Utility
+ * GANSU: GPU Accelerated Numerical Simulation Utility
  *
- * Copyright (c) 2025, Hiroshima University and Fujitsu Limited
+ * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
  * This software is licensed under the BSD 3-Clause License.
@@ -23,7 +23,27 @@
 
 namespace gansu {
 
+// Atomic max for double precision (since CUDA does not provide atomicMax for double)
+__device__ double atomicMaxDouble(double* address, double val) {
+    // cast address to unsigned long long int pointer
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
 
+    do {
+        assumed = old;
+        // Choose the larger of the existing value and the argument as the new candidate value
+        double current_val = __longlong_as_double(assumed);
+        double max_val = fmax(current_val, val);
+        
+        // atomicCAS(compare address, expected old value, new value to write)
+        // If the value at address matches assumed, write max_val, and return the old value.
+        // If not, return the current value at address.
+        old = atomicCAS(address_as_ull, assumed, __double_as_longlong(max_val));
+
+    } while (assumed != old); // Loop until successful write
+
+    return __longlong_as_double(old);
+}
 
 
 __device__ double eri_mo_bruteforce(const double* __restrict__ eri_ao,
@@ -994,9 +1014,6 @@ __device__ __forceinline__ real_t t1_amplitude(const real_t* __restrict__ t_ia,
                                     const int num_spin_vir,
                                     const int i, const int a_) // a_ is index in virtual space (0 to num_spin_vir-1)
 {
-    assert(i >= 0 && i < num_spin_occ);
-    assert(a_ >= 0 && a_ < num_spin_vir);
-
     return t_ia[i * num_spin_vir + a_];
 }
 
@@ -1005,11 +1022,6 @@ __device__ __forceinline__ real_t t2_amplitude(const real_t* __restrict__ t_ijab
                                     const int num_spin_vir,
                                     const int i, const int j, const int a_, const int b_) // a_ and b_ are indices in virtual space (0 to num_spin_vir-1)
 {
-    assert(i >= 0 && i < num_spin_occ);
-    assert(j >= 0 && j < num_spin_occ);
-    assert(a_ >= 0 && a_ < num_spin_vir);
-    assert(b_ >= 0 && b_ < num_spin_vir);
-
     return t_ijab[(i * num_spin_occ + j) * num_spin_vir * num_spin_vir + (a_ * num_spin_vir + b_)];
 }
 
@@ -1031,7 +1043,7 @@ __device__ real_t U_ijab(const real_t* __restrict__ t_ia, const real_t* __restri
     real_t t_ib_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, b_);
     real_t t_ja_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, a_);
 
-    sum += 0.5 * (t_ia_val * t_jb_val - t_ib_val * t_ja_val);
+    sum += (1.0) / (2.0) * (t_ia_val * t_jb_val - t_ib_val * t_ja_val);
     return sum;
 }
 
@@ -1230,10 +1242,12 @@ __global__ void compute_W_mnij_kernel(const real_t* __restrict__ d_eri_mo, const
         for(int e_ = 0; e_ < num_spin_vir; ++e_){
             int e = num_spin_occ + e_;
             
+            // i, j (identity)
             real_t mnie = antisym_eri(d_eri_mo, num_basis, m, n, i, e); // <mn||ie> = (mi|ne) - (me|ni)
             real_t t_je_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, e_);
             sum += mnie * t_je_val; // <mn||ie> * t_j^e
 
+            // swap i and j
             real_t mnje = antisym_eri(d_eri_mo, num_basis, m, n, j, e); // <mn||je> = (mj|ne) - (me|nj)
             real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, e_);
             sum -= mnje * t_ia_val; // - <mn||je> * t_i^e
@@ -1247,7 +1261,7 @@ __global__ void compute_W_mnij_kernel(const real_t* __restrict__ d_eri_mo, const
                 
                 real_t mnef = antisym_eri(d_eri_mo, num_basis, m, n, e, f); // <mn||ef> = (me|nf) - (mf|ne)
                 real_t t_ijef_val = T_ijab(t_ia, t_ijab, num_spin_occ, num_spin_vir, i, j, e_, f_);
-                sum += 0.25 * mnef * t_ijef_val; // 0.25 * <mn||ef> * T_ij^ef
+                sum += (1.0) / (4.0) * mnef * t_ijef_val; // (1/4) * <mn||ef> * T_ij^ef
             }
         }
         W_mnij[gid] = sum;
@@ -1283,6 +1297,7 @@ __global__ void compute_W_abef_kernel(const real_t* __restrict__ d_eri_mo, const
 
         // sum over m
         for(int m = 0; m < num_spin_occ; ++m){
+            // a, b (identity)
             real_t amef = antisym_eri(d_eri_mo, num_basis, a, m, e, f); // <am||ef> = (ae|mf) - (af|me)
             real_t t_mb_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, m, b_);
 
@@ -1301,7 +1316,7 @@ __global__ void compute_W_abef_kernel(const real_t* __restrict__ d_eri_mo, const
                 real_t mnef = antisym_eri(d_eri_mo, num_basis, m, n, e, f); // <mn||ef> = (me|nf) - (mf|ne)
                 real_t t_mnab_val = T_ijab(t_ia, t_ijab, num_spin_occ, num_spin_vir, m, n, a_, b_);
 
-                sum += 0.25 * mnef * t_mnab_val; // 0.25 * <mn||ef> * T_mn^ab
+                sum += (1.0) / (4.0) * mnef * t_mnab_val; // (1/4) * <mn||ef> * T_mn^ab
             }
         }
         W_abef[gid] = sum;
@@ -1337,10 +1352,10 @@ __global__ void compute_W_mbej_kernel(const real_t* __restrict__ d_eri_mo, const
         for(int f_ = 0; f_ < num_spin_vir; ++f_){
             int f = num_spin_occ + f_;
             
-            real_t mebf = antisym_eri(d_eri_mo, num_basis, m, e, b, f); // <mb||ef> = (me|bf) - (mf|be)
+            real_t mbef = antisym_eri(d_eri_mo, num_basis, m, b, e, f); // <mb||ef> = (me|bf) - (mf|be)
             real_t t_jf_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, f_);
 
-            sum += mebf * t_jf_val; // <mb||ef> * t_j^f
+            sum += mbef * t_jf_val; // <mb||ef> * t_j^f
         }
 
         // sum over n
@@ -1357,7 +1372,7 @@ __global__ void compute_W_mbej_kernel(const real_t* __restrict__ d_eri_mo, const
                 int f = num_spin_occ + f_;
                 
                 real_t mnef = antisym_eri(d_eri_mo, num_basis, m, n, e, f); // <mn||ef> = (me|nf) - (mf|ne)
-                real_t t_jnfb_val = T_ijab(t_ia, t_ijab, num_spin_occ, num_spin_vir, j, n, f_, b_); // T_jn^fb
+                real_t t_jnfb_val = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, j, n, f_, b_);
                 real_t t_jf_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, f_);
                 real_t t_nb_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, n, b_);
 
@@ -1408,7 +1423,7 @@ __global__ void compute_t_ia_kernel(const real_t* __restrict__ d_eri_mo, const r
 
         // sum over e
         for(int e_ = 0; e_ < num_spin_vir; ++e_){
-            real_t t_ie_val = t_ia_old[i * num_spin_vir + e_];
+            real_t t_ie_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, i, e_);
             real_t F_ae_val = F_ae[a_ * num_spin_vir + e_];
 
             numerator += F_ae_val * t_ie_val; // F_ae * t_i^e
@@ -1416,7 +1431,7 @@ __global__ void compute_t_ia_kernel(const real_t* __restrict__ d_eri_mo, const r
 
         // sum over m
         for(int m = 0; m < num_spin_occ; ++m){
-            real_t t_ma_val = t_ia_old[m * num_spin_vir + a_];
+            real_t t_ma_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, m, a_);
             real_t F_mi_val = F_mi[m * num_spin_occ + i];
 
             numerator -= F_mi_val * t_ma_val; // - F_mi * t_m^a
@@ -1454,7 +1469,7 @@ __global__ void compute_t_ia_kernel(const real_t* __restrict__ d_eri_mo, const r
                     real_t maef = antisym_eri(d_eri_mo, num_basis, m, a, e, f); // <ma||ef> = (me|af) - (mf|ae)
                     real_t t_imef_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, i, m, e_, f_);
 
-                    numerator -= 0.5 * maef * t_imef_val; // - 0.5 * <ma||ef> * t_im^ef
+                    numerator -= (1.0) / (2.0) * maef * t_imef_val; // - (1/2) * <ma||ef> * t_im^ef
                 }
             }
         }
@@ -1468,7 +1483,7 @@ __global__ void compute_t_ia_kernel(const real_t* __restrict__ d_eri_mo, const r
                     real_t nmei = antisym_eri(d_eri_mo, num_basis, n, m, e, i); // <nm||ei> = (ne|mi) - (ni|me)
                     real_t t_mnae_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, m, n, a_, e_);
 
-                    numerator -= 0.5 *  nmei * t_mnae_val; // - 0.5 * <nm||ei> * t_mn^ae
+                    numerator -= (1.0) / (2.0) *  nmei * t_mnae_val; // - (1/2) * <nm||ei> * t_mn^ae
                 }
             }
         }
@@ -1532,6 +1547,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
 
         // sum over e
         for(int e_ = 0; e_ < num_spin_vir; ++e_){
+            // a_, b_ (identity)
             real_t sum2 = 0.0;
             
             real_t F_be = F_ae[(b_ * num_spin_vir + e_)]; // F_be
@@ -1542,7 +1558,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
                 real_t t_mb_val = t_ia_old[m * num_spin_vir + b_];
                 real_t F_me_val = F_me[m * num_spin_vir + e_];
 
-                sum2 -= 0.5 * F_me_val * t_mb_val; // -0.5 * F_me * t_m^b
+                sum2 -= (1.0) / (2.0) * F_me_val * t_mb_val; // - (1/2) * F_me * t_m^b
             }
 
             real_t t_ijae_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, i, j, a_, e_);
@@ -1558,7 +1574,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
             for(int m = 0; m < num_spin_occ; ++m){
                 real_t t_ma_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, m, a_);
                 real_t F_me_val = F_me[(m * num_spin_vir + e_)];
-                sum2_asym -= 0.5 * F_me_val * t_ma_val; // -0.5 * F_me * t_m^a
+                sum2_asym -= (1.0) / (2.0) * F_me_val * t_ma_val; // - (1/2) * F_me * t_m^a
             }
 
             real_t t_ijbe_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, i, j, b_, e_);
@@ -1567,6 +1583,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
 
         // sum over m
         for(int m = 0; m < num_spin_occ; ++m){
+            // i, j (identity)
             real_t sum2 = 0.0;
 
             real_t F_mj_val = F_mi[(m * num_spin_occ + j)]; // F_mj
@@ -1576,7 +1593,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
             for(int e_ = 0; e_ < num_spin_vir; ++e_){
                 real_t t_je_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, j, e_);
                 real_t F_me_val = F_me[(m * num_spin_vir + e_)];
-                sum2 += 0.5 * F_me_val * t_je_val; // +0.5 * F_me * t_j^e
+                sum2 += (1.0) / (2.0) * F_me_val * t_je_val; // + (1/2) * F_me * t_j^e
             }
 
             real_t t_imab_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, i, m, a_, b_);
@@ -1592,7 +1609,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
             for(int e_ = 0; e_ < num_spin_vir; ++e_){
                 real_t t_ie_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, i, e_);
                 real_t F_me_val = F_me[(m * num_spin_vir + e_)];
-                sum2_asym += 0.5 * F_me_val * t_ie_val; // +0.5 * F_me * t_i^e
+                sum2_asym += (1.0) / (2.0) * F_me_val * t_ie_val; // + (1/2) * F_me * t_i^e
             }
 
             real_t t_jmab_val = t2_amplitude(t_ijab_old, num_spin_occ, num_spin_vir, j, m, a_, b_);
@@ -1604,7 +1621,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
             for(int n = 0; n < num_spin_occ; ++n){
                 real_t T_mnab_val = T_ijab(t_ia_old, t_ijab_old, num_spin_occ, num_spin_vir, m, n, a_, b_);
                 real_t W_mnij_val = W_mnij[(m * num_spin_occ + n) * num_spin_occ * num_spin_occ + (i * num_spin_occ + j)];
-                numerator += 0.5 * T_mnab_val * W_mnij_val; // +0.5 * T_ij^ab * W_mnij
+                numerator += (1.0) / (2.0) * T_mnab_val * W_mnij_val; // + (1/2) * T_ij^ab * W_mnij
             }
         }
 
@@ -1613,7 +1630,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
             for(int f_ = 0; f_ < num_spin_vir; ++f_){
                 real_t T_ijef_val = T_ijab(t_ia_old, t_ijab_old, num_spin_occ, num_spin_vir, i, j, e_, f_);
                 real_t W_abef_val = W_abef[(a_ * num_spin_vir + b_) * num_spin_vir * num_spin_vir + (e_ * num_spin_vir + f_)];
-                numerator += 0.5 * T_ijef_val * W_abef_val; // +0.5 * T_ij^ef * W_abef
+                numerator += (1.0) / (2.0) * T_ijef_val * W_abef_val; // + (1/2) * T_ij^ef * W_abef
             }
         }
 
@@ -1668,6 +1685,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
         for(int e_ = 0; e_ < num_spin_vir; ++e_){
             int e = num_spin_occ + e_;
             
+            // i, j (identity)
             real_t abej = antisym_eri(d_eri_mo, num_basis, a, b, e, j); // <ab||ej> = (ae|bj) - (aj|be)
             real_t t_ie_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, i, e_);
 
@@ -1682,6 +1700,7 @@ __global__ void compute_t_ijab_kernel(const real_t* __restrict__ d_eri_mo, const
 
         // sum over m
         for(int m = 0; m < num_spin_occ; ++m){
+            // a_, b_ (identity)                
             real_t mbij = antisym_eri(d_eri_mo, num_basis, m, b, i, j); // <mb||ij> = (mi|bj) - (mj|bi)
             real_t t_ma_val = t1_amplitude(t_ia_old, num_spin_occ, num_spin_vir, m, a_);
 
@@ -1733,16 +1752,16 @@ __global__ void compute_t_amplitude_max_norm_kernel(const real_t* __restrict__ t
 
     if(gid < total_ia){
         real_t diff = fabs(t_ia_new[gid] - t_ia_old[gid]);
-        atomicMax((unsigned long long int*)&local_max, __double_as_longlong(diff));
+        atomicMaxDouble(max_norm, diff);
     }
     size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     if(gid < total_ijab){
         real_t diff = fabs(t_ijab_new[gid] - t_ijab_old[gid]);
-        atomicMax((unsigned long long int*)&local_max, __double_as_longlong(diff));
+        atomicMaxDouble(max_norm, diff);
     }
     __syncthreads();
     if(threadIdx.x == 0){
-        atomicMax((unsigned long long int*)max_norm, __double_as_longlong(local_max));
+        atomicMaxDouble(max_norm, local_max);
     }
 }
 
@@ -1948,37 +1967,37 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
 }
 
 
-__global__ void update_t_amplitude_dumping_kernel(const real_t* __restrict__ t_new,
+__global__ void update_t_amplitude_damping_kernel(const real_t* __restrict__ t_new,
                                                 real_t* __restrict__ t_old,
                                                 const int dim1,
                                                 const int dim2,
-                                                const real_t dumping_factor)
+                                                const real_t damping_factor)
 {
     size_t total = (size_t)dim1 * dim2;
     size_t gid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 
     if(gid < total){
-        t_old[gid] = (1.0 - dumping_factor) * t_old[gid] + dumping_factor * t_new[gid];
+        t_old[gid] = (1.0 - damping_factor) * t_old[gid] + damping_factor * t_new[gid];
     }
 }
 
-void update_t_amplitude_dumping(const real_t* t_ia_new, const real_t* t_ijab_new,
+void update_t_amplitude_damping(const real_t* t_ia_new, const real_t* t_ijab_new,
                                 real_t* t_ia_old, real_t* t_ijab_old,
                                 const int num_spin_occ,
                                 const int num_spin_vir,
-                                const real_t dumping_factor)
+                                const real_t damping_factor)
 {
-    // t_ia_old = (1 - dumping_factor) * t_ia_old + dumping_factor * t_ia_new
+    // t_ia_old = (1 - damping_factor) * t_ia_old + damping_factor * t_ia_new
     const size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
     const int num_threads = 256;
     const int num_blocks_ia = (total_ia + num_threads - 1) / num_threads;
-    update_t_amplitude_dumping_kernel<<<num_blocks_ia, num_threads>>>(t_ia_new, t_ia_old, num_spin_occ, num_spin_vir, dumping_factor);
+    update_t_amplitude_damping_kernel<<<num_blocks_ia, num_threads>>>(t_ia_new, t_ia_old, num_spin_occ, num_spin_vir, damping_factor);
     cudaDeviceSynchronize();
 
-    // t_ijab_old = (1 - dumping_factor) * t_ijab_old + dumping_factor * t_ijab_new
+    // t_ijab_old = (1 - damping_factor) * t_ijab_old + damping_factor * t_ijab_new
     const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     const int num_blocks_ijab = (total_ijab + num_threads - 1) / num_threads;
-    update_t_amplitude_dumping_kernel<<<num_blocks_ijab, num_threads>>>(t_ijab_new, t_ijab_old, num_spin_occ * num_spin_occ, num_spin_vir * num_spin_vir, dumping_factor);
+    update_t_amplitude_damping_kernel<<<num_blocks_ijab, num_threads>>>(t_ijab_new, t_ijab_old, num_spin_occ * num_spin_occ, num_spin_vir * num_spin_vir, damping_factor);
     cudaDeviceSynchronize();
 }
 
@@ -1995,11 +2014,7 @@ __global__ void compute_ccsd_energy_kernel(const real_t* __restrict__ d_eri_mo,
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     size_t gid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 
-    __shared__ real_t local_sum[256]; // assuming max 256 threads per block
-    if(threadIdx.x < 256){
-        local_sum[threadIdx.x] = 0.0;
-    }
-    __syncthreads();
+    real_t contrib = 0.0;
 
     // loop over all i,j,a,b
     if(gid < total){
@@ -2020,16 +2035,12 @@ __global__ void compute_ccsd_energy_kernel(const real_t* __restrict__ d_eri_mo,
         real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, a_);
         real_t t_jb_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, j, b_);
 
-        double contrib = 0.5 * ijab * t_ia_val * t_jb_val; // 0.5 * <ij||ab> * t_i^a * t_j^b
+        contrib += 0.5 * ijab * t_ia_val * t_jb_val; // 0.5 * <ij||ab> * t_i^a * t_j^b
         contrib += 0.25 * ijab * t_ijab_val; // 0.25 * <ij||ab> * t_ij^ab
-        local_sum[threadIdx.x] += contrib;
     }
-    __syncthreads();
+
+    double block_sum = block_reduce_sum(contrib);
     if(threadIdx.x == 0){
-        real_t block_sum = 0.0;
-        for(int i = 0; i < blockDim.x; ++i){
-            block_sum += local_sum[i];
-        }
         atomicAdd(d_ccsd_energy, block_sum);
     }
 }
@@ -2053,7 +2064,8 @@ real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
     const size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     const int num_threads = 256;
     const int num_blocks = (total + num_threads - 1) / num_threads;
-    compute_ccsd_energy_kernel<<<num_blocks, num_threads>>>(d_eri_mo, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, d_ccsd_energy);
+    const int shmem_size = num_threads * sizeof(real_t);
+    compute_ccsd_energy_kernel<<<num_blocks, num_threads, shmem_size>>>(d_eri_mo, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, d_ccsd_energy);
     cudaDeviceSynchronize();
 
     cudaMemcpy(&h_ccsd_energy, d_ccsd_energy, sizeof(real_t), cudaMemcpyDeviceToHost);
@@ -2388,6 +2400,485 @@ __global__ void compute_ccsd_t_energy_kernel(const real_t* __restrict__ d_eri_mo
 }
 
 
+__global__ void compute_ccsd_t_energy_vir1_kernel(const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ d_eps,
+                                    const int num_basis,
+                                    const int num_spin_occ,
+                                    const int num_spin_vir,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
+                                    const int vir1,
+                                    real_t* d_ccsd_t_energy)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+
+    __shared__ real_t local_sum[256]; // assuming max 256 threads per block
+    if(threadIdx.x < 256){
+        local_sum[threadIdx.x] = 0.0;
+    }
+    __syncthreads();
+
+    if(gid < total){
+        size_t t = gid;
+        int c_ = vir1;
+        int b_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int a = num_spin_occ + a_;
+        int b = num_spin_occ + b_;
+        int c = num_spin_occ + c_;
+/*
+        // skip spin-incompatible cases
+        int spin_i = i % 2;
+        int spin_j = j % 2;
+        int spin_k = k % 2;
+        int spin_a = a_ % 2;
+        int spin_b = b_ % 2;
+        int spin_c = c_ % 2;
+        if( (spin_i + spin_j + spin_k) != (spin_a + spin_b + spin_c) ){ // 0(alpha,alpha,alpha), 3(beta,beta,beta) or 1/3(mixed)
+            return;
+        }
+        // skip when same indices appear
+        if( (i == j) || (i == k) || (j == k) || (a_ == b_) || (a_ == c_) || (b_ == c_) ){
+            return;
+        }
+*/
+        // Compute the contribution to CCSD(T) energy from (i,j,k,a,b,c)
+        double contrib = 0.0;
+
+        double denom = d_eps[i/2] + d_eps[j/2] + d_eps[k/2] - d_eps[a/2] - d_eps[b/2] - d_eps[c/2];
+        if(fabs(denom) < 1e-14){
+            denom = 1e-14; // avoid division by zero
+        }
+
+        double T_ijk_abc = 0.0;
+
+        { // first part: compute T_ijk^abc
+            // P(k|ij) P(a|bc) 
+            int occ[3] = {k, i, j};
+            int vir_[3] = {a_, b_, c_};
+            int vir[3] = {a, b, c};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(k|ij) 
+                int kk = occ[ perms3[p1][0] ];
+                int ii = occ[ perms3[p1][1] ];
+                int jj = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    int aa_ = vir_[ perms3[p2][0] ];
+                    //int bb_ = vir_[ perms3[p2][1] ];
+                    //int cc_ = vir_[ perms3[p2][2] ];
+                    //int aa = vir[ perms3[p2][0] ];
+                    int bb = vir[ perms3[p2][1] ];
+                    int cc = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over d
+                    for(int d_ = 0; d_ < num_spin_vir; ++d_){
+                        int d = num_spin_occ + d_;
+
+                        real_t bcdk = antisym_eri(d_eri_mo, num_basis, bb, cc, d, kk);// <bc||dk> = (bd|ck) - (bk|dc)
+                        real_t t_ijad = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, jj, aa_, d_); // t_ij^ad
+                        
+                        T_ijk_abc += sign * bcdk * t_ijad; // sign * <bc||dk> * t_ij^ad
+                    }
+                }
+            }
+        }
+        { // second part: compute T_ijk^abc
+            // P(i|jk) P(c|ab) 
+            int occ[3] = {i, j, k};
+            int vir_[3] = {c_, a_, b_};
+            int vir[3] = {c, a, b};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(i|jk) 
+                int ii = occ[ perms3[p1][0] ];
+                int jj = occ[ perms3[p1][1] ];
+                int kk = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    //int cc_ = vir_[ perms3[p2][0] ];
+                    int aa_ = vir_[ perms3[p2][1] ];
+                    int bb_ = vir_[ perms3[p2][2] ];
+                    int cc = vir[ perms3[p2][0] ];
+                    //int aa = vir[ perms3[p2][1] ];
+                    //int bb = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over l
+                    for(int l = 0; l < num_spin_occ; ++l){
+                        real_t lcjk = antisym_eri(d_eri_mo, num_basis, l, cc, jj, kk); // <lc||jk> = (lj|ck) - (lk|cj)
+                        real_t t_ilab = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, l, aa_, bb_); // t_il^ab
+
+                        T_ijk_abc -= sign * lcjk * t_ilab; // sign * <lc||jk> * t_il^ab
+                    }
+                }
+            }
+        }
+        
+        T_ijk_abc /= denom;
+
+        // E(4) contribution
+        {
+            contrib += (1.0/36.0) * T_ijk_abc * T_ijk_abc * denom;
+        }
+
+        // E(5) contribution
+        {
+            real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, a_); // t_i^a
+            real_t jkbc = antisym_eri(d_eri_mo, num_basis, j, k, b, c); // <jk||bc> = (jb|kc) - (jc|kb)
+
+            contrib += (1.0/4.0) * T_ijk_abc * t_ia_val * jkbc; // (1/4) * T_ijk^abc * t_i^a * <jk||bc>            
+
+        }
+
+        local_sum[threadIdx.x] += contrib;
+    }
+    __syncthreads();
+    if(threadIdx.x == 0){
+        real_t block_sum = 0.0;
+        for(int i = 0; i < blockDim.x; ++i){
+            block_sum += local_sum[i];
+        }
+        atomicAdd(d_ccsd_t_energy, block_sum);
+    }
+}
+
+
+
+__global__ void compute_ccsd_t_energy_vir2_kernel(const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ d_eps,
+                                    const int num_basis,
+                                    const int num_spin_occ,
+                                    const int num_spin_vir,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
+                                    const int vir1,
+                                    const int vir2,
+                                    real_t* d_ccsd_t_energy)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+
+    __shared__ real_t local_sum[256]; // assuming max 256 threads per block
+    if(threadIdx.x < 256){
+        local_sum[threadIdx.x] = 0.0;
+    }
+    __syncthreads();
+
+    if(gid < total){
+        size_t t = gid;
+        int c_ = vir2;
+        int b_ = vir1;
+        int a_ = (int)(t % num_spin_vir); t /= num_spin_vir;
+        int k  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int a = num_spin_occ + a_;
+        int b = num_spin_occ + b_;
+        int c = num_spin_occ + c_;
+/*
+        // skip spin-incompatible cases
+        int spin_i = i % 2;
+        int spin_j = j % 2;
+        int spin_k = k % 2;
+        int spin_a = a_ % 2;
+        int spin_b = b_ % 2;
+        int spin_c = c_ % 2;
+        if( (spin_i + spin_j + spin_k) != (spin_a + spin_b + spin_c) ){ // 0(alpha,alpha,alpha), 3(beta,beta,beta) or 1/3(mixed)
+            return;
+        }
+        // skip when same indices appear
+        if( (i == j) || (i == k) || (j == k) || (a_ == b_) || (a_ == c_) || (b_ == c_) ){
+            return;
+        }
+*/
+        // Compute the contribution to CCSD(T) energy from (i,j,k,a,b,c)
+        double contrib = 0.0;
+
+        double denom = d_eps[i/2] + d_eps[j/2] + d_eps[k/2] - d_eps[a/2] - d_eps[b/2] - d_eps[c/2];
+        if(fabs(denom) < 1e-14){
+            denom = 1e-14; // avoid division by zero
+        }
+
+        double T_ijk_abc = 0.0;
+
+        { // first part: compute T_ijk^abc
+            // P(k|ij) P(a|bc) 
+            int occ[3] = {k, i, j};
+            int vir_[3] = {a_, b_, c_};
+            int vir[3] = {a, b, c};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(k|ij) 
+                int kk = occ[ perms3[p1][0] ];
+                int ii = occ[ perms3[p1][1] ];
+                int jj = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    int aa_ = vir_[ perms3[p2][0] ];
+                    //int bb_ = vir_[ perms3[p2][1] ];
+                    //int cc_ = vir_[ perms3[p2][2] ];
+                    //int aa = vir[ perms3[p2][0] ];
+                    int bb = vir[ perms3[p2][1] ];
+                    int cc = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over d
+                    for(int d_ = 0; d_ < num_spin_vir; ++d_){
+                        int d = num_spin_occ + d_;
+
+                        real_t bcdk = antisym_eri(d_eri_mo, num_basis, bb, cc, d, kk);// <bc||dk> = (bd|ck) - (bk|dc)
+                        real_t t_ijad = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, jj, aa_, d_); // t_ij^ad
+                        
+                        T_ijk_abc += sign * bcdk * t_ijad; // sign * <bc||dk> * t_ij^ad
+                    }
+                }
+            }
+        }
+        { // second part: compute T_ijk^abc
+            // P(i|jk) P(c|ab) 
+            int occ[3] = {i, j, k};
+            int vir_[3] = {c_, a_, b_};
+            int vir[3] = {c, a, b};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(i|jk) 
+                int ii = occ[ perms3[p1][0] ];
+                int jj = occ[ perms3[p1][1] ];
+                int kk = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    //int cc_ = vir_[ perms3[p2][0] ];
+                    int aa_ = vir_[ perms3[p2][1] ];
+                    int bb_ = vir_[ perms3[p2][2] ];
+                    int cc = vir[ perms3[p2][0] ];
+                    //int aa = vir[ perms3[p2][1] ];
+                    //int bb = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over l
+                    for(int l = 0; l < num_spin_occ; ++l){
+                        real_t lcjk = antisym_eri(d_eri_mo, num_basis, l, cc, jj, kk); // <lc||jk> = (lj|ck) - (lk|cj)
+                        real_t t_ilab = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, l, aa_, bb_); // t_il^ab
+
+                        T_ijk_abc -= sign * lcjk * t_ilab; // sign * <lc||jk> * t_il^ab
+                    }
+                }
+            }
+        }
+        
+        T_ijk_abc /= denom;
+
+        // E(4) contribution
+        {
+            contrib += (1.0/36.0) * T_ijk_abc * T_ijk_abc * denom;
+        }
+
+        // E(5) contribution
+        {
+            real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, a_); // t_i^a
+            real_t jkbc = antisym_eri(d_eri_mo, num_basis, j, k, b, c); // <jk||bc> = (jb|kc) - (jc|kb)
+
+            contrib += (1.0/4.0) * T_ijk_abc * t_ia_val * jkbc; // (1/4) * T_ijk^abc * t_i^a * <jk||bc>            
+
+        }
+
+        local_sum[threadIdx.x] += contrib;
+    }
+    __syncthreads();
+    if(threadIdx.x == 0){
+        real_t block_sum = 0.0;
+        for(int i = 0; i < blockDim.x; ++i){
+            block_sum += local_sum[i];
+        }
+        atomicAdd(d_ccsd_t_energy, block_sum);
+    }
+}
+
+
+
+__global__ void compute_ccsd_t_energy_vir3_kernel(const real_t* __restrict__ d_eri_mo,
+                                    const real_t* __restrict__ d_eps,
+                                    const int num_basis,
+                                    const int num_spin_occ,
+                                    const int num_spin_vir,
+                                    const real_t* __restrict__ t_ia,
+                                    const real_t* __restrict__ t_ijab,
+                                    const int vir1,
+                                    const int vir2,
+                                    const int vir3,
+                                    real_t* d_ccsd_t_energy)
+{
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir * num_spin_vir;
+    size_t gid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+
+    __shared__ real_t local_sum[256]; // assuming max 256 threads per block
+    if(threadIdx.x < 256){
+        local_sum[threadIdx.x] = 0.0;
+    }
+    __syncthreads();
+
+    if(gid < total){
+        size_t t = gid;
+        int c_ = vir3;
+        int b_ = vir2;
+        int a_ = vir1;
+        int k  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int j  = (int)(t % num_spin_occ); t /= num_spin_occ;
+        int i  = (int)(t % num_spin_occ);
+
+        int a = num_spin_occ + a_;
+        int b = num_spin_occ + b_;
+        int c = num_spin_occ + c_;
+/*
+        // skip spin-incompatible cases
+        int spin_i = i % 2;
+        int spin_j = j % 2;
+        int spin_k = k % 2;
+        int spin_a = a_ % 2;
+        int spin_b = b_ % 2;
+        int spin_c = c_ % 2;
+        if( (spin_i + spin_j + spin_k) != (spin_a + spin_b + spin_c) ){ // 0(alpha,alpha,alpha), 3(beta,beta,beta) or 1/3(mixed)
+            return;
+        }
+        // skip when same indices appear
+        if( (i == j) || (i == k) || (j == k) || (a_ == b_) || (a_ == c_) || (b_ == c_) ){
+            return;
+        }
+*/
+        // Compute the contribution to CCSD(T) energy from (i,j,k,a,b,c)
+        double contrib = 0.0;
+
+        double denom = d_eps[i/2] + d_eps[j/2] + d_eps[k/2] - d_eps[a/2] - d_eps[b/2] - d_eps[c/2];
+        if(fabs(denom) < 1e-14){
+            denom = 1e-14; // avoid division by zero
+        }
+
+        double T_ijk_abc = 0.0;
+
+        { // first part: compute T_ijk^abc
+            // P(k|ij) P(a|bc) 
+            int occ[3] = {k, i, j};
+            int vir_[3] = {a_, b_, c_};
+            int vir[3] = {a, b, c};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(k|ij) 
+                int kk = occ[ perms3[p1][0] ];
+                int ii = occ[ perms3[p1][1] ];
+                int jj = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    int aa_ = vir_[ perms3[p2][0] ];
+                    //int bb_ = vir_[ perms3[p2][1] ];
+                    //int cc_ = vir_[ perms3[p2][2] ];
+                    //int aa = vir[ perms3[p2][0] ];
+                    int bb = vir[ perms3[p2][1] ];
+                    int cc = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over d
+                    for(int d_ = 0; d_ < num_spin_vir; ++d_){
+                        int d = num_spin_occ + d_;
+
+                        real_t bcdk = antisym_eri(d_eri_mo, num_basis, bb, cc, d, kk);// <bc||dk> = (bd|ck) - (bk|dc)
+                        real_t t_ijad = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, jj, aa_, d_); // t_ij^ad
+                        
+                        T_ijk_abc += sign * bcdk * t_ijad; // sign * <bc||dk> * t_ij^ad
+                    }
+                }
+            }
+        }
+        { // second part: compute T_ijk^abc
+            // P(i|jk) P(c|ab) 
+            int occ[3] = {i, j, k};
+            int vir_[3] = {c_, a_, b_};
+            int vir[3] = {c, a, b};
+
+            for(int p1 = 0; p1 < 3; ++p1){ // permutations over (i,j,k)
+                // P(i|jk) 
+                int ii = occ[ perms3[p1][0] ];
+                int jj = occ[ perms3[p1][1] ];
+                int kk = occ[ perms3[p1][2] ];
+                double sign1 = parity3[p1];
+
+                for(int p2 = 0; p2 < 3; ++p2){
+                    //int cc_ = vir_[ perms3[p2][0] ];
+                    int aa_ = vir_[ perms3[p2][1] ];
+                    int bb_ = vir_[ perms3[p2][2] ];
+                    int cc = vir[ perms3[p2][0] ];
+                    //int aa = vir[ perms3[p2][1] ];
+                    //int bb = vir[ perms3[p2][2] ];
+                    double sign2 = parity3[p2];
+
+                    double sign = sign1 * sign2;
+
+                    // sum over l
+                    for(int l = 0; l < num_spin_occ; ++l){
+                        real_t lcjk = antisym_eri(d_eri_mo, num_basis, l, cc, jj, kk); // <lc||jk> = (lj|ck) - (lk|cj)
+                        real_t t_ilab = t2_amplitude(t_ijab, num_spin_occ, num_spin_vir, ii, l, aa_, bb_); // t_il^ab
+
+                        T_ijk_abc -= sign * lcjk * t_ilab; // sign * <lc||jk> * t_il^ab
+                    }
+                }
+            }
+        }
+        
+        T_ijk_abc /= denom;
+
+        // E(4) contribution
+        {
+            contrib += (1.0/36.0) * T_ijk_abc * T_ijk_abc * denom;
+        }
+
+        // E(5) contribution
+        {
+            real_t t_ia_val = t1_amplitude(t_ia, num_spin_occ, num_spin_vir, i, a_); // t_i^a
+            real_t jkbc = antisym_eri(d_eri_mo, num_basis, j, k, b, c); // <jk||bc> = (jb|kc) - (jc|kb)
+
+            contrib += (1.0/4.0) * T_ijk_abc * t_ia_val * jkbc; // (1/4) * T_ijk^abc * t_i^a * <jk||bc>            
+
+        }
+
+        local_sum[threadIdx.x] += contrib;
+    }
+    __syncthreads();
+    if(threadIdx.x == 0){
+        real_t block_sum = 0.0;
+        for(int i = 0; i < blockDim.x; ++i){
+            block_sum += local_sum[i];
+        }
+        atomicAdd(d_ccsd_t_energy, block_sum);
+    }
+}
+
+
+
+
+
 real_t compute_ccsd_t_energy(const real_t* __restrict__ d_eri_mo,
                                 const real_t* __restrict__ d_eps,
                                 const int num_basis,
@@ -2406,10 +2897,48 @@ real_t compute_ccsd_t_energy(const real_t* __restrict__ d_eri_mo,
     }
     cudaMemset(d_E_CCSD_T, 0.0, sizeof(real_t));
 
-    const size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir * num_spin_vir;
     const int num_threads = 256;
-    const int num_blocks = (total + num_threads - 1) / num_threads;
-    compute_ccsd_t_energy_kernel<<<num_blocks, num_threads>>>(d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, d_E_CCSD_T);
+    const size_t max_blocks = (1ULL << 31) - 1;
+
+    size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir * num_spin_vir;
+    size_t num_blocks = (total + num_threads - 1) / num_threads;
+    int num_fixed_vir = 0;
+
+    for(num_fixed_vir=0; num_fixed_vir<=3; ++num_fixed_vir){
+        if(num_blocks <= max_blocks){
+            break;
+        }
+        total /= num_spin_vir; 
+        num_blocks = (total + num_threads - 1) / num_threads;
+    }
+    if(num_fixed_vir == 0){
+        std::cout << "Computing CCSD(T) energy with full parallelization over (i,j,k,a,b,c) ..." << std::endl;
+        compute_ccsd_t_energy_kernel<<<num_blocks, num_threads>>>(d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, d_E_CCSD_T);
+    }else if(num_fixed_vir == 1){
+        std::cout << "Computing CCSD(T) energy with partial parallelization over (i,j,k,a,b) x c times ..." << std::endl;
+        for(int vir1 = 0; vir1 < num_spin_vir; ++vir1){
+            compute_ccsd_t_energy_vir1_kernel<<<num_blocks, num_threads>>>(d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, vir1, d_E_CCSD_T);
+        }
+    }else if(num_fixed_vir == 2){
+        std::cout << "Computing CCSD(T) energy with partial parallelization over (i,j,k,a) x (b,c) times ..." << std::endl;
+        for(int vir1 = 0; vir1 < num_spin_vir; ++vir1){
+            for(int vir2 = 0; vir2 < num_spin_vir; ++vir2){
+                compute_ccsd_t_energy_vir2_kernel<<<num_blocks, num_threads>>>(d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, vir1, vir2, d_E_CCSD_T);
+            }
+        }
+    }else if(num_fixed_vir == 3){
+        std::cout << "Computing CCSD(T) energy with partial parallelization over (i,j,k) x (a,b,c) times ..." << std::endl;
+        for(int vir1 = 0; vir1 < num_spin_vir; ++vir1){
+            for(int vir2 = 0; vir2 < num_spin_vir; ++vir2){
+                for(int vir3 = 0; vir3 < num_spin_vir; ++vir3){
+                    compute_ccsd_t_energy_vir3_kernel<<<num_blocks, num_threads>>>(d_eri_mo, d_eps, num_basis, num_spin_occ, num_spin_vir, t_ia, t_ijab, vir1, vir2, vir3, d_E_CCSD_T);
+                }
+            }
+        }
+    }else{
+        THROW_EXCEPTION("Error in compute_ccsd_t_energy: num_spin_vir is too large.");
+    }
+
     
     cudaMemcpy(&h_E_CCSD_T, d_E_CCSD_T, sizeof(real_t), cudaMemcpyDeviceToHost);
     cudaFree(d_E_CCSD_T);
@@ -2519,6 +3048,7 @@ real_t ccsd_from_aoeri_via_full_moeri(const real_t* __restrict__ d_eri_ao, const
         cudaMemset(t_ia_old, 0.0, sizeof(real_t) * num_spin_occ * num_spin_vir);
 
         // t_ijab = <ij||ab> / (epsilon_i + epsilon_j - epsilon_a - epsilon_b)
+        cudaMemset(t_ijab_old, 0.0, sizeof(real_t) * num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir); // Never skip this zeroing because some elements may not be set in the kernel
         intialize_ccsd_amplitudes(d_eri_mo, d_orbital_energies, num_basis, num_spin_occ, num_spin_vir, t_ijab_old);
 
         cudaDeviceSynchronize(); // It is for PROFILE_ELAPSED_TIME
@@ -2580,6 +3110,9 @@ real_t ccsd_from_aoeri_via_full_moeri(const real_t* __restrict__ d_eri_ao, const
             for(int j = 0; j < num_spin_occ; ++j){
                 for(int a_ = 0; a_ < num_spin_vir; ++a_){
                     for(int b_ = 0; b_ < num_spin_vir; ++b_){
+                        if(i>=j || a_>=b_){ // print only unique amplitudes
+                            continue;
+                        }
                         int a = num_spin_occ + a_;
                         int b = num_spin_occ + b_;
                         std::cout << "t_ijab[" << i << "," << j << "," << a << "," << b << "] = " 
@@ -2635,10 +3168,10 @@ real_t ccsd_from_aoeri_via_full_moeri(const real_t* __restrict__ d_eri_ao, const
             auto h_t_diis = diis.extrapolate();
             h_t_new = h_t_diis; // update new amplitudes with DIIS result
         }else{
-            // dumping if DIIS is not used
-            real_t dumping_factor = 0.3; // 0.0 ~ 1.0
+            // damping if DIIS is not used
+            real_t damping_factor = 0.3; // 0.0 ~ 1.0
             for(size_t idx = 0; idx < num_ccsd_amplitudes; ++idx){
-                h_t_new[idx] = (1.0 - dumping_factor) * h_t_old[idx] + dumping_factor * h_t_new[idx];
+                h_t_new[idx] = (1.0 - damping_factor) * h_t_old[idx] + damping_factor * h_t_new[idx];
             }
         }
         // Copy back to device
@@ -2647,7 +3180,7 @@ real_t ccsd_from_aoeri_via_full_moeri(const real_t* __restrict__ d_eri_ao, const
         h_t_old = h_t_new; // update host old amplitudes
 
     
-        // check convergence and dumping
+        // check convergence and damping
         /*
         E_CCSD_new = compute_ccsd_energy(d_eri_mo, num_basis, num_spin_occ, num_spin_vir, t_ia_new, t_ijab_new);
         diff = compute_t_amplitude_diff(t_ia_new, t_ijab_new,
@@ -2660,14 +3193,14 @@ real_t ccsd_from_aoeri_via_full_moeri(const real_t* __restrict__ d_eri_ao, const
             break;
         }
 
-        // update amplitudes by dumping
-        real_t dumping_factor = 0.6;//0.9; // 0.0 ~ 1.0
-        // t_old = (1 - dumping_factor) * t_old + dumping_factor * t_new
-        update_t_amplitude_dumping(t_ia_new, t_ijab_new,
+        // update amplitudes by damping
+        real_t damping_factor = 0.6;//0.9; // 0.0 ~ 1.0
+        // t_old = (1 - damping_factor) * t_old + damping_factor * t_new
+        update_t_amplitude_damping(t_ia_new, t_ijab_new,
                                     t_ia_old, t_ijab_old,
                                     num_spin_occ,
                                     num_spin_vir,
-                                    dumping_factor);
+                                    damping_factor);
         */
     }
 
@@ -2756,9 +3289,7 @@ real_t ERI_Stored_RHF::compute_ccsd_t_energy() {
     std::cout << "CCSD(T) correction energy: " << E_CCSD+ccsd_t_energy << " Hartree" << std::endl;
 
     return E_CCSD+ccsd_t_energy;
-
-    return 0.0;
 }
-
+ 
 
  } // namespace gansu
