@@ -12,55 +12,109 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # 
 cmake_minimum_required(VERSION 3.31)
-project(GANSU LANGUAGES CXX)
+project(GANSU LANGUAGES CUDA CXX)
 
-# SYCL を有効化
-add_compile_options(-fsycl)
-add_link_options(-fsycl)
 
-# --- Include directories ---
-include_directories(include_sycl)
+# Uncomment the following line if f- or g-orbital basis functions are present.
+# add_definitions(-DENABLE_F_INT1E)
+# add_definitions(-DENABLE_G_INT1E)
 
-# --- 静的ライブラリ ---
-add_library(int1e STATIC src_sycl/int1e.dp.cpp)
-add_library(int2e STATIC src_sycl/int2e.dp.cpp)
-add_library(int2c2e STATIC src_sycl/int2c2e.dp.cpp)
-add_library(int3c2e STATIC src_sycl/int3c2e.dp.cpp)
-add_library(int2e_direct STATIC src_sycl/int2e_direct.dp.cpp)
+# Uncomment the following line to enable to support D-type basis functions for RI approximations (density fitting)
+# Note: Build time will take several hours (5-6 hours)
+#
+# add_definitions(-DCOMPUTE_D_BASIS)
 
-# --- oneAPI MKL ---
-find_package(MKL CONFIG REQUIRED)
+# Uncomment the following line to enable to support G-type auxiliary basis functions for RI approximations (density fitting)
+# Note: Build time will take one day or more
+# 
+# add_definitions(-DCOMPUTE_G_AUX)
 
-# --- GANSU ライブラリ ---
-set(GANSU_SOURCES
-    src_sycl/basis_set.cpp
-    src_sycl/parseXYZ.cpp
-    src_sycl/hf.dp.cpp
-    src_sycl/rhf.dp.cpp
-    src_sycl/uhf.dp.cpp
-    src_sycl/rohf.dp.cpp
-    src_sycl/gpu_manager.dp.cpp
-    src_sycl/gpu_kernels.dp.cpp
-    src_sycl/profiler.dp.cpp
-    src_sycl/parameter_manager.cpp
-    src_sycl/eri.dp.cpp
-    src_sycl/eri_ri.dp.cpp
-    src_sycl/eri_stored.dp.cpp
-    src_sycl/eri_stored_mp4.dp.cpp
-    src_sycl/utils.cpp
+
+# set compute capability
+set(CMAKE_CUDA_ARCHITECTURES 80 86 90)
+
+# Enable line info and debug info for CUDA when in Debug mode
+set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G -lineinfo")
+
+# C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+
+# Set include directories (global)
+include_directories(include)
+
+
+# Static libraries
+add_library(int1e STATIC src/int1e.cu)
+add_library(int2e STATIC src/int2e.cu)
+add_library(int2c2e STATIC src/int2c2e.cu)
+add_library(int3c2e STATIC src/int3c2e.cu)
+add_library(int2e_direct STATIC src/int2e_direct.cu)
+
+
+add_library(grad_w STATIC src/grad/grad_w.cu)
+add_library(grad_s STATIC src/grad/grad_s.cu)
+add_library(grad_k STATIC src/grad/grad_k.cu)
+add_library(grad_v STATIC src/grad/grad_v.cu)
+add_library(grad_g STATIC src/grad/grad_g.cu)
+
+
+set(SOURCES
+    src/basis_set.cpp
+    src/parseXYZ.cpp
+    src/hf.cu
+    src/rhf.cu
+    src/uhf.cu
+    src/rohf.cu
+    src/gpu_manager.cu
+    src/gpu_kernels.cu
+    src/profiler.cu
+    src/parameter_manager.cpp
+    src/eri.cu
+    src/eri_ri.cu
+    src/eri_stored.cu
+    src/eri_stored_mp4.cu
+    src/utils.cpp
 )
-add_library(gansu STATIC ${GANSU_SOURCES})
-target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-# target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
-target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e int2e_direct MKL::MKL_SYCL)
+
+add_library(gansu STATIC ${SOURCES})
+target_compile_definitions(gansu PRIVATE PROFILE_ENABLED) # add option -DPROFILE_ENABLED 
+target_compile_definitions(gansu PRIVATE CONSOLE_COLOR_ENABLED) # add option -DCONSOLE_COLOR_ENABLED 
+target_link_libraries(gansu
+        cublas
+        cusolver
+        ${CUDA_LIBRARIES}
+        int1e
+        int2e
+        int2c2e
+        int3c2e
+        int2e_direct
+        grad_w
+        grad_s
+        grad_k
+        grad_v
+        grad_g
+    )
 
 
-# --- 実行ファイル ---
-add_executable(HF_main src_sycl/HF_main.dp.cpp)
-target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-target_link_libraries(HF_main PRIVATE gansu)
+add_executable(HF_main src/HF_main.cu)
+target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED) # add option -DPROFILE_ENABLED 
+target_compile_definitions(HF_main PRIVATE CONSOLE_COLOR_ENABLED) # add option -DCONSOLE_COLOR_ENABLED 
+target_link_libraries(HF_main
+        gansu
+    )
 
-# --- TBB が必要なら ---
-# find_package(TBB REQUIRED)
-# target_link_libraries(gansu PRIVATE TBB::tbb)
+# add_executable(demo src/demo.cu ${SOURCES})
+# target_link_libraries(demo
+#         gansu
+#     )
 
+
+# add_executable(HF_main_no_profile src/HF_main.cu ${SOURCES})
+# target_link_libraries(HF_main_no_profile
+#         cublas
+#         cusolver
+#         ${CUDA_LIBRARIES}
+#         int1e
+#         int2e
+#     )

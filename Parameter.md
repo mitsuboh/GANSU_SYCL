@@ -17,6 +17,7 @@
 | beta_to_alpha | Number of shifted electrons from beta-spin to alpha-spin | int | 0 |
 | maxiter | Maximum number of SCF iterations | int | 100 |
 | convergence_energy_threshold | Energy convergence threshold | double | 1.0e-6 |
+| int1e_method | Method to use for one-electron integrals | string | hybrid |
 | eri_method | Method to use for two-electron repulsion integrals | string | stored |
 | post_hf_method | Post-Hartree-Fock method to use (MP2, CCSD, CCSD(T)) | string | none |
 | schwarz_screening_threshold | Schwarz screening threshold | double | 1.0e-12 |
@@ -133,6 +134,7 @@ If any of the following conditions are met, an exception is thrown:
 | --- | --- | --- | --- |
 | maxiter | Maximum number of SCF iterations | int | 100 |
 | convergence_energy_threshold | Energy convergence threshold | double | 1.0e-6 |
+| int1e_method | Method to use for one-electron integrals | string | hybrid |
 | eri_method | Method to use for two-electron repulsion integrals | string | stored |
 | schwarz_screening_threshold | Schwarz screening threshold | double | 1.0e-12 |
 | initial_guess | Method to use for initial guess | string | core |
@@ -152,11 +154,17 @@ If any of the following conditions are met, an exception is thrown:
 * default:  1.0e-6
 * Energy convergence threshold for the SCF iterations
 
+#### int1e_method - Method to use for one-electrion integrals (overlap integrals, kinetic energy integrals, and nuclear attraction integrals)
+* default: hybrid
+* md: McMurchie-Davidson algorithm
+* os: Obara-Saika algorithm
+
 #### eri_method - Method to use for two-electron repulsion integrals
 * default: stored
 * stored - Two-electron repulsion integrals are stored in the device memory
 * RI - Resolution of the Identity (RI) approximation is used for the two-electron repulsion integrals (ERIs)
 * Direct - Direct calculation of the two-electron repulsion integrals (ERIs) without any approximation (Direct-SCF)
+* Direct_RI - Resolution of the Identity (RI) approximation, but three-center ERIs are directly computed without storing
 
 #### post_hf_method - Post-Hartree-Fock method to use (MP2, CCSD, CCSD(T))
 * default: none

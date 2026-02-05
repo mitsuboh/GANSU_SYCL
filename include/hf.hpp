@@ -241,6 +241,7 @@ public:
      */
     bool get_hasMatrixC() const { return hasMatrixC_; }
 
+    void switchHasMatrixC() { hasMatrixC_ = true; }
 
     /**
      * @brief Function to compute the coefficient matrix and set hasMatrixC_ to true
@@ -251,6 +252,20 @@ public:
         compute_coefficient_matrix_impl();
         hasMatrixC_ = true;
     }
+
+    /**
+     * @brief Get the algorithm name for int1e
+     * @return Algorithm name as a string
+    */
+    const std::string get_int1e_algorithm_name() const{ return int1e_method;}; ///< Get the algorithm name
+
+
+    /**
+     * @brief Get the algorithm name for initial_guess
+     * @return Algorithm name as a string
+    */
+    const std::string get_initial_guess_algorithm_name() const{ return initial_guess_method_;}; ///< Get the algorithm name
+
 protected:
     long long solve_time_in_milliseconds_; ///< Time to solve the HF equation
 
@@ -299,6 +314,11 @@ protected:
     // for ERI (stored, RI, direct)
     std::unique_ptr<ERI> eri_method_; ///< ERI method
 
+    // for int1e (hybrid, MD, OS)
+    const std::string int1e_method; // int1e method
+
+    // for int1e (hybrid, MD, OS)
+    const std::string initial_guess_method_; // int1e method
 
     // Analysis flags
     const bool is_mulliken_analysis_; ///< Mulliken population analysis flag
@@ -422,6 +442,15 @@ public:
      * @details This function is implemented in the derived class.
      */
     virtual void export_molden_file(const std::string& filename) = 0;
+
+
+    /**
+     * @brief Compute the gradient of the total electronic energy
+     * @details This function evaluates the energy derivatives with respect to each nuclear coordinate (x, y, z) by summing the derivatives of the one-electron and two-electron integrals.
+     * @details The result can be used for geometry optimization or force calculations.
+     */
+    virtual void compute_Energy_Gradient() = 0;
+    
 
     /**
      * @brief Export the density matrix
