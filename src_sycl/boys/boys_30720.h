@@ -1,6 +1,7 @@
 /*
  * GANSU: GPU Accelerated Numerical Simulation Utility
  *
+ * Copyright (c) 2025-2026, Mitsuru Ikei
  * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
