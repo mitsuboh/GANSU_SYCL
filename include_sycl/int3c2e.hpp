@@ -138,7 +138,7 @@ void calc_sss_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_sss.txt"
+                #include "../src/integral_RI/int3c2e/orig_sss.txt"
         }
 }
 
@@ -203,7 +203,7 @@ void calc_ssp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ssp.txt"
+                #include "../src/integral_RI/int3c2e/orig_ssp.txt"
         }
 }
 
@@ -269,7 +269,7 @@ void calc_ssd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ssd.txt"
+                #include "../src/integral_RI/int3c2e/orig_ssd.txt"
         }
 }
 
@@ -336,7 +336,7 @@ void calc_ssf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ssf.txt"
+                #include "../src/integral_RI/int3c2e/orig_ssf.txt"
         }
 }
 
@@ -399,7 +399,7 @@ void calc_sps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sps.txt"
+                #include "../src/integral_RI/int3c2e/orig_sps.txt"
         }
 }
 
@@ -462,7 +462,7 @@ void calc_spp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_spp.txt"
+                #include "../src/integral_RI/int3c2e/orig_spp.txt"
         }
 }
 
@@ -526,7 +526,7 @@ void calc_spd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
                 bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_spd.txt"
+                #include "../src/integral_RI/int3c2e/orig_spd.txt"
         }
 }
 
@@ -589,7 +589,7 @@ void calc_spf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_spf.txt"
+                #include "../src/integral_RI/int3c2e/orig_spf.txt"
         }
 }
 
@@ -654,7 +654,7 @@ void calc_pps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_pps.txt"
+                #include "../src/integral_RI/int3c2e/orig_pps.txt"
         }
 }
 
@@ -719,7 +719,7 @@ void calc_ppp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ppp.txt"
+                #include "../src/integral_RI/int3c2e/orig_ppp.txt"
         }
 }
 
@@ -784,7 +784,7 @@ void calc_ppd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ppd.txt"
+                #include "../src/integral_RI/int3c2e/orig_ppd.txt"
         }
 }
 
@@ -849,7 +849,7 @@ void calc_ppf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ppf.txt"
+                #include "../src/integral_RI/int3c2e/orig_ppf.txt"
         }
 }
 
@@ -913,7 +913,7 @@ void calc_sds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sds.txt"
+                #include "../src/integral_RI/int3c2e/orig_sds.txt"
         }
 }
 
@@ -976,7 +976,7 @@ void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sdp.txt"
+                #include "../src/integral_RI/int3c2e/orig_sdp.txt"
         }
 }
 
@@ -1040,7 +1040,7 @@ void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sdd.txt"
+                #include "../src/integral_RI/int3c2e/orig_sdd.txt"
         }
 }
 
@@ -1104,7 +1104,7 @@ void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sdf.txt"
+                #include "../src/integral_RI/int3c2e/orig_sdf.txt"
         }
 }
 
@@ -1166,7 +1166,7 @@ void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_pds.txt"
+                #include "../src/integral_RI/int3c2e/orig_pds.txt"
         }
 }
 
@@ -1229,7 +1229,7 @@ void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_pdp.txt"
+                #include "../src/integral_RI/int3c2e/orig_pdp.txt"
         }
 }
 
@@ -1293,7 +1293,7 @@ void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_pdd.txt"
+                #include "../src/integral_RI/int3c2e/orig_pdd.txt"
         }
 }
 
@@ -1357,7 +1357,7 @@ void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_pdf.txt"
+                #include "../src/integral_RI/int3c2e/orig_pdf.txt"
         }
 }
 
@@ -1421,7 +1421,7 @@ void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
 
        bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_dds.txt"
+                #include "../src/integral_RI/int3c2e/orig_dds.txt"
         }
 }
 
@@ -1486,7 +1486,7 @@ void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
 
        bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_ddp.txt"
+                #include "../src/integral_RI/int3c2e/orig_ddp.txt"
         }
 }
 
@@ -1551,7 +1551,7 @@ void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
 
        bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_ddd.txt"
+                #include "../src/integral_RI/int3c2e/orig_ddd.txt"
         }
 }
 
@@ -1615,7 +1615,7 @@ void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                               p);
 
         bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_ddf.txt"
+                #include "../src/integral_RI/int3c2e/orig_ddf.txt"
         }
 }
 
@@ -1840,7 +1840,7 @@ void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_sdg.txt"
+                #include "../src/integral_RI/int3c2e/orig_sdg.txt"
         }
 }
 
@@ -1902,7 +1902,7 @@ void calc_pdg_gpu(real_t *g_result, const PrimitiveShell *g_pshell,
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_pdg.txt"
+                #include "../src/integral_RI/int3c2e/orig_pdg.txt"
         }
 }
 
@@ -1965,7 +1965,7 @@ void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_ddg.txt"
+                #include "../src/integral_RI/int3c2e/orig_ddg.txt"
         }
 }
 
@@ -2073,7 +2073,7 @@ void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ssg.txt"
+                #include "../src/integral_RI/int3c2e/orig_ssg.txt"
         }
 }
 
@@ -2135,7 +2135,7 @@ void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                                    (a->coordinate.z - b->coordinate.z)) /
                               p);
                 bool is_prim_id_not_equal = a!=b;
-                #include "./integral_RI/int3c2e/orig_spg.txt"
+                #include "../src/integral_RI/int3c2e/orig_spg.txt"
         }
 }
 
@@ -2199,7 +2199,7 @@ void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
         bool is_prim_id_not_equal = a!=b;
 
-                #include "./integral_RI/int3c2e/orig_ppg.txt"
+                #include "../src/integral_RI/int3c2e/orig_ppg.txt"
         }
 }
 

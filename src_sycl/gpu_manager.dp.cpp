@@ -2849,13 +2849,14 @@ void computeTwoCenterERIs(
 
         const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
         const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
-        sycl::range<3> blocks(1, 1, num_blocks);
-        sycl::range<3> threads(1, 1, threads_per_block);
+//        sycl::range<3> blocks(1, 1, num_blocks);
+//        sycl::range<3> threads(1, 1, threads_per_block);
+
 
         // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
             streams[stream_id++].submit([&](sycl::handler& cgh){
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
+            cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                       [=](sycl::nd_item<1> item_ct1) {
                 gpu::launch_2center_kernel(item_ct1,
                     s0, s1, d_two_center_eri,
                     d_auxiliary_primitive_shells, d_auxiliary_cgto_normalization_factors,

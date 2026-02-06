@@ -112,10 +112,11 @@ calc_ss_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|s) */
-inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_ss_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+//        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -142,7 +143,7 @@ inline void calc_ss_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_ss.txt"
+                #include "../src/integral_RI/int2c2e/orig_ss.txt"
         }
 }
 
@@ -165,10 +166,9 @@ calc_sp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|p) */
-inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_sp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -194,7 +194,7 @@ inline void calc_sp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_sp.txt"
+                #include "../src/integral_RI/int2c2e/orig_sp.txt"
         }
 }
 
@@ -217,10 +217,9 @@ calc_sd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (s|d) */
-inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_sd_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -247,7 +246,7 @@ inline void calc_sd_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_sd.txt"
+                #include "../src/integral_RI/int2c2e/orig_sd.txt"
         }
 }
 
@@ -275,15 +274,14 @@ calc_sf_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_sf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_sf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -308,7 +306,7 @@ inline void calc_sf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_sf.txt"
+                #include "../src/integral_RI/int2c2e/orig_sf.txt"
         }
 }
 
@@ -331,10 +329,9 @@ calc_pp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
             const double *g_boys_grid);
 */
 /* (p|p) */
-inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
+inline void calc_pp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -360,7 +357,7 @@ inline void calc_pp_gpu(const sycl::nd_item<3>& item_ct1, real_t* g_result, cons
                     TWO_TIMES_PI_TO_THE_2_POINT_5_TH_POWER /
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
-                #include "./integral_RI/int2c2e/orig_pp.txt"
+                #include "../src/integral_RI/int2c2e/orig_pp.txt"
         }
 }
 
@@ -388,15 +385,14 @@ calc_pd_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -423,7 +419,7 @@ inline void calc_pd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_pd.txt"
+                #include "../src/integral_RI/int2c2e/orig_pd.txt"
         }
 }
 
@@ -452,15 +448,14 @@ calc_pf_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -486,7 +481,7 @@ inline void calc_pf_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_pf.txt"
+                #include "../src/integral_RI/int2c2e/orig_pf.txt"
         }
 }
 
@@ -515,15 +510,14 @@ calc_dd_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_dd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_dd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -550,7 +544,7 @@ inline void calc_dd_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_dd.txt"
+                #include "../src/integral_RI/int2c2e/orig_dd.txt"
         }
 }
 
@@ -578,15 +572,14 @@ calc_df_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_df_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_df_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -611,7 +604,7 @@ inline void calc_df_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_df.txt"
+                #include "../src/integral_RI/int2c2e/orig_df.txt"
         }
 }
 
@@ -640,15 +633,14 @@ calc_ff_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_ff_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_ff_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -673,7 +665,7 @@ inline void calc_ff_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_ff.txt"
+                #include "../src/integral_RI/int2c2e/orig_ff.txt"
         }
 }
 
@@ -738,7 +730,7 @@ inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_sg.txt"
+                #include "../src/integral_RI/int2c2e/orig_sg.txt"
         }
 }
 
@@ -799,7 +791,7 @@ inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_pg.txt"
+                #include "../src/integral_RI/int2c2e/orig_pg.txt"
         }
 }
 // Auto generated SYCL kernel wrapper used to migration kernel function pointer.
@@ -859,7 +851,7 @@ inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_dg.txt"
+                #include "../src/integral_RI/int2c2e/orig_dg.txt"
         }
 }
 
@@ -920,7 +912,7 @@ inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_fg.txt"
+                #include "../src/integral_RI/int2c2e/orig_fg.txt"
         }
 }
 
@@ -981,7 +973,7 @@ inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                     (a->exponent * b->exponent * sycl::sqrt(sum_exponent));
                 bool is_prim_id_not_equal = (primitive_index_a != primitive_index_b);
 
-                #include "./integral_RI/int2c2e/orig_gg.txt"
+                #include "../src/integral_RI/int2c2e/orig_gg.txt"
         }
 }
 
@@ -994,35 +986,35 @@ void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
                          const double schwarz_screening_threshold,
                          int num_auxiliary_basis, const double *g_boys_grid);
 #else
-void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_sg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_pg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_dg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_fg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {}
 
-void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+void calc_gg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
@@ -1038,7 +1030,7 @@ MD_int2c2e_1T1SP exceeds 128 bytes and may cause high register pressure. Consult
 with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void MD_int2c2e_1T1SP(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                       const real_t *d_auxiliary_cgto_normalization_factors,
                       ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                       int num_shell_pairs, const double *g_upper_bound_factors,
@@ -1052,8 +1044,9 @@ inline void MD_int2c2e_1T1SP(const sycl::nd_item<3>& item_ct1, real_t *g_result,
 //auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 {
     // 通し番号indexの計算
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+//    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                      item_ct1.get_local_id(2);
+    uint64_t id = item_ct1.get_global_linear_id();
 
     if (id >= num_shell_pairs) return;
 
@@ -1320,7 +1313,7 @@ void MD_int2c2e_1T1SP_wrapper(
 
     
 SYCL_EXTERNAL
-inline void launch_2center_kernel(const sycl::nd_item<3>& item_ct1, int a, int b,
+inline void launch_2center_kernel(const sycl::nd_item<1>& item_ct1, int a, int b,
                                   real_t* out,
                                   const PrimitiveShell* primitives,
                                   const real_t* coord,
