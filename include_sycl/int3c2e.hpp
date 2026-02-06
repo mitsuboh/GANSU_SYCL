@@ -80,7 +80,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sss_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sss_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -95,7 +95,9 @@ void calc_sss_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 //        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                       item_ct1.get_local_id(2);
-        size_t idx = item_ct1.get_global_id(2);
+//        size_t idx = item_ct1.get_global_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
+
 
 
         if(idx < num_tasks){
@@ -151,7 +153,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ssp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ssp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -163,7 +165,7 @@ void calc_ssp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -216,7 +218,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ssd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ssd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -228,7 +230,7 @@ void calc_ssd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -282,7 +284,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ssf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ssf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -294,7 +296,7 @@ void calc_ssf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -349,7 +351,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sps_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -361,7 +363,7 @@ void calc_sps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -412,7 +414,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_spp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_spp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -424,7 +426,7 @@ void calc_spp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -475,7 +477,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_spd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_spd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -487,7 +489,7 @@ void calc_spd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -539,7 +541,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_spf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_spf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -551,7 +553,7 @@ void calc_spf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -602,7 +604,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pps_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -614,7 +616,7 @@ void calc_pps_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -667,7 +669,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ppp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ppp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -679,7 +681,7 @@ void calc_ppp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -732,7 +734,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ppd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ppd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -744,7 +746,7 @@ void calc_ppd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -797,7 +799,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ppf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ppf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -809,7 +811,7 @@ void calc_ppf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1622,7 +1624,7 @@ void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 #else
 /* (dd|f) */
 inline
-void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1635,7 +1637,7 @@ void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1648,7 +1650,7 @@ void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1661,7 +1663,7 @@ void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_dds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1674,7 +1676,7 @@ void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1687,7 +1689,7 @@ void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1700,7 +1702,7 @@ void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1713,7 +1715,7 @@ void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1726,7 +1728,7 @@ void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1739,7 +1741,7 @@ void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1752,7 +1754,7 @@ void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1765,7 +1767,7 @@ void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_sds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1971,7 +1973,7 @@ void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 
 #else
 inline
-void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1984,7 +1986,7 @@ void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1997,7 +1999,7 @@ void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_pdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2206,7 +2208,7 @@ void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
 #else
 /* (ss|g) */
 inline
-void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ssg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2219,7 +2221,7 @@ void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_spg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2232,7 +2234,7 @@ void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   int num_auxiliary_basis, const double *g_boys_grid) {}
 
 inline
-void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ppg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2724,7 +2726,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void MD_int3c2e_1T1SP(sycl::nd_item<3>& item_ct1,real_t *g_result, const PrimitiveShell *g_pshell,
+void MD_int3c2e_1T1SP(sycl::nd_item<1>& item_ct1,real_t *g_result, const PrimitiveShell *g_pshell,
                       const PrimitiveShell *g_pshell_aux,
                       const real_t *d_cgto_normalization_factors,
                       const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2743,8 +2745,10 @@ void MD_int3c2e_1T1SP(sycl::nd_item<3>& item_ct1,real_t *g_result, const Primiti
 //auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 {
     // 通し番号indexの計算
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+//    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                      item_ct1.get_local_id(2);
+    const size_t id = item_ct1.get_global_linear_id();
+
 
     if (id >= num_tasks) return;
 
@@ -2973,7 +2977,7 @@ void MD_int3c2e_1T1SP(sycl::nd_item<3>& item_ct1,real_t *g_result, const Primiti
     return;
 }
 
-inline void launch_3center_kernel(sycl::nd_item<3>& item_ct1, int a, int b, int c, real_t* args, const PrimitiveShell* shell1, const PrimitiveShell* shell2, const real_t* param1, const real_t* param2, ShellTypeInfo info1, ShellTypeInfo info2, ShellTypeInfo info3, int64_t var1, int var2, const size_t2* dp_ind, const double* g_u, const double* g_a, const double s_s_th,
+inline void launch_3center_kernel(sycl::nd_item<1>& item_ct1, int a, int b, int c, real_t* args, const PrimitiveShell* shell1, const PrimitiveShell* shell2, const real_t* param1, const real_t* param2, ShellTypeInfo info1, ShellTypeInfo info2, ShellTypeInfo info3, int64_t var1, int var2, const size_t2* dp_ind, const double* g_u, const double* g_a, const double s_s_th,
 int var3, const double* param3) {
 #if !defined(COMPUTE_D_BASIS)
     if (a >= 2 || b >= 2) {

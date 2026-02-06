@@ -2959,16 +2959,16 @@ void computeThreeCenterERIs(
         const size_t num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blo     cks
 
 
-        sycl::range<3> blocks(1, 1, num_blocks);
-        sycl::range<3> threads(1, 1, threads_per_block);
+//        sycl::range<3> blocks(1, 1, num_blocks);
+//        sycl::range<3> threads(1, 1, threads_per_block);
 
         // real_t*, PrimitiveShell*, real_t*, ShellTypeInfo, ShellTypeInfo, int, int
             streams[stream_id++].submit([&](sycl::handler& cgh){
             const size_t shell_pair_index = shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index;
             const size_t2* dp_ind = &d_primitive_shell_pair_indices[shell_pair_index];
             const double* schwarz_bound = &d_schwarz_upper_bound_factors[shell_pair_index];
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
+            cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                       [=](sycl::nd_item<1> item_ct1) {
                 gpu::launch_3center_kernel( item_ct1,
                     s0, s1, s2,
                     d_three_center_eri, d_primitive_shells,
