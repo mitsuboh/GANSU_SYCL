@@ -41,17 +41,6 @@ void ssss2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void ssss2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 void sssp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -66,17 +55,6 @@ void sssp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sssp2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 void sspp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -91,17 +69,6 @@ void sspp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sspp2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 void spsp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -116,17 +83,6 @@ void spsp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void spsp2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 void sppp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -141,17 +97,6 @@ void sppp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sppp2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 void pppp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -166,17 +111,6 @@ void pppp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void pppp2e_direct_wrapper(
-    real_t *g_fock_matrix, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const size_t num_braket,
-    const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix,
-    const size_t head_bra, const size_t head_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void ssss2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -191,17 +125,6 @@ SYCL_EXTERNAL void ssss2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void ssss2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void sssp2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -216,17 +139,6 @@ SYCL_EXTERNAL void sssp2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sssp2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void sspp2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -241,17 +153,6 @@ SYCL_EXTERNAL void sspp2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sspp2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void spsp2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -266,17 +167,6 @@ SYCL_EXTERNAL void spsp2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void spsp2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void sppp2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -291,17 +181,6 @@ SYCL_EXTERNAL void sppp2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void sppp2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void pppp2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
@@ -316,17 +195,6 @@ SYCL_EXTERNAL void pppp2e_dynamic(const sycl::nd_item<1>& item,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
     const sycl::local_accessor<bool, 1>& s_significant_flag);
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void pppp2e_dynamic_wrapper(
-    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
-    const sycl::int2 *g_primitive_shell_pair_indices,
-    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
-    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
-    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
-    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
-    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
-    const size_t num_bra, const size_t num_ket, const int num_fock_replicas);
 
 SYCL_EXTERNAL void launch_MD_direct_SCF_1T1SP(
     const sycl::nd_item<1>& item,
@@ -354,46 +222,6 @@ using eri_kernel_dynamic_t = void (*)(real_t *, const PrimitiveShell *,
                                       const real_t *, const real_t *, int *,
                                       int *, const size_t, const size_t,
                                       const size_t, const size_t, const int);
-
-inline eri_kernel_direct_t get_eri_kernel_direct(int a, int b, int c, int d) {
-    if (a > b) std::swap(a, b);
-    if (c > d) std::swap(c, d);
-    if (a > c || (a == c && b > d)) {
-        std::swap(a, c);
-        std::swap(b, d);
-    }
-
-    if (a == 0 && b == 0 && c == 0 && d == 0) return ssss2e_direct_wrapper;
-    else if (a == 0 && b == 0 && c == 0 && d == 1) return sssp2e_direct_wrapper;
-    else if (a == 0 && b == 0 && c == 1 && d == 1) return sspp2e_direct_wrapper;
-    else if (a == 0 && b == 1 && c == 0 && d == 1) return spsp2e_direct_wrapper;
-    else if (a == 0 && b == 1 && c == 1 && d == 1) return sppp2e_direct_wrapper;
-    else if (a == 1 && b == 1 && c == 1 && d == 1) return pppp2e_direct_wrapper;
-    else throw std::runtime_error("Invalid shell type");
-}
-
-inline eri_kernel_dynamic_t get_eri_kernel_dynamic(int a, int b, int c, int d) {
-    if (a > b) std::swap(a, b);
-    if (c > d) std::swap(c, d);
-    if (a > c || (a == c && b > d)) {
-        std::swap(a, c);
-        std::swap(b, d);
-    }
-
-    if (a == 0 && b == 0 && c == 0 && d == 0) return ssss2e_dynamic_wrapper;
-    else if (a == 0 && b == 0 && c == 0 &&
-             d == 1) return sssp2e_dynamic_wrapper;
-    else if (a == 0 && b == 0 && c == 1 &&
-             d == 1) return sspp2e_dynamic_wrapper;
-    else if (a == 0 && b == 1 && c == 0 &&
-             d == 1) return spsp2e_dynamic_wrapper;
-    else if (a == 0 && b == 1 && c == 1 &&
-             d == 1) return sppp2e_dynamic_wrapper;
-    else if (a == 1 && b == 1 && c == 1 &&
-             d == 1) return pppp2e_dynamic_wrapper;
-    else throw std::runtime_error("Invalid shell type");
-}
-
 
 enum class eri_kernel_kind {
     ssss,

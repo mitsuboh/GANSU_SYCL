@@ -147,15 +147,6 @@ inline void calc_ss_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, cons
         }
 }
 
-
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_ss_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_sp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -199,14 +190,6 @@ inline void calc_sp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, cons
 }
 
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_sp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_sd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -250,14 +233,6 @@ inline void calc_sd_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_sd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_sf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -310,14 +285,6 @@ inline void calc_sf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_sf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 
 /*
 SYCL_EXTERNAL void
@@ -361,14 +328,6 @@ inline void calc_pp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_pp_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_pd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -424,14 +383,6 @@ inline void calc_pd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
 }
 
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_pd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_pf_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -485,14 +436,6 @@ inline void calc_pf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_pf_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 
 /*
 SYCL_EXTERNAL void
@@ -548,14 +491,6 @@ inline void calc_dd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_dd_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_df_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -608,14 +543,6 @@ inline void calc_df_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_df_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 
 /*
 SYCL_EXTERNAL void
@@ -668,15 +595,6 @@ inline void calc_ff_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                 #include "../src/integral_RI/int2c2e/orig_ff.txt"
         }
 }
-
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_ff_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 
 
 
@@ -734,14 +652,6 @@ inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_sg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_pg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -794,14 +704,7 @@ inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
                 #include "../src/integral_RI/int2c2e/orig_pg.txt"
         }
 }
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_pg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
+
 /*
 SYCL_EXTERNAL void
 calc_dg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -855,14 +758,6 @@ inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_dg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_fg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -916,14 +811,6 @@ inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_fg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 /*
 SYCL_EXTERNAL void
 calc_gg_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
@@ -977,14 +864,6 @@ inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, cons
         }
 }
 
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void calc_gg_gpu_wrapper(real_t *g_result, const PrimitiveShell *g_pshell_aux,
-                         const real_t *d_auxiliary_cgto_normalization_factors,
-                         ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
-                         int num_shell_pairs,
-                         const double *g_upper_bound_factors,
-                         const double schwarz_screening_threshold,
-                         int num_auxiliary_basis, const double *g_boys_grid);
 #else
 void calc_sg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1274,42 +1153,6 @@ inline void MD_int2c2e_1T1SP(const sycl::nd_item<1>& item_ct1, real_t *g_result,
     }
     return;
 }
-
-// Auto generated SYCL kernel wrapper used to migration kernel function pointer.
-void MD_int2c2e_1T1SP_wrapper(
-    real_t *g_result, const PrimitiveShell *g_pshell_aux,
-    const real_t *d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0,
-    ShellTypeInfo shell_s1, int num_shell_pairs,
-    const double *g_upper_bound_factors,
-    const double schwarz_screening_threshold, int num_auxiliary_basis,
-    const double *g_boys_grid);
-
-    inline int calcIdx_triangular(int a, int b, int N){
-        return (int)(a*N - (a*(a-1))/2) + (b-a);
-    }
-/*
-    using eri_2center_kernel_t = void (*)(real_t*, const PrimitiveShell*, const real_t*, ShellTypeInfo, ShellTypeInfo, int, const double*, const double, int, const double*);
-    inline eri_2center_kernel_t get_2center_kernel(int a, int b){
-        eri_2center_kernel_t kernels[15] = {
-            calc_ss_gpu_wrapper, calc_sp_gpu_wrapper, calc_sd_gpu_wrapper,
-            calc_sf_gpu_wrapper, calc_sg_gpu_wrapper, calc_pp_gpu_wrapper,
-            calc_pd_gpu_wrapper, calc_pf_gpu_wrapper, calc_pg_gpu_wrapper,
-            calc_dd_gpu_wrapper, calc_df_gpu_wrapper, calc_dg_gpu_wrapper,
-            calc_ff_gpu_wrapper, calc_fg_gpu_wrapper, calc_gg_gpu_wrapper};
-
-        if (a < N_ORBITAL_TYPE_AUX && b < N_ORBITAL_TYPE_AUX){
-#if !defined(COMPUTE_G_AUX)
-            if (a >= 4 || b >= 4){
-                // printf("Caution: calling generic int2c2e kernel.\n");
-                return MD_int2c2e_1T1SP_wrapper;
-            }
-#endif
-            return kernels[calcIdx_triangular(a,b,N_ORBITAL_TYPE_AUX)];
-        } else { 
-            throw std::runtime_error("Invalid call for 2center eri.\n");
-        }
-    }
-*/
 
     
 SYCL_EXTERNAL
