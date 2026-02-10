@@ -41,20 +41,18 @@ inline size_t2 index1to2(const size_t index, bool is_symmetric, size_t num_basis
     }
 }
 
-void generatePrimitiveShellPairIndices(size_t2* d_indices_array, size_t num_threads, bool is_symmetric, size_t num_basis){
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id =
-        (size_t)item_ct1.get_local_range(2) * item_ct1.get_group(2) +
-        item_ct1.get_local_id(2);
+void generatePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1, size_t2* d_indices_array, size_t num_threads, bool is_symmetric, size_t num_basis){
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_threads) return;
     d_indices_array[id] = index1to2(id, is_symmetric, num_basis);
 }
 
-void initializePrimitiveShellPairIndices(sycl::int2* d_indices_array, int num_threads, bool is_symmetric, int num_basis) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id =
-        (size_t)item_ct1.get_local_range(2) * item_ct1.get_group(2) +
-        item_ct1.get_local_id(2);
+void initializePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1, sycl::int2* d_indices_array, int num_threads, bool is_symmetric, int num_basis) {
+    const size_t id = item_ct1.get_global_linear_id();
+//    const size_t id =
+//        (size_t)item_ct1.get_local_range(2) * item_ct1.get_group(2) +
+//        item_ct1.get_local_id(2);
     if (id >= num_threads) return;
     size_t2 index_pair = index1to2(id, is_symmetric, num_basis);
     d_indices_array[id] = sycl::int2(static_cast<int>(index_pair.x), static_cast<int>(index_pair.y));
@@ -202,13 +200,9 @@ void ERI_RI::precomputation() {
                 size_t shell_type_infos_s1_count_ct3 =
                     shell_type_infos[s1].count;
 
-                cgh.parallel_for(
-                    sycl::nd_range<3>(
-                        sycl::range<3>(1, 1, num_blocks) *
-                            sycl::range<3>(1, 1, threads_per_block),
-                        sycl::range<3>(1, 1, threads_per_block)),
-                    [=](sycl::nd_item<3> item_ct1) {
-                        generatePrimitiveShellPairIndices(
+                cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        generatePrimitiveShellPairIndices( item_ct1, 
                             d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0,
                             shell_pair_type_infos_pair_idx_count_ct1, s0_s1_ct2,
                             shell_type_infos_s1_count_ct3);
@@ -421,13 +415,9 @@ void ERI_Direct::precomputation() {
                 auto s0_s1_ct2 = s0 == s1;
                 auto shell_type_infos_s1_count_ct3 = shell_type_infos[s1].count;
 
-                cgh.parallel_for(
-                    sycl::nd_range<3>(
-                        sycl::range<3>(1, 1, num_blocks) *
-                            sycl::range<3>(1, 1, threads_per_block),
-                        sycl::range<3>(1, 1, threads_per_block)),
-                    [=](sycl::nd_item<3> item_ct1) {
-                        initializePrimitiveShellPairIndices(
+                cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        initializePrimitiveShellPairIndices( item_ct1,
                             d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0,
                             shell_pair_type_infos_pair_idx_count_ct1, s0_s1_ct2,
                             shell_type_infos_s1_count_ct3);

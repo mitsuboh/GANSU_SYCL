@@ -105,31 +105,31 @@ SYCL_EXTERNAL void MD_1T1SP(sycl::nd_item<1> item_ct1,
               const size_t head_ket);
 
 
-SYCL_EXTERNAL void get_schwarz_upper_bound_factors_ss(
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_ss(sycl::nd_item<1> item_ct1,
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
     const size_t head, const size_t num_bra, const double *g_boys_grid,
     double *g_max_upper_bound_factors);
 
-SYCL_EXTERNAL void get_schwarz_upper_bound_factors_sp(
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_sp(sycl::nd_item<1> item_ct1,
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
     const size_t head, const size_t num_bra, const double *g_boys_grid,
     double *g_max_upper_bound_factors);
 
-SYCL_EXTERNAL void get_schwarz_upper_bound_factors_pp(
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_pp(sycl::nd_item<1> item_ct1,
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
     const size_t head, const size_t num_bra, const double *g_boys_grid,
     double *g_max_upper_bound_factors);
 
-SYCL_EXTERNAL void get_schwarz_upper_bound_factors_general(
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_general(sycl::nd_item<1> item_ct1,
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
     const size_t head, const size_t num_bra, const double *g_boys_grid,
     double *g_max_upper_bound_factors);
 
-SYCL_EXTERNAL void get_schwarz_upper_bound_factors_aux_general(
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_aux_general(sycl::nd_item<1> item_ct1,
     const PrimitiveShell *g_shell_aux,
     const real_t *g_aux_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const size_t head, const size_t num_bra,
@@ -198,37 +198,38 @@ real_t* g_int2e, const PrimitiveShell* g_shell, const real_t* g_cgto_normalizati
 }
 
 
- inline void launch_schwarz_kernel(int a, int b,
+ inline void launch_schwarz_kernel(sycl::nd_item<1> item_ct1, int a, int b,
     const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
     const size_t head, const size_t num_ss, const real_t* g_boys_grid,
     real_t* g_upper_bound_factors)
 {
     if(a > b) std::swap(a, b);
-    if (a == 0 && b == 0) get_schwarz_upper_bound_factors_ss(
+    if (a == 0 && b == 0) get_schwarz_upper_bound_factors_ss(item_ct1,
     g_shell, g_cgto_normalization_factors, shell_s0, shell_s1,
     head, num_ss, g_boys_grid, g_upper_bound_factors);
     else if (a == 0 &&
-             b == 1) get_schwarz_upper_bound_factors_sp(
+             b == 1) get_schwarz_upper_bound_factors_sp(item_ct1,
     g_shell, g_cgto_normalization_factors, shell_s0, shell_s1,
     head, num_ss, g_boys_grid, g_upper_bound_factors);
     else if (a == 1 &&
-             b == 1) get_schwarz_upper_bound_factors_pp(
+             b == 1) get_schwarz_upper_bound_factors_pp(item_ct1,
     g_shell, g_cgto_normalization_factors, shell_s0, shell_s1,
     head, num_ss, g_boys_grid, g_upper_bound_factors);
-    else get_schwarz_upper_bound_factors_general(
+    else get_schwarz_upper_bound_factors_general(item_ct1,
     g_shell, g_cgto_normalization_factors, shell_s0, shell_s1,
     head, num_ss, g_boys_grid, g_upper_bound_factors);
 }
 
 
-inline void launch_schwarz_aux_kernel(int a,
+inline void launch_schwarz_aux_kernel(sycl::nd_item<1> item_ct1,
+    int a,
     const PrimitiveShell* g_shell_aux, const real_t* g_aux_cgto_normalization_factors,
     const ShellTypeInfo shell_s0,
     const size_t head, const size_t num_bra, const double* g_boys_grid,
     double* g_max_upper_bound_factors_aux)
 {
-    get_schwarz_upper_bound_factors_aux_general(g_shell_aux, g_aux_cgto_normalization_factors,
+    get_schwarz_upper_bound_factors_aux_general(item_ct1, g_shell_aux, g_aux_cgto_normalization_factors,
     shell_s0, head, num_bra, g_boys_grid, g_max_upper_bound_factors_aux);
 }
 

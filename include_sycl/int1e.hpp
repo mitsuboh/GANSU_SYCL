@@ -106,7 +106,7 @@ inline void matrixSymmetrization(const sycl::id<1>& item, double* g_matrix, cons
 
 SYCL_EXTERNAL
 void compute_kinetic_energy_integral(
-    const sycl::nd_item<3>& item_ct1,
+    const sycl::nd_item<1>& item_ct1,
     real_t *g_overlap, real_t *g_kinetic, const PrimitiveShell *g_shell,
     const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
     const ShellTypeInfo shell_s1, const size_t num_threads,
@@ -114,7 +114,7 @@ void compute_kinetic_energy_integral(
 
 SYCL_EXTERNAL
 void compute_nuclear_attraction_integral(
-    const sycl::nd_item<3>& item_ct1,
+    const sycl::nd_item<1>& item_ct1,
     real_t *g_nucattr, const PrimitiveShell *g_shell,
     const real_t *g_cgto_normalization_factors, const Atom *g_atom,
     const int num_atoms, const ShellTypeInfo shell_s0,
@@ -122,7 +122,7 @@ void compute_nuclear_attraction_integral(
     const real_t *g_boys_grid);
 
 
-inline void launch_overlap_kinetic_kernel(const sycl::nd_item<3>& item_ct1, int a, int b, real_t* g_overlap, real_t* g_kinetic,
+inline void launch_overlap_kinetic_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, real_t* g_overlap, real_t* g_kinetic,
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
                         const size_t num_threads,
                         const int num_basis)
@@ -270,7 +270,7 @@ inline void launch_overlap_kinetic_kernel(const sycl::nd_item<3>& item_ct1, int 
 }
 
 
-inline void launch_nuclear_attraction_kernel(const sycl::nd_item<3>& item_ct1, int a, int b, real_t* g_nucattr,
+inline void launch_nuclear_attraction_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, real_t* g_nucattr,
                         const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
                         const Atom* g_atom, const int num_atoms,
                         const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,

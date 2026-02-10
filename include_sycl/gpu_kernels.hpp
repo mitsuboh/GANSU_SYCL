@@ -80,12 +80,13 @@ inline void sqrt_kernel(sycl::nd_item<1> item_ct1, real_t *d_eigenvalues, const 
  * @details The density matrix is given by \f$ D_{ij} = 2 \sum_{k=1}^{N/2} C_{ik} C_{jk} \f$.
  */
 //SYCL_EXTERNAL void computeDensityMatrix_RHF_kernel(const double *d_coefficient_matrix, double *d_density_matrix, const int num_electron, const size_t num_basis);
-inline void computeDensityMatrix_RHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeDensityMatrix_RHF_kernel(sycl::nd_item<1> item_ct1,
      const real_t *d_coefficient_matrix, real_t *d_density_matrix,
      const int num_electron, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                item_ct1.get_local_id(2);
+    size_t id = item_ct1.get_global_linear_id();
+//    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                item_ct1.get_local_id(2);
     if (id >= num_basis * num_basis) return;
 
     size_t i = id / num_basis;
@@ -109,12 +110,11 @@ inline void computeDensityMatrix_RHF_kernel(sycl::nd_item<3> item_ct1,
  */
 //SYCL_EXTERNAL void computeDensityMatrix_UHF_kernel(const double *d_coefficient_matrix, double *d_density_matrix, const int num_spin, const size_t num_basis);
 inline void
- computeDensityMatrix_UHF_kernel(sycl::nd_item<3> item_ct1, const double *d_coefficient_matrix,
+ computeDensityMatrix_UHF_kernel(sycl::nd_item<1> item_ct1, const double *d_coefficient_matrix,
                                  double *d_density_matrix, const int num_spin,
                                  const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                item_ct1.get_local_id(2);
+    size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     size_t i = id / num_basis;
@@ -139,13 +139,12 @@ inline void
  * @details This function computes the density matrix using the coefficient matrix.
  */
 //SYCL_EXTERNAL void computeDensityMatrix_ROHF_kernel( const double *d_coefficient_matrix, double *d_density_matrix_closed, double *d_density_matrix_open, double *d_density_matrix, const int num_closed, const int num_open, const size_t num_basis);
-inline void computeDensityMatrix_ROHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeDensityMatrix_ROHF_kernel(sycl::nd_item<1> item_ct1,
      const double *d_coefficient_matrix, double *d_density_matrix_closed,
      double *d_density_matrix_open, double *d_density_matrix,
      const int num_closed, const int num_open, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                item_ct1.get_local_id(2);
+    size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     size_t i = id / num_basis;
@@ -313,7 +312,7 @@ inline void computeFockMatrix_RHF_kernel(sycl::nd_item<1> item, const real_t* d_
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_UHF_kernel( const double *d_density_matrix_a, const double *d_density_matrix_b, const double *d_core_hamiltonian_matrix, const double *d_eri, double *d_fock_matrix_a, double *d_fock_matrix_b, int num_basis, sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij);
-inline void computeFockMatrix_UHF_kernel(sycl::nd_item<3> item, const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, int num_basis,
+inline void computeFockMatrix_UHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, int num_basis,
       sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij)
 //                                  real_t s_Fa_ij, real_t s_Fb_ij)
 {
@@ -370,7 +369,7 @@ inline void computeFockMatrix_UHF_kernel(sycl::nd_item<3> item, const real_t* d_
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_ROHF_kernel( const double *d_density_matrix_closed, const double *d_density_matrix_open, const double *d_core_hamiltonian_matrix, const double *d_eri, double *d_fock_matrix_closed, double *d_fock_matrix_open, int num_basis, sycl::local_accessor<real_t, 1> s_J_closed_ij, sycl::local_accessor<real_t, 1> s_J_open_ij, sycl::local_accessor<real_t, 1> s_K_closed_ij, sycl::local_accessor<real_t, 1> s_K_open_ij);
-inline void computeFockMatrix_ROHF_kernel(sycl::nd_item<3> item, const real_t* d_density_matrix_closed, const real_t* d_density_matrix_open, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_closed, real_t* d_fock_matrix_open, int num_basis,
+inline void computeFockMatrix_ROHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix_closed, const real_t* d_density_matrix_open, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_closed, real_t* d_fock_matrix_open, int num_basis,
       sycl::local_accessor<real_t, 1> s_J_closed_ij, sycl::local_accessor<real_t, 1> s_J_open_ij,
       sycl::local_accessor<real_t, 1> s_K_closed_ij, sycl::local_accessor<real_t, 1> s_K_open_ij)
 {
@@ -389,7 +388,7 @@ inline void computeFockMatrix_ROHF_kernel(sycl::nd_item<3> item, const real_t* d
 
     const size_t l = item.get_local_linear_id();
 
-    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
+    if (l == 0) {
         s_J_closed_ij[0] = 0.0;
         s_J_open_ij[0] = 0.0;
         s_K_closed_ij[0] = 0.0;
@@ -436,20 +435,19 @@ inline void computeFockMatrix_ROHF_kernel(sycl::nd_item<3> item, const real_t* d
     }
     item.barrier(sycl::access::fence_space::local_space);
 
-    if (item.get_local_id(2) == 0 && item.get_local_id(1) == 0) {
+    if (l == 0) {
         d_fock_matrix_closed[bra] = d_core_hamiltonian_matrix[bra] + s_J_closed_ij[0] - 0.5 * s_K_closed_ij[0] + s_J_open_ij[0] - 0.5 * s_K_open_ij[0];
         d_fock_matrix_open[bra]  = 0.5 * (d_core_hamiltonian_matrix[bra] + s_J_closed_ij[0] - 0.5 * s_K_closed_ij[0] + s_J_open_ij[0] - s_K_open_ij[0]);
     }
 }
 
 //SYCL_EXTERNAL void computeUnifiedFockMatrix_ROHF_kernel( const double *d_fock_mo_closed_matrix, const double *d_fock_mo_open_matrix, const ROHF_ParameterSet rohf_params, double *d_unified_fock_matrix, const int num_closed, const int num_open, const size_t num_basis);
-inline void computeUnifiedFockMatrix_ROHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeUnifiedFockMatrix_ROHF_kernel(sycl::nd_item<1> item_ct1,
     const real_t *d_fock_mo_closed_matrix, const real_t *d_fock_mo_open_matrix,
     const ROHF_ParameterSet rohf_params, real_t *d_unified_fock_matrix,
     const int num_closed, const int num_open, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                item_ct1.get_local_id(2);
+    size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * (num_basis+1) / 2) return;
 
     const size_t2 ij = index1to2(id, true);

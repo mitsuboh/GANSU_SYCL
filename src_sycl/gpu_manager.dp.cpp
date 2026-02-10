@@ -656,15 +656,15 @@ void computeCoreHamiltonianMatrix(
             // call the kernel functions
 //    dpct::dim3 blocks(num_blocks,1,1);
 //    dpct::dim3 threads(threads_per_block,1,1);
-    sycl::range<3> blocks(1, 1, num_blocks);
-    sycl::range<3> threads(1, 1, threads_per_block);
+    sycl::range<1> blocks(num_blocks);
+    sycl::range<1> threads(threads_per_block);
 
 //launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t num_threads, const int num_basis)
 
             streams[index].submit([&](sycl::handler& cgh){
 //            sycl::event e1 = streams[index].submit([&](sycl::handler& cgh){
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                 launch_overlap_kinetic_kernel( item_ct1,
                     s0, s1, d_overlap_matrix,
                     d_core_hamiltonian_matrix, d_primitive_shells,
@@ -674,8 +674,8 @@ void computeCoreHamiltonianMatrix(
             });
             V_streams[index].submit([&](sycl::handler& cgh){
 //            cgh.depends_on(e1); //明示的依存
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                 launch_nuclear_attraction_kernel( item_ct1,
                     s0, s1, d_core_hamiltonian_matrix, d_primitive_shells,
                     d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0,
@@ -998,11 +998,12 @@ void computeDensityMatrix_RHF(const real_t* d_coefficient_matrix, real_t* d_dens
     Adjust the work-group size if needed.
     */
     sycl::queue& workq = GPUHandle::syclqueue();
+    sycl::range<1> blocks(num_blocks);
+    sycl::range<1> threads(threads_per_block);
+
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
             computeDensityMatrix_RHF_kernel(item_ct1, d_coefficient_matrix,
                                             d_density_matrix, num_electron,
                                             num_basis);
@@ -1029,11 +1030,12 @@ void computeDensityMatrix_UHF(const real_t* d_coefficient_matrix, real_t* d_dens
     Adjust the work-group size if needed.
     */
     sycl::queue& workq = GPUHandle::syclqueue();
+    sycl::range<1> blocks(num_blocks);
+    sycl::range<1> threads(threads_per_block);
+
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
             computeDensityMatrix_UHF_kernel(item_ct1, d_coefficient_matrix,
                                             d_density_matrix, num_electron,
                                             num_basis);
@@ -1061,11 +1063,12 @@ void computeDensityMatrix_ROHF(const real_t* d_coefficient_matrix, real_t* d_den
     Adjust the work-group size if needed.
     */
     sycl::queue& workq = GPUHandle::syclqueue();
+    sycl::range<1> blocks(num_blocks);
+    sycl::range<1> threads(threads_per_block);
+
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
             computeDensityMatrix_ROHF_kernel(item_ct1,
                 d_coefficient_matrix, d_density_matrix_closed,
                 d_density_matrix_open, d_density_matrix, num_closed, num_open,
@@ -1133,8 +1136,9 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     //const int num_blocks = num_basis * (num_basis + 1) / 2;
 //    dpct::dim3 blocks(num_blocks);
 //    dpct::dim3 threads(WARP_SIZE, warpsPerBlock);
-    sycl::range<3> blocks(1, 1, num_blocks);
-    sycl::range<3> threads(1, warpsPerBlock, WARP_SIZE);
+
+    const sycl::range<1> blocks (static_cast<size_t>(num_blocks));
+    const sycl::range<1> threads(static_cast<size_t>(threadsPerBlock));
     /*
     DPCT1049:9: The work-group size passed to the SYCL kernel may exceed the
     limit. To get the device limit, query info::device::max_work_group_size.
@@ -1146,8 +1150,8 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     sycl::local_accessor<real_t, 1> s_Fa_ij(sycl::range<1>(1), cgh);
     sycl::local_accessor<real_t, 1> s_Fb_ij(sycl::range<1>(1), cgh);
     cgh.parallel_for(
-        sycl::nd_range<3>(blocks * threads, threads),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(blocks * threads, threads),
+        [=](sycl::nd_item<1> item_ct1) {
             computeFockMatrix_UHF_kernel(item_ct1, d_density_matrix_a, d_density_matrix_b,
                                          d_core_hamiltonian_matrix, d_eri,
                                          d_fock_matrix_a, d_fock_matrix_b,
@@ -1246,14 +1250,14 @@ void computeFockMatrix_ROHF(
         //const int num_blocks = num_basis * (num_basis + 1) / 2;
 //        dpct::dim3 blocks(num_blocks);
 //        dpct::dim3 threads(WARP_SIZE, warpsPerBlock);
-        sycl::range<3> blocks(1, 1, num_blocks);
-        sycl::range<3> threads(1, warpsPerBlock, WARP_SIZE);
+        const sycl::range<1> blocks (static_cast<size_t>(num_blocks));
+        const sycl::range<1> threads(static_cast<size_t>(threadsPerBlock));
         /*
         DPCT1049:10: The work-group size passed to the SYCL kernel may exceed
         the limit. To get the device limit, query
         info::device::max_work_group_size. Adjust the work-group size if needed.
         */
-    sycl::queue& workq = GPUHandle::syclqueue();
+//    sycl::queue& workq = GPUHandle::syclqueue();
         workq.submit([&](sycl::handler& cgh){
 //      dpct::get_default_queue().submit([&](sycl::handler& cgh){
         sycl::local_accessor<real_t, 1> s_J_closed_ij(sycl::range<1>(1), cgh);
@@ -1261,8 +1265,8 @@ void computeFockMatrix_ROHF(
         sycl::local_accessor<real_t, 1> s_K_closed_ij(sycl::range<1>(1), cgh);
         sycl::local_accessor<real_t, 1> s_K_open_ij(sycl::range<1>(1), cgh);
         cgh.parallel_for(
-            sycl::nd_range<3>(blocks * threads, threads),
-            [=](sycl::nd_item<3> item_ct1) {
+            sycl::nd_range<1>(blocks * threads, threads),
+            [=](sycl::nd_item<1> item_ct1) {
                 computeFockMatrix_ROHF_kernel(item_ct1,
                     d_density_matrix_closed, d_density_matrix_open,
                     d_core_hamiltonian_matrix, d_eri, d_fock_matrix_closed,
@@ -1287,11 +1291,11 @@ void computeFockMatrix_ROHF(
         const size_t num_elements = num_basis * (num_basis+1) / 2;
         const size_t threads_per_block = 256;
         const size_t num_blocks = (num_elements + threads_per_block - 1) / threads_per_block;
+        const sycl::range<1> blocks (static_cast<size_t>(num_blocks));
+        const sycl::range<1> threads(static_cast<size_t>(threads_per_block));
         workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, threads_per_block),
-                              sycl::range<3>(1, 1, threads_per_block)),
-            [=](sycl::nd_item<3> item_ct1) {
+            sycl::nd_range<1>(blocks * threads, threads),
+            [=](sycl::nd_item<1> item_ct1) {
                 computeUnifiedFockMatrix_ROHF_kernel(item_ct1,
                     d_temp_F_MO_closed, d_temp_F_MO_open, ROH_parameters,
                     d_temp_R_MO, num_closed, num_open, num_basis);
@@ -2760,10 +2764,8 @@ void computeFockMatrix_RI_ROHF(
         const size_t threads_per_block = 256;
         const size_t num_blocks = (num_elements + threads_per_block - 1) / threads_per_block;
         workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, threads_per_block),
-                              sycl::range<3>(1, 1, threads_per_block)),
-            [=](sycl::nd_item<3> item_ct1) {
+            sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+            [=](sycl::nd_item<1> item_ct1) {
                 computeUnifiedFockMatrix_ROHF_kernel(item_ct1,
                     d_temp_F_MO_closed, d_temp_F_MO_open, ROH_parameters,
                     d_temp_R_MO, num_closed, num_open, num_basis);
@@ -3042,13 +3044,13 @@ void computeSchwarzUpperBounds(
 //    dpct::dim3 blocks(num_blocks,1,1);
 //    dpct::dim3 threads(threads_per_block,1,1);
     sycl::queue& workq = GPUHandle::syclqueue();
-    sycl::range<3> blocks(1, 1, num_blocks);
-    sycl::range<3> threads(1, 1, threads_per_block);
+    sycl::range<1> blocks(num_blocks);
+    sycl::range<1> threads(threads_per_block);
 
             workq.submit([&](sycl::handler& cgh){
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
-                launch_schwarz_kernel(
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                launch_schwarz_kernel( item_ct1,
                     s0, s1,
                     d_primitive_shells, d_cgto_normalization_factors,
                     shell_s0, shell_s1, head, num_bra, d_boys_grid,
@@ -3086,13 +3088,13 @@ void computeAuxiliarySchwarzUpperBounds(
         const size_t num_bra = shell_s0.count;
         const size_t num_blocks = (num_bra + threads_per_block - 1) / threads_per_block; // the number of blocks
         sycl::queue& workq = GPUHandle::syclqueue();
-        sycl::range<3> blocks(1, 1, num_blocks);
-        sycl::range<3> threads(1, 1, threads_per_block);
+        sycl::range<1> blocks(num_blocks);
+        sycl::range<1> threads(threads_per_block);
 
             workq.submit([&](sycl::handler& cgh){
-            cgh.parallel_for(sycl::nd_range<3>(blocks * threads, threads),
-                       [=](sycl::nd_item<3> item_ct1) {
-                launch_schwarz_aux_kernel(
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                launch_schwarz_aux_kernel( item_ct1,
                     s0, 
                     d_primitive_shells_aux, d_cgto_aux_normalization_factors,
                     shell_s0, head, num_bra, d_boys_grid, d_upper_bound_factors_aux);
