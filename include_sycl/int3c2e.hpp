@@ -865,7 +865,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -877,7 +877,8 @@ void calc_sds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+//        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -928,7 +929,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -940,7 +941,7 @@ void calc_sdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -992,7 +993,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1004,7 +1005,7 @@ void calc_sdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1056,7 +1057,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1068,7 +1069,7 @@ void calc_sdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1118,7 +1119,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1130,7 +1131,7 @@ void calc_pds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1181,7 +1182,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1193,7 +1194,7 @@ void calc_pdp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1245,7 +1246,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1257,7 +1258,7 @@ void calc_pdd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1309,7 +1310,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1321,7 +1322,7 @@ void calc_pdf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1372,7 +1373,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_dds_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1384,7 +1385,7 @@ void calc_dds_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1437,7 +1438,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddp_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1449,7 +1450,7 @@ void calc_ddp_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1502,7 +1503,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddd_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1514,7 +1515,7 @@ void calc_ddd_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1566,7 +1567,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddf_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1578,7 +1579,7 @@ void calc_ddf_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1792,7 +1793,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_sdg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1804,7 +1805,7 @@ void calc_sdg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1854,7 +1855,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_pdg_gpu(real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_pdg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1866,7 +1867,7 @@ void calc_pdg_gpu(real_t *g_result, const PrimitiveShell *g_pshell,
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -1917,7 +1918,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ddg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -1929,7 +1930,7 @@ void calc_ddg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2023,7 +2024,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ssg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2035,7 +2036,7 @@ void calc_ssg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2087,7 +2088,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_spg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2099,7 +2100,7 @@ void calc_spg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2149,7 +2150,7 @@ with your hardware vendor to find the total register size available and adjust
 the code, or use smaller sub-group size to avoid high register pressure.
 */
 inline
-void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
+void calc_ppg_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell,
                   const PrimitiveShell *g_pshell_aux,
                   const real_t *d_cgto_normalization_factors,
                   const real_t *d_auxiliary_cgto_normalization_factors,
@@ -2161,7 +2162,7 @@ void calc_ppg_gpu(sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveS
                   const double schwarz_screening_threshold,
                   int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        size_t idx = item_ct1.get_global_id(2);
+        size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_tasks){
                 const size_t2 abc = index1to2(idx, false, shell_s2.count);
@@ -2615,6 +2616,94 @@ int var3, const double* param3) {
 }
 
   
- } // namespace gansu::gpu
+
+    /*----------------------------------------------- int3c2e kernels for Direct-RI-RHF computation -----------------------------------------------*/
+    using direct_ri_w_kernel_t = void (*)(real_t*, real_t*, const PrimitiveShell* , const PrimitiveShell* , const real_t*, const real_t*, ShellTypeInfo, ShellTypeInfo, ShellTypeInfo, int64_t, int, const size_t2*, const double*, const double*, const double, int, int, const double*);
+    using direct_ri_c_J_kernel_t = void (*)(real_t*, const real_t*, const PrimitiveShell* , const PrimitiveShell* , const real_t*, const real_t*, ShellTypeInfo, ShellTypeInfo, ShellTypeInfo, int64_t, int, const size_t2*, const double*, const double*, const double, int, const double*);
+
+SYCL_EXTERNAL void compute_RI_Direct_c_kernel(real_t* d_c, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors,  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2,  int64_t num_tasks, int num_basis,  const size_t2* d_primitive_shell_pair_indices, const double* g_upper_bound_factors,  const double* g_auxiliary_upper_bound_factors,  const double schwarz_screening_threshold,  int num_auxiliary_basis,  const double* g_boys_grid);
+SYCL_EXTERNAL void compute_RI_Direct_J_kernel(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux,const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors,ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2,int64_t num_tasks, int num_basis,const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors,const double* g_auxiliary_upper_bound_factors,const double schwarz_screening_threshold,int num_auxiliary_basis,const double* g_boys_grid);
+SYCL_EXTERNAL void compute_RI_Direct_W_kernel(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors,  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2,  int64_t num_tasks, int num_basis,  const size_t2* d_primitive_shell_pair_indices, const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors,  const double schwarz_screening_threshold,  int num_auxiliary_basis, int iter, const double* g_boys_grid);
+    
+    /* (ss|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sss(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (ss|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ssp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (ss|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ssd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (ss|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ssf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sp|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sps(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sp|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_spp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sp|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_spd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sp|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_spf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sd|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sds(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sd|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sdp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sd|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sdd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (sd|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_sdf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pp|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_pps(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pp|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ppp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pp|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ppd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pp|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ppf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pd|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_pds(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pd|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_pdp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pd|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_pdd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (pd|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_pdf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (dd|s) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_dds(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (dd|p) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ddp(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (dd|d) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ddd(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    /* (dd|f) */ SYCL_EXTERNAL void compute_RI_Direct_W_kernel_ddf(real_t* d_W_diff, real_t* d_C_diff_vector, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, int iter,const double* g_boys_grid);
+    
+    /* (ss|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sss(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ssp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ssd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ssf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sps(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_spp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_spd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_spf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sds(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sdp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sdd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_sdf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_pps(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ppp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ppd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ppf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_pds(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_pdp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_pdd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_pdf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|s) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_dds(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|p) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ddp(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|d) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ddd(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|f) */ SYCL_EXTERNAL void compute_RI_Direct_c_kernel_ddf(real_t* d_W_diff, const real_t* d_density_matrix, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+
+    /* (ss|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sss(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ssp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ssd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (ss|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ssf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sps(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_spp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_spd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sp|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_spf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sds(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sdp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sdd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (sd|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_sdf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_pps(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ppp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ppd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pp|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ppf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_pds(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_pdp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_pdd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (pd|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_pdf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|s) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_dds(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|p) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ddp(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|d) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ddd(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+    /* (dd|f) */ SYCL_EXTERNAL void compute_RI_Direct_J_kernel_ddf(real_t* d_J, const real_t* d_t, const PrimitiveShell* g_pshell, const PrimitiveShell* g_pshell_aux, const real_t* d_cgto_normalization_factors, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, ShellTypeInfo shell_s2, int64_t num_tasks, int num_basis, const size_t2* d_primitive_shell_pair_indices,const double* g_upper_bound_factors, const double* g_auxiliary_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid);
+
+
+
+
+
+} // namespace gansu::gpu
   
   #endif

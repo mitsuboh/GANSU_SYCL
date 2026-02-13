@@ -615,15 +615,16 @@ calc_sg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_sg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_sg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
+//        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                       item_ct1.get_local_id(2);
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -668,15 +669,14 @@ calc_pg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_pg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_pg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -721,15 +721,14 @@ calc_dg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_dg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_dg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -774,15 +773,14 @@ calc_fg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_fg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_fg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -827,15 +825,14 @@ calc_gg_gpu exceeds 128 bytes and may cause high register pressure. Consult with
 your hardware vendor to find the total register size available and adjust the
 code, or use smaller sub-group size to avoid high register pressure.
 */
-inline void calc_gg_gpu(const sycl::nd_item<3>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
+inline void calc_gg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveShell *g_pshell_aux,
                  const real_t *d_auxiliary_cgto_normalization_factors,
                  ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
                  int num_shell_pairs, const double *g_upper_bound_factors,
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                       item_ct1.get_local_id(2);
+        uint64_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);

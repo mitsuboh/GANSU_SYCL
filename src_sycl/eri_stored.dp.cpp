@@ -79,15 +79,16 @@ double eri_mo_bruteforce(const double* __restrict__ eri_ao,
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////// Integral Transformation (Full stored AO ERI to MO ERI)
-void build_kron_C_C(
+void build_kron_C_C(const sycl::nd_item<1> item_ct1,
     const double* __restrict__ C, // [nao x nao], row-major
     int nao,
     double* __restrict__ D        // [N x N], N=nao^2, row-major
 ){
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     int N = nao * nao;
-    size_t idx = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    const size_t idx = item_ct1.get_global_linear_id();
+//    size_t idx = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                 item_ct1.get_local_id(2);
     size_t total = (size_t)N * (size_t)N;
     if(idx >= total) return;
 
@@ -154,11 +155,9 @@ void transform_ao_eri_to_mo_eri_full(const double *d_eri_ao, const double *d_C,
             require_fp64(q_ct1);
 
             q_ct1.parallel_for(
-                sycl::nd_range<3>(sycl::range<3>(1, 1, blocks) *
-                                      sycl::range<3>(1, 1, threads),
-                                  sycl::range<3>(1, 1, threads)),
-                [=](sycl::nd_item<3> item_ct1) {
-                    build_kron_C_C(d_C, nao, d_D);
+                sycl::nd_range<1>(blocks * threads, threads),
+                [=](sycl::nd_item<1> item_ct1) {
+                    build_kron_C_C(item_ct1, d_C, nao, d_D);
                 });
         }
     }
@@ -203,7 +202,7 @@ void transform_ao_eri_to_mo_eri_full(const double *d_eri_ao, const double *d_C,
 
 
 //// debug for MO ERI
-void check_moeri_kernel(
+void check_moeri_kernel(const sycl::nd_item<1> item_ct1,
     const double* __restrict__ eri_mo,
     const double* __restrict__ eri_ao,
     const double* __restrict__ C,
@@ -211,10 +210,8 @@ void check_moeri_kernel(
     const sycl::stream &stream_ct1)
 {
   // Flattened index over (p,q,r,s)
-  auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
   size_t total = (size_t)num_basis * num_basis * num_basis * num_basis;
-  size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-               item_ct1.get_local_id(2);
+  const size_t gid = item_ct1.get_global_linear_id();
 
   if(gid < total){
     size_t t = gid;
@@ -256,11 +253,9 @@ void check_moeri(const double* d_eri_mo,
             sycl::stream stream_ct1(64 * 1024, 80, cgh);
 
             cgh.parallel_for(
-                sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                      sycl::range<3>(1, 1, num_threads),
-                                  sycl::range<3>(1, 1, num_threads)),
-                [=](sycl::nd_item<3> item_ct1) {
-                    check_moeri_kernel(d_eri_mo, d_eri_ao, d_C, num_basis,
+                sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                [=](sycl::nd_item<1> item_ct1) {
+                    check_moeri_kernel(item_ct1, d_eri_mo, d_eri_ao, d_C, num_basis,
                                        stream_ct1);
                 });
         });
@@ -1379,7 +1374,7 @@ real_t T_ijab(const real_t* __restrict__ t_ia, const real_t* __restrict__ t_ijab
     return sum;
 }
 
-void compute_F_ae_kernel(
+void compute_F_ae_kernel(const sycl::nd_item<1> item_ct1,
                                     const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ t_ia,
                                     const real_t* __restrict__ t_ijab,
@@ -1388,10 +1383,11 @@ void compute_F_ae_kernel(
                                     const int num_spin_vir,
                                     real_t* __restrict__ F_ae)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+//    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1438,7 +1434,7 @@ void compute_F_ae_kernel(
     }
 }
 
-void compute_F_mi_kernel(
+void compute_F_mi_kernel(const sycl::nd_item<1> item_ct1,
                                     const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ t_ia,
                                     const real_t* __restrict__ t_ijab,
@@ -1447,10 +1443,8 @@ void compute_F_mi_kernel(
                                     const int num_spin_vir,
                                     real_t* __restrict__ F_mi)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)num_spin_occ * num_spin_occ;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1497,7 +1491,7 @@ void compute_F_mi_kernel(
     }
 }
 
-void compute_F_me_kernel(
+void compute_F_me_kernel(const sycl::nd_item<1> item_ct1,
                                     const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ t_ia,
                                     const real_t* __restrict__ t_ijab,
@@ -1506,10 +1500,8 @@ void compute_F_me_kernel(
                                     const int num_spin_vir,
                                     real_t* F_me)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1539,7 +1531,7 @@ void compute_F_me_kernel(
     }
 }
 
-void compute_W_mnij_kernel(
+void compute_W_mnij_kernel(const sycl::nd_item<1> item_ct1,
                                     const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ t_ia,
                                     const real_t* __restrict__ t_ijab,
@@ -1548,13 +1540,11 @@ void compute_W_mnij_kernel(
                                     const int num_spin_vir,
                                     real_t* __restrict__ W_mnij)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total =
         (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
         num_spin_occ; // 1d index is (i * num_spin_occ + j)  * num_spin_occ *
                       // num_spin_occ + k * num_spin_occ + n
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1604,20 +1594,18 @@ compute_W_abef_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_W_abef_kernel(
+void compute_W_abef_kernel(const sycl::nd_item<1> item_ct1,
                            const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
                            const real_t *__restrict__ t_ijab,
                            const int num_basis, const int num_spin_occ,
                            const int num_spin_vir, real_t *__restrict__ W_abef)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total =
         (size_t)num_spin_vir * num_spin_vir * num_spin_vir *
         num_spin_vir; // 1d index is (a * num_spin_vir + b_)  * num_spin_vir *
                       // num_spin_vir + e_ * num_spin_vir + f_
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1670,20 +1658,18 @@ compute_W_mbej_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_W_mbej_kernel(
+void compute_W_mbej_kernel(const sycl::nd_item<1> item_ct1,
                            const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
                            const real_t *__restrict__ t_ijab,
                            const int num_basis, const int num_spin_occ,
                            const int num_spin_vir, real_t *__restrict__ W_mbej)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total =
         (size_t)num_spin_occ * num_spin_vir * num_spin_vir *
         num_spin_occ; // 1d index is (m * num_spin_vir + b_)  * num_spin_vir *
                       // num_spin_occ + e_ * num_spin_occ + j
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1743,7 +1729,7 @@ compute_t_ia_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_t_ia_kernel(
+void compute_t_ia_kernel(const sycl::nd_item<1> item_ct1,
                          const real_t *__restrict__ d_eri_mo,
                          const real_t *__restrict__ d_eps,
                          const real_t *__restrict__ t_ia_old,
@@ -1754,10 +1740,8 @@ void compute_t_ia_kernel(
                          const int num_spin_occ, const int num_spin_vir,
                          real_t *__restrict__ t_ia_new)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -1862,7 +1846,7 @@ compute_t_ijab_kernel exceeds 128 bytes and may cause high register pressure.
 Consult with your hardware vendor to find the total register size available and
 adjust the code, or use smaller sub-group size to avoid high register pressure.
 */
-void compute_t_ijab_kernel(
+void compute_t_ijab_kernel(const sycl::nd_item<1> item_ct1,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
     const real_t *__restrict__ t_ia_old, const real_t *__restrict__ t_ijab_old,
     const real_t *__restrict__ F_ae, const real_t *__restrict__ F_mi,
@@ -1871,11 +1855,9 @@ void compute_t_ijab_kernel(
     const int num_basis, const int num_spin_occ, const int num_spin_vir,
     real_t *__restrict__ t_ijab_new)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total =
         (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2158,11 +2140,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_F_ae_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_F_ae_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                     num_spin_occ, num_spin_vir, F_ae);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2176,11 +2156,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_F_mi_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_F_mi_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                     num_spin_occ, num_spin_vir, F_mi);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2194,11 +2172,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_F_me_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_F_me_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                     num_spin_occ, num_spin_vir, F_me);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2212,11 +2188,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_W_mnij_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_W_mnij_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                       num_spin_occ, num_spin_vir, W_mnij);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2230,11 +2204,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_W_abef_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_W_abef_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                       num_spin_occ, num_spin_vir, W_abef);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2248,11 +2220,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_W_mbej_kernel(d_eri_mo, t_ia_old, t_ijab_old, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_W_mbej_kernel(item_ct1, d_eri_mo, t_ia_old, t_ijab_old, num_basis,
                                       num_spin_occ, num_spin_vir, W_mbej);
             });
         q_ct1.wait_and_throw(); // It is for PROFILE_ELAPSED_TIME
@@ -2270,11 +2240,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
             require_fp64(q_ct1);
 
             q_ct1.parallel_for(
-                sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                      sycl::range<3>(1, 1, num_threads),
-                                  sycl::range<3>(1, 1, num_threads)),
-                [=](sycl::nd_item<3> item_ct1) {
-                    compute_t_ia_kernel(d_eri_mo, d_eps, t_ia_old, t_ijab_old,
+                sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                [=](sycl::nd_item<1> item_ct1) {
+                    compute_t_ia_kernel(item_ct1, d_eri_mo, d_eps, t_ia_old, t_ijab_old,
                                         F_ae, F_mi, F_me, num_basis,
                                         num_spin_occ, num_spin_vir, t_ia_new);
                 });
@@ -2290,11 +2258,9 @@ void compute_t_amplitude(const real_t* __restrict__ d_eri_mo,
         const int num_threads = 256;
         const int num_blocks = (total + num_threads - 1) / num_threads;
         q_ct1.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                compute_t_ijab_kernel(d_eri_mo, d_eps, t_ia_old, t_ijab_old,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_t_ijab_kernel(item_ct1, d_eri_mo, d_eps, t_ia_old, t_ijab_old,
                                       F_ae, F_mi, F_me, W_mnij, W_abef, W_mbej,
                                       num_basis, num_spin_occ, num_spin_vir,
                                       t_ijab_new);
@@ -2463,17 +2429,15 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
 }
 
 
-void update_t_amplitude_damping_kernel(
+void update_t_amplitude_damping_kernel(sycl::nd_item<1> item_ct1,
                                                 const real_t* __restrict__ t_new,
                                                 real_t* __restrict__ t_old,
                                                 const int dim1,
                                                 const int dim2,
                                                 const real_t damping_factor)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total = (size_t)dim1 * dim2;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = item_ct1.get_global_linear_id();
 
     if(gid < total){
         t_old[gid] = (1.0 - damping_factor) * t_old[gid] + damping_factor * t_new[gid];
@@ -2493,11 +2457,9 @@ void update_t_amplitude_damping(const real_t* t_ia_new, const real_t* t_ijab_new
     const size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
     const int num_threads = 256;
     const int num_blocks_ia = (total_ia + num_threads - 1) / num_threads;
-    q_ct1.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks_ia) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           update_t_amplitude_damping_kernel(
+    q_ct1.parallel_for(sycl::nd_range<1>(num_blocks_ia * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           update_t_amplitude_damping_kernel(item_ct1,
                                t_ia_new, t_ia_old, num_spin_occ, num_spin_vir,
                                damping_factor);
                        });
@@ -2510,12 +2472,9 @@ void update_t_amplitude_damping(const real_t* t_ia_new, const real_t* t_ijab_new
         auto num_spin_occ_num_spin_occ_ct2 = num_spin_occ * num_spin_occ;
         auto num_spin_vir_num_spin_vir_ct3 = num_spin_vir * num_spin_vir;
 
-        cgh.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks_ijab) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                update_t_amplitude_damping_kernel(
+        cgh.parallel_for(sycl::nd_range<1>(num_blocks_ijab * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                update_t_amplitude_damping_kernel(item_ct1,
                     t_ijab_new, t_ijab_old, num_spin_occ_num_spin_occ_ct2,
                     num_spin_vir_num_spin_vir_ct3, damping_factor);
             });
@@ -2772,7 +2731,7 @@ void deallocate_ccsd_amplitudes(real_t* __restrict__ t_ia_new,
                                       // they are in the same buffer
 }
 
-void initialize_ccsd_amplitudes_kernel(
+void initialize_ccsd_amplitudes_kernel(sycl::nd_item<1> item_ct1,
                                     const real_t* __restrict__ d_eri_mo,
                                     const real_t* __restrict__ d_eps,
                                     const int num_basis,
@@ -2780,11 +2739,9 @@ void initialize_ccsd_amplitudes_kernel(
                                     const int num_spin_vir,
                                     real_t* __restrict__ t_ijab)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
     size_t total =
         (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                 item_ct1.get_local_id(2);
+    size_t gid = item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2851,11 +2808,9 @@ void intialize_ccsd_amplitudes(const real_t* __restrict__ d_eri_mo,
     {
 
         workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                initialize_ccsd_amplitudes_kernel(d_eri_mo, d_eps, num_basis,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                initialize_ccsd_amplitudes_kernel(item_ct1, d_eri_mo, d_eps, num_basis,
                                                   num_spin_occ, num_spin_vir,
                                                   t_ijab);
             });

@@ -220,13 +220,14 @@ inline void transposeMatrixInPlace_kernel(real_t* d_matrix, int size,
  * @param accumulated If true, the result is accumulated to the output matrix.
  */
 //SYCL_EXTERNAL void weighted_sum_matrices_kernel(double *d_J, const double *d_B, const double *d_W, const int M, const int N, const bool accumulated = false);
-inline void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
+inline void weighted_sum_matrices_kernel(sycl::nd_item<1> item_ct1, double *d_J, const double *d_B,
                                                 const double *d_W, const int M,
                                                 const int N,
                                                 const bool accumulated) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_local_id(2) +
-                item_ct1.get_group(2) * item_ct1.get_local_range(2);
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t id = item_ct1.get_global_linear_id();
+//    size_t id = item_ct1.get_local_id(2) +
+//                item_ct1.get_group(2) * item_ct1.get_local_range(2);
     if (id >= M * M) return;
 
     double sum = 0.0;
@@ -251,12 +252,10 @@ inline void weighted_sum_matrices_kernel(double *d_J, const double *d_B,
  * @param accumulated If true, the result is accumulated to the output matrix.
  */
 //SYCL_EXTERNAL void sum_matrices_kernel(double *d_K, const double *d_B, const int M, const int N, const bool accumulated = false);
-inline void sum_matrices_kernel(double *d_K, const double *d_B,
+inline void sum_matrices_kernel(sycl::nd_item<1> item_ct1, double *d_K, const double *d_B,
                                        const int M, const int N,
                                        const bool accumulated) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_local_id(2) +
-                item_ct1.get_group(2) * item_ct1.get_local_range(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= M * M) return;
 
     double sum = 0.0;
@@ -516,12 +515,11 @@ inline void computeUnifiedFockMatrix_ROHF_kernel(sycl::nd_item<1> item_ct1,
  * @param c_x Constant c_x
  */
 //SYCL_EXTERNAL void computeInitialFockMatrix_GWH_kernel( const double *d_core_hamiltonian_matrix, const double *d_overlap_matrix, double *d_fock_matrix, const int num_basis, const double c_x);
-inline void computeInitialFockMatrix_GWH_kernel(sycl::nd_item<3> item_ct1,
+inline void computeInitialFockMatrix_GWH_kernel(sycl::nd_item<1> item_ct1,
     const double *d_core_hamiltonian_matrix, const double *d_overlap_matrix,
     double *d_fock_matrix, const int num_basis, const double c_x) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                item_ct1.get_local_id(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     size_t p = id / num_basis;
@@ -531,12 +529,11 @@ inline void computeInitialFockMatrix_GWH_kernel(sycl::nd_item<3> item_ct1,
 }
 
 //SYCL_EXTERNAL void computeRIIntermediateMatrixB_kernel( const double *d_three_center_eri, const double *d_matrix_L, double *d_matrix_B, const int num_basis, const int num_auxiliary_basis);
-inline void computeRIIntermediateMatrixB_kernel(sycl::nd_item<3> item_ct1,
+inline void computeRIIntermediateMatrixB_kernel(sycl::nd_item<1> item_ct1,
     const double *d_three_center_eri, const double *d_matrix_L,
     double *d_matrix_B, const int num_basis, const int num_auxiliary_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_auxiliary_basis * num_basis * num_basis) return;
 
     const size_t p = id / (num_basis*num_basis);
@@ -552,38 +549,35 @@ inline void computeRIIntermediateMatrixB_kernel(sycl::nd_item<3> item_ct1,
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_RI_RHF_kernel( const double *d_core_hamiltonian_matrix, const double *d_J_matrix, const double *d_K_matrix, double *d_Fock_matrix, const int num_basis);
-inline void computeFockMatrix_RI_RHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeFockMatrix_RI_RHF_kernel(sycl::nd_item<1> item_ct1,
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix, double *d_Fock_matrix, const int num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_local_id(2) +
-                item_ct1.get_group(2) * item_ct1.get_local_range(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     d_Fock_matrix[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - 0.5*d_K_matrix[id];
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_RI_UHF_kernel( const double *d_core_hamiltonian_matrix, const double *d_J_matrix, const double *d_K_matrix, double *d_Fock_matrix, const int num_basis);
-inline void computeFockMatrix_RI_UHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeFockMatrix_RI_UHF_kernel(sycl::nd_item<1> item_ct1,
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix, double *d_Fock_matrix, const int num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_local_id(2) +
-                item_ct1.get_group(2) * item_ct1.get_local_range(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     d_Fock_matrix[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - d_K_matrix[id];
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_RI_ROHF_kernel( const double *d_core_hamiltonian_matrix, const double *d_J_matrix, const double *d_K_matrix_closed, const double *d_K_matrix_open, double *d_Fock_matrix_closed, double *d_Fock_matrix_open, const int num_basis);
-inline void computeFockMatrix_RI_ROHF_kernel(sycl::nd_item<3> item_ct1,
+inline void computeFockMatrix_RI_ROHF_kernel(sycl::nd_item<1> item_ct1,
     const double *d_core_hamiltonian_matrix, const double *d_J_matrix,
     const double *d_K_matrix_closed, const double *d_K_matrix_open,
     double *d_Fock_matrix_closed, double *d_Fock_matrix_open,
     const int num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_local_id(2) +
-                item_ct1.get_group(2) * item_ct1.get_local_range(2);
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     d_Fock_matrix_closed[id] = d_core_hamiltonian_matrix[id] + d_J_matrix[id] - 0.5*d_K_matrix_closed[id];
@@ -597,10 +591,9 @@ inline void computeFockMatrix_RI_ROHF_kernel(sycl::nd_item<3> item_ct1,
  * @param N The size of the matrix (number of rows/columns).
  */
 //SYCL_EXTERNAL void setZeroUpperTriangle(double *d_A, const int N);
-inline void setZeroUpperTriangle(double *d_A, const int N) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                      item_ct1.get_local_id(2);
+inline void setZeroUpperTriangle(sycl::nd_item<1> item_ct1, double *d_A, const int N) {
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t id = item_ct1.get_global_linear_id();
     const size_t row = id / N;
     const size_t col = id % N;
     if (row < N && col < N && col > row) {
@@ -617,11 +610,12 @@ inline void setZeroUpperTriangle(double *d_A, const int N) {
  * @param N Size of the matrices (N x N)
  */
 //SYCL_EXTERNAL void compute_diagonal_of_product(const double *A, const double *B, double *diag, const int N);
-inline void compute_diagonal_of_product(const double *A, const double *B,
+inline void compute_diagonal_of_product(sycl::nd_item<1> item_ct1, const double *A, const double *B,
                                                double *diag, const int N) {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    int i = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-            item_ct1.get_local_id(2);
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t i = item_ct1.get_global_linear_id();
+//    int i = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//            item_ct1.get_local_id(2);
     if (i < N) {
         double sum = 0.0;
         for (int k = 0; k < N; ++k) {
@@ -641,14 +635,12 @@ inline void compute_diagonal_of_product(const double *A, const double *B,
  * @param N Size of the matrices (N x N)
  */
 //SYCL_EXTERNAL void compute_diagonal_of_product_sum(const double *A, const double *B, const double *C, double *diag, const int N);
-inline void compute_diagonal_of_product_sum(const double *A,
+inline void compute_diagonal_of_product_sum(sycl::nd_item<1> item_ct1, const double *A,
                                                    const double *B,
                                                    const double *C,
                                                    double *diag, const int N)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    int i = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-            item_ct1.get_local_id(2);
+    const size_t i = item_ct1.get_global_linear_id();
     if (i >= N) return;
 
     double sum = 0.0;

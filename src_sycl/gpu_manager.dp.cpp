@@ -1798,10 +1798,8 @@ catch (sycl::exception const &exc) {
     Adjust the work-group size if needed.
     */
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+        [=](sycl::nd_item<1> item_ct1) {
             computeInitialFockMatrix_GWH_kernel(item_ct1,
                 d_core_hamiltonian_matrix, d_overlap_matrix, d_temp_FockMatrix,
                 num_basis, cx);
@@ -1922,11 +1920,9 @@ try{
     const int num_threads = 256;
     const int num_blocks = (N * N + num_threads - 1) / num_threads;
 
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           setZeroUpperTriangle(d_A, N);
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           setZeroUpperTriangle(item_ct1, d_A, N);
                        }).wait();
 
     // Cleanup
@@ -2214,10 +2210,8 @@ void computeIntermediateMatrixB(
     const int num_blocks = (num_auxiliary_basis * num_basis * num_basis + num_threads - 1) / num_threads;
     sycl::queue& workq = GPUHandle::syclqueue();
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, num_threads),
-                          sycl::range<3>(1, 1, num_threads)),
-        [=](sycl::nd_item<3> item_ct1) {
+        sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+        [=](sycl::nd_item<1> item_ct1) {
             computeRIIntermediateMatrixB_kernel(item_ct1,
                 d_three_center_eri, d_two_center_eri, d_intermediate_matrix_B,
                 num_basis, num_auxiliary_basis);
@@ -2251,11 +2245,9 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
 //    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
 
     // J = sum(W[i] * B[i])
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           weighted_sum_matrices_kernel(
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           weighted_sum_matrices_kernel(item_ct1, 
                                d_J, d_intermediate_matrix_B, d_W, num_basis,
                                num_auxiliary_basis, false);
                        });
@@ -2290,21 +2282,17 @@ void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
     );
 
     // K = sum(V^p)
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           sum_matrices_kernel(d_K, d_V, num_basis,
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           sum_matrices_kernel(item_ct1, d_K, d_V, num_basis,
                                                num_auxiliary_basis, false);
                        });
 
     ////////////////////////////////// compute Fock matrix //////////////////////////////////
 
     // F = H + J - (1/2)*K
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                            computeFockMatrix_RI_RHF_kernel(item_ct1,
                                d_core_hamiltonian_matrix, d_J, d_K,
                                d_fock_matrix, num_basis);
@@ -2378,11 +2366,9 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
 //    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
 
     // J = sum(W[i] * B[i])
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           weighted_sum_matrices_kernel(
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           weighted_sum_matrices_kernel(item_ct1,
                                d_J, d_intermediate_matrix_B, d_W, num_basis,
                                num_auxiliary_basis, false);
                        });
@@ -2435,11 +2421,9 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     }
 
     // Ka = sum(V^p)
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           sum_matrices_kernel(d_Ka, d_V, num_basis,
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           sum_matrices_kernel(item_ct1, d_Ka, d_V, num_basis,
                                                num_auxiliary_basis, false);
                        });
 
@@ -2467,11 +2451,9 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     }
 
     // Kb = sum(V^p)
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
-                           sum_matrices_kernel(d_Kb, d_V, num_basis,
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
+                           sum_matrices_kernel(item_ct1, d_Kb, d_V, num_basis,
                                                num_auxiliary_basis, false);
                        });
 
@@ -2483,18 +2465,14 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
 
     // F_a = H + J - K_a
     // F_b = H + J - K_b
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                            computeFockMatrix_RI_UHF_kernel(item_ct1, 
                                d_core_hamiltonian_matrix, d_J, d_Ka,
                                d_fock_matrix_a, num_basis);
                        });
-    workq.parallel_for(sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                             sycl::range<3>(1, 1, num_threads),
-                                         sycl::range<3>(1, 1, num_threads)),
-                       [=](sycl::nd_item<3> item_ct1) {
+    workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+                       [=](sycl::nd_item<1> item_ct1) {
                            computeFockMatrix_RI_UHF_kernel(item_ct1,
                                d_core_hamiltonian_matrix, d_J, d_Kb,
                                d_fock_matrix_b, num_basis);
@@ -2621,14 +2599,15 @@ void computeFockMatrix_RI_ROHF(
 
         // J = sum(W[i] * B[i])
         workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                weighted_sum_matrices_kernel(d_J, d_intermediate_matrix_B, d_W,
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                weighted_sum_matrices_kernel(item_ct1, d_J, d_intermediate_matrix_B, d_W,
                                              num_basis, num_auxiliary_basis,
                                              false);
             });
+
+
+
 
         // free the memory
         sycl::free(d_W, workq);
@@ -2677,12 +2656,9 @@ void computeFockMatrix_RI_ROHF(
         }
 
         // Kclosed = sum(V^p)
-        workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                sum_matrices_kernel(d_Kclosed, d_V, num_basis,
+        workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                sum_matrices_kernel(item_ct1, d_Kclosed, d_V, num_basis,
                                     num_auxiliary_basis, false);
             });
 
@@ -2713,12 +2689,9 @@ void computeFockMatrix_RI_ROHF(
         }
 
         // Kclosed = sum(V^p)
-        workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
-                sum_matrices_kernel(d_Kopen, d_V, num_basis,
+        workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                sum_matrices_kernel(item_ct1, d_Kopen, d_V, num_basis,
                                     num_auxiliary_basis, false);
             });
 
@@ -2730,11 +2703,8 @@ void computeFockMatrix_RI_ROHF(
 
         // Fclosed = H + J - 0.5*Kclosed
         // Fopen = 0.5*(H + J - Kopen)
-        workq.parallel_for(
-            sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                                  sycl::range<3>(1, 1, num_threads),
-                              sycl::range<3>(1, 1, num_threads)),
-            [=](sycl::nd_item<3> item_ct1) {
+        workq.parallel_for(sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
                 computeFockMatrix_RI_ROHF_kernel(item_ct1,
                     d_core_hamiltonian_matrix, d_J, d_Kclosed, d_Kopen,
                     d_fock_matrix_closed, d_fock_matrix_open, num_basis);
@@ -3417,11 +3387,9 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
     const size_t threads_per_block = 256;
     const size_t num_blocks = (num_basis + threads_per_block - 1) / threads_per_block;
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
-            compute_diagonal_of_product(d_density_matrix, overlap_matrix,
+            sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+            [=](sycl::nd_item<1> item_ct1) {
+            compute_diagonal_of_product(item_ct1, d_density_matrix, overlap_matrix,
                                         d_mulliken_population, num_basis);
         });
 
@@ -3463,11 +3431,9 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
     const size_t threads_per_block = 256;
     const size_t num_blocks = (num_basis + threads_per_block - 1) / threads_per_block;
     workq.parallel_for(
-        sycl::nd_range<3>(sycl::range<3>(1, 1, num_blocks) *
-                              sycl::range<3>(1, 1, threads_per_block),
-                          sycl::range<3>(1, 1, threads_per_block)),
-        [=](sycl::nd_item<3> item_ct1) {
-            compute_diagonal_of_product_sum(d_density_matrix_a,
+        sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+        [=](sycl::nd_item<1> item_ct1) {
+            compute_diagonal_of_product_sum(item_ct1, d_density_matrix_a,
                                             d_density_matrix_b, overlap_matrix,
                                             d_mulliken_population, num_basis);
         });
