@@ -18,6 +18,7 @@
 #include <sycl/sycl.hpp>
 #include "eri.hpp"
 #include "utils_cuda.hpp"
+#include "device_host_memory.hpp"
 
 namespace gansu{
 
@@ -185,8 +186,9 @@ void ERI_RI::precomputation() {
 
     const size_t num_primitive_shell_pairs = primitive_shells.size() * (primitive_shells.size() + 1) / 2;
     size_t2* d_primitive_shell_pair_indices;
-    d_primitive_shell_pair_indices =
-        sycl::malloc_device<size_t2>(num_primitive_shell_pairs, q_ct1);
+//    d_primitive_shell_pair_indices =
+//        sycl::malloc_device<size_t2>(num_primitive_shell_pairs, q_ct1);
+    d_primitive_shell_pair_indices = tracked_syclMalloc<size_t2>(num_primitive_shell_pairs);
 
     int pair_idx = 0;
     const int threads_per_block = 1024;
@@ -295,7 +297,7 @@ void ERI_RI::precomputation() {
         verbose
         );
 
-    sycl::free(d_primitive_shell_pair_indices, q_ct1);
+    tracked_syclFree(d_primitive_shell_pair_indices);
     /*
     if(1){
         // copy the intermediate matrix B to the host memory
@@ -326,23 +328,24 @@ ERI_Direct::ERI_Direct(const HF& hf):
     primitive_shell_pair_indices(hf.get_num_primitive_shell_pairs()),
     num_fock_replicas_(8)
 {
-    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+//    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     // for distributed atomicAdd operations
     //cudaMalloc(&fock_matrix_replicas_, sizeof(real_t) * num_basis_ * num_basis_ * num_fock_replicas_);
-    fock_matrix_replicas_ =
-        sycl::malloc_device<real_t>(num_basis_ * num_basis_ * num_fock_replicas_, q_ct1);
+//    fock_matrix_replicas_ =
+//        sycl::malloc_device<real_t>(num_basis_ * num_basis_ * num_fock_replicas_, q_ct1);
+    fock_matrix_replicas_ = tracked_syclMalloc<real_t>(num_basis_ * num_basis_ * num_fock_replicas_);
     //cudaMemset(fock_matrix_replicas_, 0.0, sizeof(real_t) * num_basis_ * num_basis_ * num_fock_replicas_);
 }
 
 ERI_Direct::~ERI_Direct() {
-    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
-    for (auto p : global_counters_) { if (p) sycl::free(p, q_ct1); }
-    for (auto p : min_skipped_columns_) { if (p) sycl::free(p, q_ct1); }
+//    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    for (auto p : global_counters_) { if (p) tracked_syclFree(p); }
+    for (auto p : min_skipped_columns_) { if (p) tracked_syclFree(p); }
     global_counters_.clear();
     min_skipped_columns_.clear();
 
     if (fock_matrix_replicas_) {
-        sycl::free(fock_matrix_replicas_, q_ct1);
+        tracked_syclFree(fock_matrix_replicas_);
         fock_matrix_replicas_ = nullptr;
     }
 }
@@ -385,8 +388,10 @@ void ERI_Direct::precomputation() {
         num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
 //        cudaMalloc(&global_counters_[idx], sizeof(int) * num_bra_groups);
 //        cudaMalloc(&min_skipped_columns_[idx], sizeof(int) * num_bra_groups);
-        global_counters_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
-        min_skipped_columns_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
+//        global_counters_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
+//        min_skipped_columns_[idx] = sycl::malloc_device<int>(num_bra_groups, q_ct1);
+        global_counters_[idx] = tracked_syclMalloc<int>(num_bra_groups);
+        min_skipped_columns_[idx] = tracked_syclMalloc<int>(num_bra_groups);
     }
 
     gpu::computeSchwarzUpperBounds(
@@ -542,7 +547,7 @@ void ERI_RI_Direct::precomputation() {
     const std::vector<ShellPairTypeInfo>& shell_pair_type_infos = hf_.get_shell_pair_type_infos();
     const real_t schwarz_screening_threshold = hf_.get_schwarz_screening_threshold();
 
-    const int threads_per_block = 1024;
+//    const int threads_per_block = 1024;
 
     // K 計算用のソートに使用
     const size_t num_primitive_shells = primitive_shells.size();
@@ -557,11 +562,65 @@ void ERI_RI_Direct::precomputation() {
         verbose
     );
 
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    size_t max_wg = q_ct1.get_device().get_info<sycl::info::device::max_work_group_size>();
+    size_t threads_per_block = std::min<size_t>(1024, max_wg);
 
     // shell-pair sort
     int pair_idx = 0;
     for(int s0 = 0; s0 < shell_type_infos.size(); s0++){
         for(int s1 = s0; s1 < shell_type_infos.size(); s1++){
+
+            const int pair_idx_local = pair_idx;
+            const int count = shell_pair_type_infos[pair_idx_local].count;
+            if (count == 0) {
+                pair_idx++;
+                continue;
+            }
+
+            const int start_index = shell_pair_type_infos[pair_idx_local].start_index;
+            const size_t num_blocks = ((count + threads_per_block - 1) / threads_per_block);
+
+            const bool same_shell = (s0 == s1);
+            const int s1_count = shell_type_infos[s1].count;
+            const int s0_start = shell_type_infos[s0].start_index;
+            const int s1_start = shell_type_infos[s1].start_index;
+
+            size_t2* d_pairs = primitive_shell_pair_indices.device_ptr() + start_index;
+
+            q_ct1.submit([&](sycl::handler& cgh) {
+                cgh.parallel_for(
+                    sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                    [=](sycl::nd_item<1> item) {
+                        generatePrimitiveShellPairIndices(
+                            item,
+                            d_pairs,
+                            count,
+                            same_shell,
+                            s1_count,
+                            true,
+                            s0_start,
+                            s1_start
+                        );
+                    }
+                );
+            });
+
+            real_t* keys_begin = schwarz_upper_bound_factors.device_ptr() + start_index;
+            real_t* keys_end = keys_begin + count;
+
+            size_t2* values_begin = primitive_shell_pair_indices.device_ptr() + start_index;
+
+            oneapi::dpl::sort_by_key(
+                oneapi::dpl::execution::make_device_policy(q_ct1),
+                keys_begin,
+                keys_end,
+                values_begin,
+                std::greater<real_t>()
+            );
+
+/*
+
             const int num_blocks = (shell_pair_type_infos[pair_idx].count + threads_per_block - 1) / threads_per_block; // the number of blocks
             generatePrimitiveShellPairIndices<<<num_blocks, threads_per_block>>>(&primitive_shell_pair_indices.device_ptr()[shell_pair_type_infos[pair_idx].start_index], shell_pair_type_infos[pair_idx].count, s0 == s1, shell_type_infos[s1].count, true, shell_type_infos[s0].start_index, shell_type_infos[s1].start_index);
 
@@ -570,11 +629,11 @@ void ERI_RI_Direct::precomputation() {
             thrust::device_ptr<size_t2> values_begin(&primitive_shell_pair_indices.device_ptr()[shell_pair_type_infos[pair_idx].start_index]);
 
             thrust::sort_by_key(keys_begin, keys_end, values_begin, thrust::greater<real_t>());
-
+*/
             pair_idx++;
         }
     }
-    cudaDeviceSynchronize();
+    q_ct1.wait();
 
     
     
@@ -588,6 +647,27 @@ void ERI_RI_Direct::precomputation() {
         verbose
     );
 
+    for (const auto& s : auxiliary_shell_type_infos_) {
+
+        const int count = s.count;
+        if (count == 0) continue;
+
+        real_t* keys_begin = auxiliary_schwarz_upper_bound_factors.device_ptr() + s.start_index;
+        real_t* keys_end = keys_begin + count;
+
+        PrimitiveShell* values_begin = auxiliary_primitive_shells_.device_ptr() + s.start_index;
+
+        oneapi::dpl::sort_by_key(
+           oneapi::dpl::execution::make_device_policy(q_ct1),
+            keys_begin,
+            keys_end,
+            values_begin,
+            std::greater<real_t>()
+        );
+    }
+
+    q_ct1.wait();
+/*
     for(const auto& s : auxiliary_shell_type_infos_){
         thrust::device_ptr<real_t> keys_begin(&auxiliary_schwarz_upper_bound_factors.device_ptr()[s.start_index]);  
         thrust::device_ptr<real_t> keys_end(&auxiliary_schwarz_upper_bound_factors.device_ptr()[s.start_index] + s.count);
@@ -595,8 +675,7 @@ void ERI_RI_Direct::precomputation() {
 
         thrust::sort_by_key(keys_begin, keys_end, values_begin, thrust::greater<real_t>());
     }
-
-
+*/
 
     gpu::computeTwoCenterERIs(
         auxiliary_shell_type_infos_, 

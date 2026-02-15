@@ -22,6 +22,7 @@
 #include "int2c2e.hpp"
 #include "int3c2e.hpp"
 #include "int2e_direct.hpp"
+#include "device_host_memory.hpp" // For tracked_gansu::tracked_syclMalloc/tracked_syclFree
 
 #include <vector>    // std::vector
 #include <tuple>     // std::tuple
@@ -86,7 +87,7 @@ catch (std::exception const& e) {
 
     // workspace allocation
 try {
-    d_workspace = sycl::malloc_device<real_t>(numElementsOnDevice, workq);
+    d_workspace = tracked_syclMalloc<real_t>(numElementsOnDevice);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -98,7 +99,7 @@ catch (sycl::exception const& e) {
     // temporary matrix allocation for d_matrix since the eigenvectors will be stored in the same memory of d_matrix
     real_t * d_temp_matrix;
 try {
-     d_temp_matrix = sycl::malloc_device<real_t>(static_cast<size_t>(size) * size, workq);
+     d_temp_matrix = tracked_syclMalloc<real_t>(static_cast<size_t>(size) * size);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -162,8 +163,8 @@ catch (sycl::exception const& e) {
 //    q_ct1.memcpy(&h_info, d_info, sizeof(int)).wait();
 
     // free the temporary memory
-    sycl::free(d_temp_matrix, workq);
-    sycl::free(d_workspace, workq);
+    tracked_syclFree(d_temp_matrix);
+    tracked_syclFree(d_workspace);
 //    sycl::free(h_workspace, syclsolverHandle);
 //    sycl::free(d_info, syclsolverHandle);
 
@@ -330,7 +331,7 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
     sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t result;
-    real_t * d_result = sycl::malloc_device<real_t>(1, workq);
+    real_t * d_result = tracked_syclMalloc<real_t>(1);
     oneapi::mkl::blas::column_major::dot(
         workq,
         size,
@@ -339,7 +340,7 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
         d_result
     );
     workq.memcpy(&result, d_result, sizeof(real_t)).wait();
-    sycl::free(d_result, workq);
+    tracked_syclFree(d_result);
 /*
     cublasDdot(
         cublasHandle,
@@ -524,7 +525,7 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
     sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t zero = 0;
-    real_t* d_trace = sycl::malloc_device<real_t>(1, workq);
+    real_t* d_trace = tracked_syclMalloc<real_t>(1);
     workq.memset(d_trace, 0, sizeof(real_t)).wait();
 
     real_t h_trace = 0.0;
@@ -539,7 +540,7 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
     }).wait();
 
     workq.memcpy(&h_trace, d_trace, sizeof(real_t)).wait();
-    sycl::free(d_trace, workq);
+    tracked_syclFree(d_trace);
 
     return h_trace;
 }
@@ -895,7 +896,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     real_t* d_tempEigenvalues = nullptr; // if d_orbital_energies is nullptr, the eigenvalues are stored in d_tempEigenvalues
 
     try {
-        d_tempMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -905,7 +906,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     }
 
     try {
-        d_tempSymFockMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_tempSymFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -915,7 +916,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     }
 
     try {
-        d_tempEigenvectors = sycl::malloc_device<real_t>( num_basis * num_basis, workq);
+        d_tempEigenvectors = tracked_syclMalloc<real_t>( num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -926,7 +927,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
 
     if (d_orbital_energies == nullptr){
         try {
-            d_tempEigenvalues = sycl::malloc_device<real_t>(num_basis, workq);
+            d_tempEigenvalues = tracked_syclMalloc<real_t>(num_basis);
         }
         catch (sycl::exception const& e) {
             std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -965,12 +966,12 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     );
 
     // free the temporary memory
-    sycl::free(d_tempMatrix, workq);
-    sycl::free(d_tempSymFockMatrix, workq);
-    sycl::free(d_tempEigenvectors, workq);
+    tracked_syclFree(d_tempMatrix);
+    tracked_syclFree(d_tempSymFockMatrix);
+    tracked_syclFree(d_tempEigenvectors);
 
     if (d_orbital_energies == nullptr){
-            sycl::free(d_tempEigenvalues, workq);
+            tracked_syclFree(d_tempEigenvectors);
     }
 }
 catch (sycl::exception const &exc) {
@@ -1190,7 +1191,7 @@ void computeFockMatrix_ROHF(
     real_t* d_temp_matrix2 = nullptr;
 
     try {
-        d_temp_F_MO_closed = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1200,7 +1201,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_F_MO_open = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1210,7 +1211,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_R_MO = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1220,7 +1221,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_matrix1 = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1230,7 +1231,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_matrix2 = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1314,11 +1315,11 @@ void computeFockMatrix_ROHF(
     }
 
     // free the temporary memory
-    sycl::free(d_temp_F_MO_closed, workq);
-    sycl::free(d_temp_F_MO_open, workq);
-    sycl::free(d_temp_R_MO, workq);
-    sycl::free(d_temp_matrix1, workq);
-    sycl::free(d_temp_matrix2, workq);
+    tracked_syclFree(d_temp_F_MO_closed);
+    tracked_syclFree(d_temp_F_MO_open);
+    tracked_syclFree(d_temp_R_MO);
+    tracked_syclFree(d_temp_matrix1);
+    tracked_syclFree(d_temp_matrix2);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1417,9 +1418,9 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
     real_t* d_tempDiffDensityMatrix = nullptr;
     real_t* d_tempMatrix = nullptr;
 
-    d_tempDiffFockMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
-    d_tempDiffDensityMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
-    d_tempMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+    d_tempDiffFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    d_tempDiffDensityMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
 
     // calculate the difference between the Fock matrices
     // \f$ F_{\mathrm{diff}} = F_{\mathrm{new}} - F_{\mathrm{old}}  \f$
@@ -1453,9 +1454,9 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
     }
 
     // free the temporary memory
-    sycl::free(d_tempDiffFockMatrix, workq);
-    sycl::free(d_tempDiffDensityMatrix, workq);
-    sycl::free(d_tempMatrix, workq);
+    tracked_syclFree(d_tempDiffFockMatrix);
+    tracked_syclFree(d_tempDiffDensityMatrix);
+    tracked_syclFree(d_tempMatrix);
 
     return alpha;
 }
@@ -1495,7 +1496,7 @@ void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha,
     real_t* d_tempMatrix;
 
 try {
-    d_tempMatrix = sycl::malloc_device<real_t>( num_basis * num_basis, workq);
+    d_tempMatrix = tracked_syclMalloc<real_t>( num_basis * num_basis);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1509,7 +1510,7 @@ catch (sycl::exception const& e) {
     workq.memcpy(d_matrix_old, d_tempMatrix, num_basis * num_basis * sizeof(real_t));
     workq.memcpy(d_matrix_new, d_tempMatrix, num_basis * num_basis * sizeof(real_t)).wait();
 
-    sycl::free(d_tempMatrix, workq);
+    tracked_syclFree(d_tempMatrix);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1542,7 +1543,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     real_t* d_tempMatrix1;
 
     try {
-        d_tempFPS = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_tempFPS = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1552,7 +1553,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     }
 
     try {
-        d_tempSPF = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_tempSPF = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1562,7 +1563,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     }
 
     try {
-        d_tempMatrix1 = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_tempMatrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1590,9 +1591,9 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
         matrixMatrixProduct(d_tempFPS, d_transform_matrix, d_diis_error_matrix, num_basis, false, true);
     }
 
-    sycl::free(d_tempMatrix1, workq);
-    sycl::free(d_tempFPS, workq);
-    sycl::free(d_tempSPF, workq);
+    tracked_syclFree(d_tempMatrix1);
+    tracked_syclFree(d_tempFPS);
+    tracked_syclFree(d_tempSPF);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1628,7 +1629,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     }
 
     try {
-        d_DIIS_matrix = sycl::malloc_device<real_t>(num_size * num_size, workq);
+        d_DIIS_matrix = tracked_syclMalloc<real_t>(num_size * num_size);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1659,7 +1660,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     }
     real_t* d_DIIS_rhs;
     try {
-        d_DIIS_rhs = sycl::malloc_device<real_t>(num_size, workq);
+        d_DIIS_rhs = tracked_syclMalloc<real_t>(num_size);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(std::string("Failed to allocate device memory for DIIS "
@@ -1687,7 +1688,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     // allocate the workspace
     real_t* d_work;
     try {
-        d_work = sycl::malloc_device<real_t>(work_size, workq);
+        d_work = tracked_syclMalloc<real_t>(work_size);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1699,7 +1700,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     int64_t* d_pivot = nullptr;
     int64_t* d_info = nullptr;
     try {
-        d_pivot = sycl::malloc_device<int64_t>(num_size, workq);
+        d_pivot = tracked_syclMalloc<int64_t>(num_size);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1707,7 +1708,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
             std::string(e.what()));
     }
     try {
-        d_info = sycl::malloc_device<int64_t>(1, workq);
+        d_info = tracked_syclMalloc<int64_t>(1);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1743,11 +1744,11 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     }
 
     // free the memory
-    sycl::free(d_DIIS_matrix, workq);
-    sycl::free(d_DIIS_rhs, workq);
-    sycl::free(d_work, workq);
-    sycl::free(d_pivot, workq);
-    sycl::free(d_info, workq);
+    tracked_syclFree(d_DIIS_matrix);
+    tracked_syclFree(d_DIIS_rhs);
+    tracked_syclFree(d_work);
+    tracked_syclFree(d_pivot);
+    tracked_syclFree(d_info);
 
     delete[] h_DIIS_matrix;
     delete[] h_DIIS_rhs;
@@ -1781,7 +1782,7 @@ catch (sycl::exception const &exc) {
     real_t* d_temp_FockMatrix = nullptr;
     real_t* h_temp_FockMatrix = new real_t[num_basis * num_basis];
     try {
-        d_temp_FockMatrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_FockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1809,7 +1810,7 @@ catch (sycl::exception const &exc) {
     computeCoefficientMatrix(d_temp_FockMatrix, d_transform_matrix, d_coefficient_matrix, num_basis);
 
     // free the temporary memory
-    sycl::free(d_temp_FockMatrix, workq);
+    tracked_syclFree(d_temp_FockMatrix);
 }
  catch (sycl::exception const &exc) {
    std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1834,28 +1835,29 @@ void invertMatrix(double *d_A, const int N) try {
     int lda = N;
 
     // Pivot indices
-    d_ipiv = sycl::malloc_device<int64_t>( N, workq);
+    d_ipiv = tracked_syclMalloc<int64_t>(N);
 
     // Scratchpad size
     int64_t lwork_rf = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>( workq, N, N, lda);
-    real_t *d_work_rf = sycl::malloc_device<real_t>(lwork_rf, workq);
+    real_t *d_work_rf = tracked_syclMalloc<real_t>(lwork_rf);
 
     // LU Decomposition
     oneapi::mkl::lapack::getrf( workq, N, N, d_A, N, d_ipiv, d_work_rf, lwork_rf).wait();
 
-    sycl::free(d_work_rf, workq);
+    tracked_syclFree(d_work_rf);
 
     // Inversion scratchpad size
     int64_t lwork_ri = oneapi::mkl::lapack::getri_scratchpad_size<real_t>( workq, N, lda);
-    real_t *d_work_ri = sycl::malloc_device<real_t>(lwork_ri, workq);
+    real_t *d_work_ri = tracked_syclMalloc<real_t>(lwork_ri);
 
     // Inverse computation
     oneapi::mkl::lapack::getri( workq, N, d_A, lda, d_ipiv, d_work_ri, lwork_ri).wait();
 
     workq.wait_and_throw();
 
-    sycl::free(d_ipiv, workq);
-    sycl::free(d_work_ri, workq);
+    tracked_syclFree(d_ipiv);
+    tracked_syclFree(d_work_rf);
+    tracked_syclFree(d_work_ri);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1891,7 +1893,7 @@ catch (oneapi::mkl::lapack::invalid_argument const& e) {
 
     // workspace allocation
 try {
-    d_work = sycl::malloc_device<real_t>(lwork, workq);
+    d_work = tracked_syclMalloc<real_t>(lwork);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1926,7 +1928,7 @@ try{
                        }).wait();
 
     // Cleanup
-    sycl::free(d_work, workq);
+    tracked_syclFree(d_work);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1976,7 +1978,7 @@ catch (sycl::exception const& e) {
 
     real_t *d_tmp;
     try {
-        d_tmp = sycl::malloc_device<real_t>(row * col, workq);
+        d_tmp = tracked_syclMalloc<real_t>(row * col);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2058,7 +2060,7 @@ catch (sycl::exception const& e) {
     );
 */
 
-    sycl::free(d_tmp, workq);
+    tracked_syclFree(d_tmp);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -2116,7 +2118,7 @@ void compute_RI_IntermediateMatrixB(
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;
     try {
-        d_two_center_eri = sycl::malloc_device<real_t>(num_auxiliary_basis * num_auxiliary_basis, workq);
+        d_two_center_eri = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_auxiliary_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2150,7 +2152,7 @@ void compute_RI_IntermediateMatrixB(
     // Allocate device memory for the three-center ERIs
     real_t* d_three_center_eri;
     try {
-        d_three_center_eri = sycl::malloc_device<real_t>((size_t)num_basis * (size_t)num_basis * (size_t)num_auxiliary_basis, workq);
+        d_three_center_eri = tracked_syclMalloc<real_t>((size_t)num_basis * (size_t)num_basis * (size_t)num_auxiliary_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2187,8 +2189,8 @@ void compute_RI_IntermediateMatrixB(
     workq.memcpy(d_intermediate_matrix_B, d_three_center_eri,
                  sizeof(real_t) * num_auxiliary_basis * num_basis * num_basis);
 
-    sycl::free(d_two_center_eri, workq);
-    sycl::free(d_three_center_eri, workq);
+    tracked_syclFree(d_two_center_eri);
+    tracked_syclFree(d_three_center_eri);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -2327,7 +2329,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     real_t* d_J = nullptr;
     real_t* d_density_matrix = nullptr;
     try {
-        d_J = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2335,7 +2337,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
             std::string(e.what()));
     }
     try {
-        d_density_matrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2349,7 +2351,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
     real_t* d_W = nullptr;
     try {
-        d_W = sycl::malloc_device<real_t>(num_auxiliary_basis, workq);
+        d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2374,14 +2376,14 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
                        });
 
     // free the memory
-    sycl::free(d_W, workq);
-    sycl::free(d_density_matrix, workq);
+    tracked_syclFree(d_W);
+    tracked_syclFree(d_density_matrix);
 
     ////////////////////////////////// compute K-matrix //////////////////////////////////
     real_t* d_T = nullptr;
     real_t* d_V = nullptr;
     try {
-        d_T = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis * num_basis, workq);
+        d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2389,7 +2391,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
             std::string(e.what()));
     }
     try {
-        d_V = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis * num_basis,workq);
+        d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2400,7 +2402,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     ////////////// compute Ka-matrix //////////////
     real_t* d_Ka = nullptr;
     try {
-        d_Ka = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_Ka = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2430,7 +2432,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     ////////////// compute Kb-matrix //////////////
     real_t* d_Kb = nullptr;
     try {
-        d_Kb = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_Kb = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2458,8 +2460,8 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
                        });
 
     // free the memory
-    sycl::free(d_T, workq);
-    sycl::free(d_V, workq);
+    tracked_syclFree(d_T);
+    tracked_syclFree(d_V);
 
     ////////////////////////////////// compute Fock matrix //////////////////////////////////
 
@@ -2479,9 +2481,9 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
                        });
 
     // free the memory
-    sycl::free(d_J, workq);
-    sycl::free(d_Ka, workq);
-    sycl::free(d_Kb, workq);
+    tracked_syclFree(d_J);
+    tracked_syclFree(d_Ka);
+    tracked_syclFree(d_Kb);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -2509,7 +2511,7 @@ void computeFockMatrix_RI_ROHF(
     real_t* d_temp_matrix1 = nullptr;
     real_t* d_temp_matrix2 = nullptr;
     try {
-        d_temp_F_MO_closed = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2517,7 +2519,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_F_MO_open = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2525,7 +2527,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_R_MO = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2533,7 +2535,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_matrix1 = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2541,7 +2543,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_matrix2 = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2559,7 +2561,7 @@ void computeFockMatrix_RI_ROHF(
         real_t* d_J = nullptr;
         real_t* d_density_matrix = nullptr;
         try {
-            d_J = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+            d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2567,7 +2569,7 @@ void computeFockMatrix_RI_ROHF(
                 std::string(e.what()));
         }
         try {
-            d_density_matrix = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+            d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2581,7 +2583,7 @@ void computeFockMatrix_RI_ROHF(
         // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
         real_t* d_W = nullptr;
         try {
-            d_W = sycl::malloc_device<real_t>(num_auxiliary_basis, workq);
+            d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2610,13 +2612,13 @@ void computeFockMatrix_RI_ROHF(
 
 
         // free the memory
-        sycl::free(d_W, workq);
+        tracked_syclFree(d_W);
 
         ////////////////////////////////// compute Kclosed-matrix //////////////////////////////////
         real_t* d_T = nullptr;
         real_t* d_V = nullptr;
         try {
-            d_T = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis * num_basis,workq);
+            d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2624,7 +2626,7 @@ void computeFockMatrix_RI_ROHF(
                 std::string(e.what()));
         }
         try {
-            d_V = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis * num_basis,workq);
+            d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2635,7 +2637,7 @@ void computeFockMatrix_RI_ROHF(
         ////////////// compute Kclosed-matrix //////////////
         real_t* d_Kclosed = nullptr;
         try {
-            d_Kclosed = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+            d_Kclosed = tracked_syclMalloc<real_t>(num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2665,7 +2667,7 @@ void computeFockMatrix_RI_ROHF(
         ////////////// compute Kopen-matrix //////////////
         real_t* d_Kopen = nullptr;
         try {
-            d_Kopen = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+            d_Kopen = tracked_syclMalloc<real_t>(num_basis * num_basis);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2696,8 +2698,8 @@ void computeFockMatrix_RI_ROHF(
             });
 
         // free the memory
-        sycl::free(d_T, workq);
-        sycl::free(d_V, workq);
+        tracked_syclFree(d_T);
+        tracked_syclFree(d_V);
 
         ////////////////////////////////// compute Fock matrix //////////////////////////////////
 
@@ -2711,10 +2713,10 @@ void computeFockMatrix_RI_ROHF(
             });
 
         // free the memory
-        sycl::free(d_J, workq);
-        sycl::free(d_Kclosed, workq);
-        sycl::free(d_Kopen, workq);
-        sycl::free(d_density_matrix, workq);
+        tracked_syclFree(d_J);
+        tracked_syclFree(d_Kclosed);
+        tracked_syclFree(d_Kopen);
+        tracked_syclFree(d_density_matrix);
     }
 
 
@@ -2754,11 +2756,11 @@ void computeFockMatrix_RI_ROHF(
     }
 
     // free the temporary memory
-    sycl::free(d_temp_F_MO_closed, workq);
-    sycl::free(d_temp_F_MO_open, workq);
-    sycl::free(d_temp_R_MO, workq);
-    sycl::free(d_temp_matrix1, workq);
-    sycl::free(d_temp_matrix2, workq);
+    tracked_syclFree(d_temp_F_MO_closed);
+    tracked_syclFree(d_temp_F_MO_open);
+    tracked_syclFree(d_temp_R_MO);
+    tracked_syclFree(d_temp_matrix1);
+    tracked_syclFree(d_temp_matrix2);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -3375,7 +3377,7 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
 
     real_t* d_mulliken_population = nullptr;
     try {
-        d_mulliken_population =sycl::malloc_device<real_t>(num_basis, workq);
+        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3400,7 +3402,7 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
         .wait();
 
     // Free the memory for the temporary matrix
-    sycl::free(d_mulliken_population, workq);
+    tracked_syclFree(d_mulliken_population);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -3419,7 +3421,7 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
 
     real_t* d_mulliken_population = nullptr;
     try {
-        d_mulliken_population =sycl::malloc_device<real_t>(num_basis, workq);
+        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3445,7 +3447,7 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
         .wait();
 
     // Free the memory for the temporary matrix
-    sycl::free(d_mulliken_population, workq);
+    tracked_syclFree(d_mulliken_population);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -3463,7 +3465,7 @@ void computeDensityOverlapMatrix(const real_t* d_density_matrix,
 
     real_t* d_result_matrix = nullptr;
     try {
-        d_result_matrix =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3481,7 +3483,7 @@ void computeDensityOverlapMatrix(const real_t* d_density_matrix,
         .wait();
 
     // Free the memory for the temporary matrix
-    sycl::free(d_result_matrix, workq);
+    tracked_syclFree(d_result_matrix);
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -3498,7 +3500,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
 
     real_t* d_eigval = nullptr;
     try {
-        d_eigval =sycl::malloc_device<real_t>(num_basis, workq);
+        d_eigval = tracked_syclMalloc<real_t>(num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3508,7 +3510,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
 
     real_t* d_eigvec = nullptr;
     try {
-        d_eigvec =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_eigvec = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3525,7 +3527,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // Make diag(eigval)^(1/2) matrix
     real_t* d_sqrt_eigval_matrix = nullptr;
     try {
-        d_sqrt_eigval_matrix =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_sqrt_eigval_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3537,7 +3539,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // temp_matrix = U * diag(eigval)^(1/2) * U^T
     real_t* d_temp_matrix = nullptr;
     try {
-        d_temp_matrix =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_temp_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3549,7 +3551,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // S_sqrt = temp_matrix * U^T
     real_t* d_S_sqrt = nullptr;
     try {
-        d_S_sqrt =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_S_sqrt = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3561,7 +3563,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // result_matrix = S^(1/2) * D * S^(1/2)
     real_t* d_result_matrix = nullptr;
     try {
-        d_result_matrix =sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3578,12 +3580,12 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
         .wait();
 
     // Free the memory for the temporary matrices
-    sycl::free(d_eigval, workq);
-    sycl::free(d_eigvec, workq);
-    sycl::free(d_sqrt_eigval_matrix, workq);
-    sycl::free(d_temp_matrix, workq);
-    sycl::free(d_S_sqrt, workq);
-    sycl::free(d_result_matrix, workq);
+    tracked_syclFree(d_eigval);
+    tracked_syclFree(d_eigvec);
+    tracked_syclFree(d_sqrt_eigval_matrix);
+    tracked_syclFree(d_temp_matrix);
+    tracked_syclFree(d_S_sqrt);
+    tracked_syclFree(d_result_matrix);
 
 }
 catch (sycl::exception const &exc) {
@@ -3630,5 +3632,938 @@ void computeFockMatrix_Hash_RHF(
     THROW_EXCEPTION("Not implemented yet.");
 }
 
+
+
+
+
+
+// before = |after - before|
+inline void calcDiffMatrix(sycl::nd_item<1> item, const real_t* d_matrix_after, real_t* d_matrix_before, int size) {
+    size_t id = item.get_global_linear_id();
+    if (id >= size * size) return;
+
+    d_matrix_before[id] = d_matrix_after[id] - d_matrix_before[id];
+}
+
+inline void makeIdentityMatrix(sycl::nd_item<1> item_ct1, real_t* d_I, int size) {
+    size_t id = item_ct1.get_global_linear_id();
+    if (id >= size * size) return;
+
+    int row = id % size;
+    int col = id / size;
+    d_I[id] = (row == col) ? 1.0 : 0.0;
+}
+
+void computeInverseByDtrsm(real_t* two_center_eris, real_t* two_center_eris_inverse, int num_auxiliary_basis){
+//    cublasHandle_t cublasHandle = GPUHandle::cublas();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    size_t max_wg = q_ct1.get_device().get_info<sycl::info::device::max_work_group_size>();
+    size_t num_threads  = std::min<size_t>(1024, max_wg);
+//    const int num_threads = 1024;
+    size_t num_blocks = (num_auxiliary_basis * num_auxiliary_basis + num_threads - 1) / num_threads;
+
+//    size_t threads_per_block = 256;
+//    size_t num_blocks = (size * size + threads_per_block - 1) / threads_per_block;
+
+    q_ct1.submit([&](sycl::handler& cgh) {
+        cgh.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                makeIdentityMatrix(item_ct1, two_center_eris_inverse, num_auxiliary_basis);
+            }
+        );
+    });
+    q_ct1.wait();
+
+    const real_t alpha = 1.0;
+    oneapi::mkl::blas::row_major::trsm(
+        q_ct1,
+        oneapi::mkl::side::left,
+        oneapi::mkl::uplo::upper,
+        oneapi::mkl::transpose::nontrans,
+        oneapi::mkl::diag::nonunit,
+        num_auxiliary_basis,
+        num_auxiliary_basis,
+        alpha,
+        two_center_eris,
+        num_auxiliary_basis,
+        two_center_eris_inverse,
+        num_auxiliary_basis
+    );
+    q_ct1.wait();
+/*
+    cublasDtrsm(
+        cublasHandle,
+        CUBLAS_SIDE_LEFT,        
+        CUBLAS_FILL_MODE_UPPER, 
+        CUBLAS_OP_N,            
+        CUBLAS_DIAG_NON_UNIT,   
+        num_auxiliary_basis,                   
+        num_auxiliary_basis,                   
+        &alpha,
+        two_center_eris, num_auxiliary_basis,                  
+        two_center_eris_inverse, num_auxiliary_basis                  
+    );
+*/
+}
+
+
+
+
+void compute_RI_Direct_c_array(
+    const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, 
+    const PrimitiveShell* d_primitive_shells, 
+    const real_t* d_cgto_nomalization_factors, 
+    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
+    const PrimitiveShell* d_auxiliary_primitive_shells, 
+    const real_t* d_auxiliary_cgto_nomalization_factors, 
+    real_t* d_c, 
+    const real_t* d_density_matrix,
+    const size_t2* d_primitive_shell_pair_indices,
+    const int num_basis,
+    const int num_auxiliary_basis,
+    const real_t* d_boys_grid,
+    const double schwarz_screening_threshold, 
+    const real_t* d_schwarz_upper_bound_factors,
+    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+    const bool verbose)
+{
+const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+
+    // Call the kernel functions from (ss|s),... (e.g. (ss|s), (ss|p), (sp|s), (sp|p), (pp|s), (pp|p) for s and p shells)
+
+    // list shell-triples for sorted shell-type (s0, s1, s2)
+    std::vector<std::tuple<int, int, int>> shell_triples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < auxiliary_shell_type_count; ++c) {
+                shell_triples.emplace_back(a, b, c);
+            }
+        }
+    }
+    // sort by sum (a + b + c) in descending order
+    std::sort(shell_triples.begin(), shell_triples.end(),
+        [](const auto& lhs, const auto& rhs) {
+            int sum_lhs = std::get<0>(lhs) + std::get<1>(lhs) + std::get<2>(lhs);
+            int sum_rhs = std::get<0>(rhs) + std::get<1>(rhs) + std::get<2>(rhs);
+            return sum_lhs > sum_rhs;  // 降順
+        });
+
+
+    // make multi stream
+    const int num_kernels = shell_triples.size();
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for (int i = 0; i < num_kernels; i++) {
+        streams.emplace_back(GPUHandle::syclqueue());
+    }
+
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int stream_id = 0;
+    for(const auto& triple: shell_triples) {
+        int s0, s1, s2;
+        std::tie(s0, s1, s2) = triple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
+
+        const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
+        const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+        const int pair_index = calcIdx_triangular_(s0, s1, shell_type_count);
+        const size_t start_index = shell_pair_type_infos[pair_index].start_index;
+
+        streams[stream_id++].submit([&](sycl::handler& cgh){
+        cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+            [=](sycl::nd_item<1> item_ct1) {
+            launch_c_kernel( item_ct1, s0, s1, s2, d_c, d_density_matrix, d_primitive_shells, d_auxiliary_primitive_shells,
+            d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors,shell_s0, shell_s1, shell_s2,num_tasks, num_basis,
+            &d_primitive_shell_pair_indices[start_index],
+            &d_schwarz_upper_bound_factors[start_index],
+            d_auxiliary_schwarz_upper_bound_factors,schwarz_screening_threshold,num_auxiliary_basis,d_boys_grid);
+        });
+        });
+
+/*
+        direct_ri_c_J_kernel_t c_kernel;
+
+        if(s0==0 && s1==0 && s2==0) c_kernel = compute_RI_Direct_c_kernel_sss;
+        else if(s0==0 && s1==0 && s2==1) c_kernel = compute_RI_Direct_c_kernel_ssp;
+        else if(s0==0 && s1==0 && s2==2) c_kernel = compute_RI_Direct_c_kernel_ssd;
+        else if(s0==0 && s1==0 && s2==3) c_kernel = compute_RI_Direct_c_kernel_ssf;
+        else if(s0==0 && s1==1 && s2==0) c_kernel = compute_RI_Direct_c_kernel_sps;
+        else if(s0==0 && s1==1 && s2==1) c_kernel = compute_RI_Direct_c_kernel_spp;
+        else if(s0==0 && s1==1 && s2==2) c_kernel = compute_RI_Direct_c_kernel_spd;
+        else if(s0==0 && s1==1 && s2==3) c_kernel = compute_RI_Direct_c_kernel_spf;
+        else if(s0==1 && s1==1 && s2==0) c_kernel = compute_RI_Direct_c_kernel_pps;
+        else if(s0==1 && s1==1 && s2==1) c_kernel = compute_RI_Direct_c_kernel_ppp;
+        else if(s0==1 && s1==1 && s2==2) c_kernel = compute_RI_Direct_c_kernel_ppd;
+        else if(s0==1 && s1==1 && s2==3) c_kernel = compute_RI_Direct_c_kernel_ppf;
+        #if defined(COMPUTE_D_BASIS)
+        else if(s0==0 && s1==2 && s2==0) c_kernel = compute_RI_Direct_c_kernel_sds;
+        else if(s0==0 && s1==2 && s2==1) c_kernel = compute_RI_Direct_c_kernel_sdp;
+        else if(s0==0 && s1==2 && s2==2) c_kernel = compute_RI_Direct_c_kernel_sdd;
+        else if(s0==0 && s1==2 && s2==3) c_kernel = compute_RI_Direct_c_kernel_sdf;
+        else if(s0==1 && s1==2 && s2==0) c_kernel = compute_RI_Direct_c_kernel_pds;
+        else if(s0==1 && s1==2 && s2==1) c_kernel = compute_RI_Direct_c_kernel_pdp;
+        else if(s0==1 && s1==2 && s2==2) c_kernel = compute_RI_Direct_c_kernel_pdd;
+        else if(s0==1 && s1==2 && s2==3) c_kernel = compute_RI_Direct_c_kernel_pdf;
+        else if(s0==2 && s1==2 && s2==0) c_kernel = compute_RI_Direct_c_kernel_dds;
+        else if(s0==2 && s1==2 && s2==1) c_kernel = compute_RI_Direct_c_kernel_ddp;
+        else if(s0==2 && s1==2 && s2==2) c_kernel = compute_RI_Direct_c_kernel_ddd;
+        else if(s0==2 && s1==2 && s2==3) c_kernel = compute_RI_Direct_c_kernel_ddf;
+        #endif
+        else c_kernel = compute_RI_Direct_c_kernel;
+
+        // c_kernel = compute_RI_Direct_c_kernel;
+
+
+        c_kernel<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_c, d_density_matrix, d_primitive_shells, d_auxiliary_primitive_shells, 
+                                                                                d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
+                                                                                shell_s0, shell_s1, shell_s2, 
+                                                                                num_tasks, num_basis, 
+                                                                                &d_primitive_shell_pair_indices[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                &d_schwarz_upper_bound_factors[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                d_auxiliary_schwarz_upper_bound_factors,
+                                                                                schwarz_screening_threshold,
+                                                                                num_auxiliary_basis,
+                                                                                d_boys_grid);
+*/
+    }
+    // syncronize streams
+    for (int i = 0; i <num_kernels ; i++) {
+        streams[i].wait();
+    }
+/*
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+*/
+}
+
+
+void compute_RI_Direct_J_matrix(
+    const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, 
+    const PrimitiveShell* d_primitive_shells, 
+    const real_t* d_cgto_nomalization_factors, 
+    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
+    const PrimitiveShell* d_auxiliary_primitive_shells, 
+    const real_t* d_auxiliary_cgto_nomalization_factors, 
+    real_t* d_J, 
+    const real_t* d_t,
+    const size_t2* d_primitive_shell_pair_indices,
+    const int num_basis,
+    const int num_auxiliary_basis,
+    const real_t* d_boys_grid,
+    const double schwarz_screening_threshold, 
+    const real_t* d_schwarz_upper_bound_factors,
+    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+    const bool verbose)
+{
+const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+
+    // Call the kernel functions from (ss|s),... (e.g. (ss|s), (ss|p), (sp|s), (sp|p), (pp|s), (pp|p) for s and p shells)
+
+    // list shell-triples for sorted shell-type (s0, s1, s2)
+    std::vector<std::tuple<int, int, int>> shell_triples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < auxiliary_shell_type_count; ++c) {
+                shell_triples.emplace_back(a, b, c);
+            }
+        }
+    }
+    // sort by sum (a + b + c) in descending order
+    std::sort(shell_triples.begin(), shell_triples.end(),
+        [](const auto& lhs, const auto& rhs) {
+            int sum_lhs = std::get<0>(lhs) + std::get<1>(lhs) + std::get<2>(lhs);
+            int sum_rhs = std::get<0>(rhs) + std::get<1>(rhs) + std::get<2>(rhs);
+            return sum_lhs > sum_rhs;  // 降順
+        });
+
+
+    // make multi stream
+    const int num_kernels = shell_triples.size();
+//    std::vector<cudaStream_t> streams(num_kernels);
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for (int i = 0; i < num_kernels; i++) {
+        streams.emplace_back(GPUHandle::syclqueue());
+    }
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int stream_id = 0;
+    for(const auto& triple: shell_triples) {
+        int s0, s1, s2;
+        std::tie(s0, s1, s2) = triple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
+
+        const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
+        const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+        const int pair_index = calcIdx_triangular_(s0, s1, shell_type_count);
+        const size_t start_index = shell_pair_type_infos[pair_index].start_index;
+
+        streams[stream_id++].submit([&](sycl::handler& cgh){
+        cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+            [=](sycl::nd_item<1> item_ct1) {
+            launch_J_kernel( item_ct1, s0, s1, s2, d_J, d_t, d_primitive_shells, d_auxiliary_primitive_shells,
+            d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, shell_s0, shell_s1, shell_s2, num_tasks, num_basis,
+            &d_primitive_shell_pair_indices[start_index],
+            &d_schwarz_upper_bound_factors[start_index],
+            d_auxiliary_schwarz_upper_bound_factors, schwarz_screening_threshold, num_auxiliary_basis, d_boys_grid);
+        });
+        });
+
+/*        
+        direct_ri_c_J_kernel_t J_kernel;
+
+        if(s0==0 && s1==0 && s2==0) J_kernel = compute_RI_Direct_J_kernel_sss;
+        else if(s0==0 && s1==0 && s2==1) J_kernel = compute_RI_Direct_J_kernel_ssp;
+        else if(s0==0 && s1==0 && s2==2) J_kernel = compute_RI_Direct_J_kernel_ssd;
+        else if(s0==0 && s1==0 && s2==3) J_kernel = compute_RI_Direct_J_kernel_ssf;
+        else if(s0==0 && s1==1 && s2==0) J_kernel = compute_RI_Direct_J_kernel_sps;
+        else if(s0==0 && s1==1 && s2==1) J_kernel = compute_RI_Direct_J_kernel_spp;
+        else if(s0==0 && s1==1 && s2==2) J_kernel = compute_RI_Direct_J_kernel_spd;
+        else if(s0==0 && s1==1 && s2==3) J_kernel = compute_RI_Direct_J_kernel_spf;
+        else if(s0==1 && s1==1 && s2==0) J_kernel = compute_RI_Direct_J_kernel_pps;
+        else if(s0==1 && s1==1 && s2==1) J_kernel = compute_RI_Direct_J_kernel_ppp;
+        else if(s0==1 && s1==1 && s2==2) J_kernel = compute_RI_Direct_J_kernel_ppd;
+        else if(s0==1 && s1==1 && s2==3) J_kernel = compute_RI_Direct_J_kernel_ppf;
+        #if defined(COMPUTE_D_BASIS)
+        else if(s0==0 && s1==2 && s2==0) J_kernel = compute_RI_Direct_J_kernel_sds;
+        else if(s0==0 && s1==2 && s2==1) J_kernel = compute_RI_Direct_J_kernel_sdp;
+        else if(s0==0 && s1==2 && s2==2) J_kernel = compute_RI_Direct_J_kernel_sdd;
+        else if(s0==0 && s1==2 && s2==3) J_kernel = compute_RI_Direct_J_kernel_sdf;
+        else if(s0==1 && s1==2 && s2==0) J_kernel = compute_RI_Direct_J_kernel_pds;
+        else if(s0==1 && s1==2 && s2==1) J_kernel = compute_RI_Direct_J_kernel_pdp;
+        else if(s0==1 && s1==2 && s2==2) J_kernel = compute_RI_Direct_J_kernel_pdd;
+        else if(s0==1 && s1==2 && s2==3) J_kernel = compute_RI_Direct_J_kernel_pdf;
+        else if(s0==2 && s1==2 && s2==0) J_kernel = compute_RI_Direct_J_kernel_dds;
+        else if(s0==2 && s1==2 && s2==1) J_kernel = compute_RI_Direct_J_kernel_ddp;
+        else if(s0==2 && s1==2 && s2==2) J_kernel = compute_RI_Direct_J_kernel_ddd;
+        else if(s0==2 && s1==2 && s2==3) J_kernel = compute_RI_Direct_J_kernel_ddf;
+        #endif
+        else J_kernel = compute_RI_Direct_J_kernel;
+
+        // J_kernel = compute_RI_Direct_J_kernel;
+
+        J_kernel<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_J, d_t, d_primitive_shells, d_auxiliary_primitive_shells, 
+                                                                                d_cgto_nomalization_factors, d_auxiliary_cgto_nomalization_factors, 
+                                                                                shell_s0, shell_s1, shell_s2, 
+                                                                                num_tasks, num_basis, 
+                                                                                &d_primitive_shell_pair_indices[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                &d_schwarz_upper_bound_factors[shell_pair_type_infos[calcIdx_triangular_(s0, s1, shell_type_count)].start_index],
+                                                                                d_auxiliary_schwarz_upper_bound_factors,
+                                                                                schwarz_screening_threshold,
+                                                                                num_auxiliary_basis,
+                                                                                d_boys_grid);
+*/
+    }
+    // syncronize streams
+    for (int i = 0; i <num_kernels ; i++) {
+        streams[i].wait();
+    }
+/*
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+*/
+}
+
+
+
+void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_t* d_coefficient_matrix,
+                                    const real_t* d_L_inv, 
+                                    real_t* d_decomposed_two_center_eris,
+                                    const real_t* d_core_hamiltonian_matrix, 
+                                    real_t* d_fock_matrix, 
+                                    real_t* d_coefficient_matrix_prev,
+                                    real_t* h_Z_tensor_prev,
+                                    const std::vector<ShellTypeInfo>& shell_type_infos, 
+                                    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, 
+                                    const PrimitiveShell* h_primitive_shells, 
+                                    const PrimitiveShell* d_primitive_shells, 
+                                    const real_t* d_cgto_normalization_factors, 
+                                    const std::vector<ShellTypeInfo>& auxiliary_shell_type_infos, 
+                                    const PrimitiveShell* d_auxiliary_primitive_shells, 
+                                    const real_t* d_auxiliary_cgto_normalization_factors, 
+                                    const size_t2* d_primitive_shell_pair_indices,
+                                    const int num_basis,
+                                    const int num_auxiliary_basis,
+                                    const int num_electrons,
+                                    const int num_primitive_shells,
+                                    const real_t* d_boys_grid,
+                                    const double schwarz_screening_threshold, 
+                                    const real_t* d_schwarz_upper_bound_factors,
+                                    const real_t* d_auxiliary_schwarz_upper_bound_factors,
+                                    const bool verbose){
+
+
+    //cublasManager cublas;
+//    cublasHandle_t cublasHandle = GPUHandle::cublas();
+    sycl::queue& workq = GPUHandle::syclqueue();
+
+
+//    cudaError_t err;
+
+    // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
+    const int num_threads = 256;
+    const int num_blocks = (num_basis * num_basis + num_threads - 1) / num_threads;
+
+
+    ////////////////////////////////// compute J-matrix //////////////////////////////////
+    real_t* d_J = nullptr;
+    try {
+        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for J matrix: ") +
+            std::string(e.what()));
+    }
+    workq.memset(d_J, 0.0, sizeof(real_t) * num_basis * num_basis).wait();
+
+    // compute c_q = \sum_{a b} D_{a b} (q|ab)
+    real_t* d_c = nullptr;
+    try {
+        d_c = tracked_syclMalloc<real_t>(num_auxiliary_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for  device memory for c vector:") +
+            std::string(e.what()));
+    }
+    workq.memset(d_c, 0.0, sizeof(real_t) * num_auxiliary_basis).wait();
+
+/*
+    ////////////////////////////////// compute J-matrix //////////////////////////////////
+    real_t* d_J = nullptr;
+    err = cudaMalloc(&d_J, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for J matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    cudaMemset(d_J, 0.0, sizeof(real_t)*num_basis*num_basis);
+
+
+
+    // compute c_q = \sum_{a b} D_{a b} (q|ab)
+    real_t *d_c = nullptr;
+    err = cudaMalloc(&d_c, sizeof(real_t)*num_auxiliary_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for c vector: ") + std::string(cudaGetErrorString(err)));
+    }
+    cudaMemset(d_c, 0.0, sizeof(real_t)*num_auxiliary_basis);
+*/
+
+    // cublas関数ように、column-majorにしておく
+    transposeMatrixInPlace(d_decomposed_two_center_eris, num_auxiliary_basis);
+
+
+    // cを求める
+    compute_RI_Direct_c_array(shell_type_infos,
+                              shell_pair_type_infos,
+                              d_primitive_shells,
+                              d_cgto_normalization_factors,
+                              auxiliary_shell_type_infos,
+                              d_auxiliary_primitive_shells,
+                              d_auxiliary_cgto_normalization_factors,
+                              d_c,
+                              d_density_matrix,
+                              d_primitive_shell_pair_indices,
+                              num_basis,
+                              num_auxiliary_basis,
+                              d_boys_grid,
+                              schwarz_screening_threshold,
+                              d_schwarz_upper_bound_factors,
+                              d_auxiliary_schwarz_upper_bound_factors,
+                              verbose);
+//    cudaDeviceSynchronize();
+
+
+    // Ly=cをyについて解く   
+    oneapi::mkl::blas::column_major::trsv(
+        workq,
+        oneapi::mkl::uplo::lower,
+        oneapi::mkl::transpose::nontrans,
+        oneapi::mkl::diag::nonunit,
+        num_auxiliary_basis,
+        d_decomposed_two_center_eris, num_auxiliary_basis,
+        d_c, 1
+    );
+
+    // L^T t = y をtについて解く
+    oneapi::mkl::blas::column_major::trsv(
+        workq,
+        oneapi::mkl::uplo::lower,
+        oneapi::mkl::transpose::trans,
+        oneapi::mkl::diag::nonunit,
+        num_auxiliary_basis,
+        d_decomposed_two_center_eris, num_auxiliary_basis,
+        d_c, 1
+    );
+
+/*
+    // Ly=cをyについて解く   
+    cublasDtrsv(
+        cublasHandle,
+        CUBLAS_FILL_MODE_LOWER, 
+        CUBLAS_OP_N,            
+        CUBLAS_DIAG_NON_UNIT,   
+        num_auxiliary_basis,                   
+        d_decomposed_two_center_eris, num_auxiliary_basis,                  
+        d_c, 1               
+    );
+
+    // L^T t = y をtについて解く
+    cublasDtrsv(
+        cublasHandle,       
+        CUBLAS_FILL_MODE_LOWER, 
+        CUBLAS_OP_T,            
+        CUBLAS_DIAG_NON_UNIT,   
+        num_auxiliary_basis,                                     
+        d_decomposed_two_center_eris, num_auxiliary_basis,                  
+        d_c, 1                
+    );
+*/
+
+
+    // Jmu nu = ()
+    compute_RI_Direct_J_matrix(shell_type_infos,
+                              shell_pair_type_infos,
+                              d_primitive_shells,
+                              d_cgto_normalization_factors,
+                              auxiliary_shell_type_infos,
+                              d_auxiliary_primitive_shells,
+                              d_auxiliary_cgto_normalization_factors,
+                              d_J,
+                              d_c,
+                              d_primitive_shell_pair_indices,
+                              num_basis,
+                              num_auxiliary_basis,
+                              d_boys_grid,
+                              schwarz_screening_threshold,
+                              d_schwarz_upper_bound_factors,
+                              d_auxiliary_schwarz_upper_bound_factors,
+                              verbose);
+//    cudaDeviceSynchronize();
+
+//    cudaFree(d_c);
+    tracked_syclFree(d_c);
+
+
+    transposeMatrixInPlace(d_decomposed_two_center_eris, num_auxiliary_basis);
+
+
+    ////////////////////////////////// compute K-matrix //////////////////////////////////
+    real_t* d_K = nullptr;
+    try {
+        d_K = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for K vector:") +
+            std::string(e.what()));
+    }
+    workq.memset(d_K, 0.0, sizeof(real_t) * num_basis * num_basis).wait();
+/*
+    real_t* d_K = nullptr;
+    err = cudaMalloc(&d_K, sizeof(real_t)*num_basis*num_basis);
+    if (err != cudaSuccess) {
+        THROW_EXCEPTION(std::string("Failed to allocate device memory for K matrix: ") + std::string(cudaGetErrorString(err)));
+    }
+    cudaMemset(d_K, 0.0, sizeof(real_t)*num_basis*num_basis);
+*/
+
+    real_t* d_Z = nullptr;
+    try {
+        d_Z = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for Z vector:") +
+            std::string(e.what()));
+    }
+
+
+    real_t* d_Z_prev = nullptr;
+    try {
+        d_Z_prev = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for Z_prev matrix:") +
+            std::string(e.what()));
+    }
+
+
+    real_t* d_W_diff = nullptr;
+    try {
+        d_W_diff = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+    }
+    catch (sycl::exception const& e) {
+        THROW_EXCEPTION(
+            std::string("Failed to allocate device memory for W matrix:") +
+            std::string(e.what()));
+    }
+
+
+
+    //Cとの差分を求める
+//    real_t* d_coefficient_matrix_diff;
+//    cudaMalloc((void**)&d_coefficient_matrix_diff, sizeof(real_t) * num_basis * num_basis);
+//    cudaMemcpy(d_coefficient_matrix_diff, d_coefficient_matrix_prev, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice);
+    real_t* d_coefficient_matrix_diff = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    workq.memset(d_coefficient_matrix_diff, 0.0, sizeof(real_t) * num_basis * num_basis).wait();
+
+//    calcDiffMatrix<<< ((num_basis * num_basis) + 1024 - 1) / 1024, 1024>>>(d_coefficient_matrix, d_coefficient_matrix_diff, num_basis); //d_coefficient_matrix_diff = |C_new - C_prev|
+
+    size_t total = num_basis * num_basis;
+    size_t local_size  = 1024;  // blockDim.x
+    size_t global_size = ((total + local_size - 1) / local_size) * local_size;
+    
+    auto d_matrix_after = d_coefficient_matrix;
+    auto d_matrix_before = d_coefficient_matrix_diff;
+    workq.parallel_for(
+        sycl::nd_range<1>(global_size, local_size),
+        [=](sycl::nd_item<1> item) {
+            size_t id = item.get_global_linear_id();
+            if (id < total) d_matrix_before[id] = d_matrix_after[id] - d_matrix_before[id];
+        }
+    );
+    
+    
+    transposeMatrixInPlace(d_coefficient_matrix_diff, num_basis);
+    transposeMatrixInPlace(d_coefficient_matrix_prev, num_basis);
+
+
+
+    const double alpha = 1.0, gamma = 2.0;
+
+    const int row = num_basis, col = num_auxiliary_basis;
+
+
+//    cudaStream_t stream_main, stream_sub;
+//    cudaStreamCreateWithFlags(&stream_main, cudaStreamNonBlocking);
+//    cudaStreamCreateWithFlags(&stream_sub, cudaStreamNonBlocking);
+    sycl::queue queue_main{sycl::gpu_selector_v};
+    sycl::queue queue_sub{sycl::gpu_selector_v};
+
+
+
+
+    const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+    const int auxiliary_shell_type_count = auxiliary_shell_type_infos.size();
+
+    // list shell-triples for sorted shell-type (s0, s1, s2)
+    std::vector<std::tuple<int, int, int>> shell_triples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < auxiliary_shell_type_count; ++c) {
+                shell_triples.emplace_back(a, b, c);
+            }
+        }
+    }
+    // sort by sum (a + b + c) in descending order
+    std::sort(shell_triples.begin(), shell_triples.end(),
+        [](const auto& lhs, const auto& rhs) {
+            int sum_lhs = std::get<0>(lhs) + std::get<1>(lhs) + std::get<2>(lhs);
+            int sum_rhs = std::get<0>(rhs) + std::get<1>(rhs) + std::get<2>(rhs);
+            return sum_lhs > sum_rhs;  // 降順
+        });
+
+
+    // make multi stream
+    const int num_kernels = shell_triples.size();
+//    std::vector<cudaStream_t> streams(num_kernels);
+//    for(auto& stream : streams) cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+    std::vector<sycl::queue> workqs;
+    workqs.reserve(num_kernels);
+
+    for (int i = 0; i < num_kernels; i++) {
+        workqs.emplace_back(GPUHandle::syclqueue());
+//        workqs.emplace_back(
+//            sycl::gpu_selector_v,
+//            sycl::property_list{
+//                sycl::property::queue::in_order(false)   // 非同期実行（CUDA の NonBlocking）
+//            }
+//        );
+    }
+
+
+//    cublasSetStream(cublasHandle, stream_main);
+    sycl::queue& mainq = workqs[0];
+    for(int iter = 0; iter < num_electrons/2; iter++) {
+        mainq.memset(d_W_diff, 0.0, sizeof(real_t) * num_basis * num_auxiliary_basis).wait();
+//        cudaMemset(d_W_diff, 0.0, sizeof(real_t)*num_basis*num_auxiliary_basis);
+        
+        // d_schwarz_upper_bound_factors
+//        cudaDeviceSynchronize();
+
+        // for-loop for sorted shell-type (s0, s1, s2, s3)
+        int stream_id = 0;
+        for(const auto& triple: shell_triples) {
+            int s0, s1, s2;
+            std::tie(s0, s1, s2) = triple;
+
+
+            int bra_id = calcIdx_triangular_(s0, s1, shell_type_count);
+
+
+
+            const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+            const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+            const ShellTypeInfo shell_s2 = auxiliary_shell_type_infos[s2];
+
+            const int num_tasks = ( (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count) ) * shell_s2.count; // the number of pairs of primitive shells = the number of threads
+            const int num_blocks = (num_tasks + threads_per_block - 1) / threads_per_block; // the number of blocks
+            const size_t start_index = shell_pair_type_infos[bra_id].start_index;
+
+//auto d_W_diff_sycl        = d_W_diff;
+auto d_coeff_diff_iter = &d_coefficient_matrix_diff[iter * num_basis];
+auto d_pshell = d_primitive_shells;
+auto d_pshell_aux = d_auxiliary_primitive_shells;
+//auto d_cgto_norm          = d_cgto_normalization_factors;
+//auto d_aux_cgto_norm      = d_auxiliary_cgto_normalization_factors;
+auto d_pair_indices       = &d_primitive_shell_pair_indices[start_index];
+auto d_schwarz_factors    = &d_schwarz_upper_bound_factors[start_index];
+//auto d_aux_schwarz        = d_auxiliary_schwarz_upper_bound_factors;
+auto boys_grid            = d_boys_grid;
+
+            workq.parallel_for(
+                sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    launch_W_kernel(item, s0, s1, s2,
+                    d_W_diff, d_coeff_diff_iter, d_pshell, d_pshell_aux, d_cgto_normalization_factors,
+                    d_auxiliary_cgto_normalization_factors, shell_s0, shell_s1, shell_s2,
+                    num_tasks, num_basis, d_pair_indices, d_schwarz_factors,
+                    d_auxiliary_schwarz_upper_bound_factors, schwarz_screening_threshold, num_auxiliary_basis,
+                    iter, boys_grid);
+                }
+            );
+
+
+/*            
+            direct_ri_w_kernel_t W_kernel;
+
+            if(s0==0 && s1==0 && s2==0) W_kernel = compute_RI_Direct_W_kernel_sss;
+            else if(s0==0 && s1==0 && s2==1) W_kernel = compute_RI_Direct_W_kernel_ssp;
+            else if(s0==0 && s1==0 && s2==2) W_kernel = compute_RI_Direct_W_kernel_ssd;
+            else if(s0==0 && s1==0 && s2==3) W_kernel = compute_RI_Direct_W_kernel_ssf;
+            else if(s0==0 && s1==1 && s2==0) W_kernel = compute_RI_Direct_W_kernel_sps;
+            else if(s0==0 && s1==1 && s2==1) W_kernel = compute_RI_Direct_W_kernel_spp;
+            else if(s0==0 && s1==1 && s2==2) W_kernel = compute_RI_Direct_W_kernel_spd;
+            else if(s0==0 && s1==1 && s2==3) W_kernel = compute_RI_Direct_W_kernel_spf;
+            else if(s0==1 && s1==1 && s2==0) W_kernel = compute_RI_Direct_W_kernel_pps;
+            else if(s0==1 && s1==1 && s2==1) W_kernel = compute_RI_Direct_W_kernel_ppp;
+            else if(s0==1 && s1==1 && s2==2) W_kernel = compute_RI_Direct_W_kernel_ppd;
+            else if(s0==1 && s1==1 && s2==3) W_kernel = compute_RI_Direct_W_kernel_ppf;
+            #if defined(COMPUTE_D_BASIS)            
+            else if(s0==0 && s1==2 && s2==0) W_kernel = compute_RI_Direct_W_kernel_sds;
+            else if(s0==0 && s1==2 && s2==1) W_kernel = compute_RI_Direct_W_kernel_sdp;
+            else if(s0==0 && s1==2 && s2==2) W_kernel = compute_RI_Direct_W_kernel_sdd;
+            else if(s0==0 && s1==2 && s2==3) W_kernel = compute_RI_Direct_W_kernel_sdf;
+            else if(s0==1 && s1==2 && s2==0) W_kernel = compute_RI_Direct_W_kernel_pds;
+            else if(s0==1 && s1==2 && s2==1) W_kernel = compute_RI_Direct_W_kernel_pdp;
+            else if(s0==1 && s1==2 && s2==2) W_kernel = compute_RI_Direct_W_kernel_pdd;
+            else if(s0==1 && s1==2 && s2==3) W_kernel = compute_RI_Direct_W_kernel_pdf;
+            else if(s0==2 && s1==2 && s2==0) W_kernel = compute_RI_Direct_W_kernel_dds;
+            else if(s0==2 && s1==2 && s2==1) W_kernel = compute_RI_Direct_W_kernel_ddp;
+            else if(s0==2 && s1==2 && s2==2) W_kernel = compute_RI_Direct_W_kernel_ddd;
+            else if(s0==2 && s1==2 && s2==3) W_kernel = compute_RI_Direct_W_kernel_ddf;
+            #endif
+            else W_kernel = compute_RI_Direct_W_kernel;
+            // W_kernel = compute_RI_Direct_W_kernel;
+
+            W_kernel<<<num_blocks, threads_per_block, 0, streams[stream_id]>>>(d_W_diff, &d_coefficient_matrix_diff[iter * num_basis], d_primitive_shells, d_auxiliary_primitive_shells, 
+                                                                                                    d_cgto_normalization_factors, d_auxiliary_cgto_normalization_factors, 
+                                                                                                    shell_s0, shell_s1, shell_s2, 
+                                                                                                    num_tasks, num_basis, 
+                                                                                                    &d_primitive_shell_pair_indices[shell_pair_type_infos[bra_id].start_index],
+                                                                                                    &d_schwarz_upper_bound_factors[shell_pair_type_infos[bra_id].start_index],
+                                                                                                    d_auxiliary_schwarz_upper_bound_factors,
+                                                                                                    schwarz_screening_threshold,
+                                                                                                    num_auxiliary_basis,
+                                                                                                    iter,
+                                                                                                    d_boys_grid);
+*/
+            stream_id++;
+        }
+
+
+    
+
+
+//        cudaMemcpyAsync(d_Z_prev, &h_Z_tensor_prev[(size_t)iter * num_basis * num_auxiliary_basis], sizeof(real_t) * num_basis * num_auxiliary_basis, cudaMemcpyHostToDevice, stream_sub);
+
+        queue_sub.memcpy(d_Z_prev, &h_Z_tensor_prev[(size_t)iter * num_basis * num_auxiliary_basis],
+            sizeof(real_t) * num_basis * num_auxiliary_basis
+        ).wait();
+
+//        cudaDeviceSynchronize();
+
+
+        oneapi::mkl::blas::column_major::gemm(
+            queue_main,
+            oneapi::mkl::transpose::trans,      // CUBLAS_OP_T
+            oneapi::mkl::transpose::nontrans,   // CUBLAS_OP_N
+            num_auxiliary_basis,                // M
+            num_basis,                          // N
+            num_auxiliary_basis,                // K
+            alpha,
+            d_L_inv,  num_auxiliary_basis,      // A, lda
+            d_W_diff, num_auxiliary_basis,      // B, ldb
+            alpha,
+            d_Z_prev, num_auxiliary_basis       // C, ldc
+        );
+
+        queue_main.wait();
+
+        oneapi::mkl::blas::column_major::gemm(
+            queue_main,
+            oneapi::mkl::transpose::trans,      // CUBLAS_OP_T
+            oneapi::mkl::transpose::nontrans,   // CUBLAS_OP_N
+            row,                                // M
+            row,                                // N
+            col,                                // K
+            gamma,
+            d_Z_prev, col,                      // A, lda
+            d_Z_prev, col,                      // B, ldb
+            alpha,
+            d_K, row                            // C, ldc
+        );
+
+
+/*
+        cublasDgemm(
+            cublasHandle,
+            CUBLAS_OP_T,
+            CUBLAS_OP_N,
+            num_auxiliary_basis,
+            num_basis,
+            num_auxiliary_basis,
+            &alpha,
+            d_L_inv, num_auxiliary_basis,
+            d_W_diff, num_auxiliary_basis,
+            &alpha,
+            d_Z_prev, num_auxiliary_basis
+        );
+        
+
+
+
+
+        cudaDeviceSynchronize();
+
+
+
+
+        cublasDgemm(
+            cublasHandle,
+            CUBLAS_OP_T,
+            CUBLAS_OP_N,
+            row,
+            row,
+            col,
+            &gamma,
+            d_Z_prev, col,
+            d_Z_prev, col,
+            &alpha,
+            d_K, row
+        );
+
+*/
+
+        queue_sub.memcpy(&h_Z_tensor_prev[(size_t)iter * num_basis * num_auxiliary_basis], d_Z_prev,
+            sizeof(real_t) * num_basis * num_auxiliary_basis
+        ).wait();
+
+//        cudaMemcpyAsync(&h_Z_tensor_prev[(size_t)iter * num_basis * num_auxiliary_basis], d_Z_prev, sizeof(real_t) * num_basis*num_auxiliary_basis, cudaMemcpyDeviceToHost, stream_sub);
+        
+//        cudaDeviceSynchronize();
+    }
+// Device-to-device memcpy（非同期）
+        queue_sub.memcpy(
+            d_coefficient_matrix_prev,
+            d_coefficient_matrix,
+            sizeof(real_t) * num_basis * num_basis
+        );
+
+// Fock 行列カーネル（CUDA kernel → SYCL parallel_for）
+        queue_main.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                computeFockMatrix_RI_RHF_kernel(item,
+                      d_core_hamiltonian_matrix, d_J, d_K,
+                      d_fock_matrix, num_basis);
+            }
+        );
+
+// cudaDeviceSynchronize() 相当
+        queue_main.wait();
+        queue_sub.wait();
+
+// メモリ解放（cudaFree → sycl::free）
+        tracked_syclFree(d_J);
+        tracked_syclFree(d_K);
+        tracked_syclFree(d_Z);
+        tracked_syclFree(d_W_diff);
+        tracked_syclFree(d_Z_prev);
+        tracked_syclFree(d_coefficient_matrix_diff);
+
+
+/*
+    cublasSetStream(cublasHandle, 0);
+  
+
+
+    for(auto& stream : streams) cudaStreamDestroy(stream);
+
+
+    cudaMemcpyAsync(d_coefficient_matrix_prev, d_coefficient_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice, stream_sub);
+    // cudaMemcpyAsync(d_K_matrix_prev, d_K, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice, stream_sub);
+
+    // ////////////////////////////////// compute Fock matrix //////////////////////////////////
+
+    // // F = H + J - (1/2)*K
+    computeFockMatrix_RI_RHF_kernel<<<num_blocks, num_threads, 0, stream_main>>>(d_core_hamiltonian_matrix, d_J, d_K, d_fock_matrix, num_basis);
+
+    cudaDeviceSynchronize();
+
+    cudaStreamDestroy(stream_main);
+    cudaStreamDestroy(stream_sub);
+    
+    // free the memory
+    cudaFree(d_J);
+    cudaFree(d_K);
+    cudaFree(d_Z);
+    cudaFree(d_W_diff);
+    cudaFree(d_Z_prev);  
+
+    cudaFree(d_coefficient_matrix_diff);
+*/
+}
 
 } // namespace gansu::gpu

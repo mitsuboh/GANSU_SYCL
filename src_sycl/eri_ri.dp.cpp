@@ -536,7 +536,8 @@ void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &
 
     while (true) {
         try {
-            *d_iajb = sycl::malloc_device<double>(k * mvir * mocc * mvir, workq);
+//            *d_iajb = sycl::malloc_device<double>(k * mvir * mocc * mvir, workq);
+            *d_iajb = tracked_syclMallocAsync<double>(k * mvir * mocc * mvir, workq);
             break; // 成功したらループ脱出
         } catch (sycl::exception const &exc) {
             std::cerr << "malloc_device failed for k=" << k << ": " << exc.what() << "\n";
@@ -609,10 +610,11 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
 
     // 中間バッファ
 //    real_t* d_tmp = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis_ * num_basis_, workq);
-    real_t* d_tmp = sycl::malloc_device<real_t>(num_basis_ * nvir * num_auxiliary_basis, workq);
+//    real_t* d_tmp = sycl::malloc_device<real_t>(num_basis_ * nvir * num_auxiliary_basis, workq);
+    real_t* d_tmp = tracked_syclMalloc<real_t>(num_basis_ * nvir * num_auxiliary_basis);
 
     // エネルギー用スカラー
-    real_t* d_energy = sycl::malloc_device<real_t>(1, workq);
+    real_t* d_energy = tracked_syclMalloc<real_t>(1);
     real_t zero = 0.0;
     workq.memcpy(d_energy, &zero, sizeof(real_t)).wait();
 
@@ -624,7 +626,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
 
     // intermediate matrix 変換
     transform_intermediate_matrix(workq, num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
-    sycl::free(d_tmp, workq);
+    tracked_syclFree(d_tmp);
 
     const int num_threads = 1024;
     size_t num_blocks_1 = 0;
@@ -680,6 +682,8 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     // ホストにコピーして取得
     real_t energy;
     workq.memcpy(&energy, d_energy, sizeof(real_t)).wait();
+    tracked_syclFree(d_iajb);
+    tracked_syclFree(d_energy);
     sycl::free(d_iajb, workq);
     sycl::free(d_energy, workq);
 
