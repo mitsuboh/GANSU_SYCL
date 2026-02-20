@@ -24,6 +24,8 @@
 #include "int2e_direct.hpp"
 #include "device_host_memory.hpp" // For tracked_gansu::tracked_syclMalloc/tracked_syclFree
 
+#include "gradients.hpp"
+
 #include <vector>    // std::vector
 #include <tuple>     // std::tuple
 #include <algorithm> // std::reverse
@@ -594,6 +596,7 @@ void computeCoreHamiltonianMatrix(
     PrimitiveShell *d_primitive_shells, real_t *d_boys_grid,
     real_t *d_cgto_normalization_factors, real_t *d_overlap_matrix,
     real_t *d_core_hamiltonian_matrix, const int num_atoms, const int num_basis,
+    const std::string int1e_method,
     const bool verbose) try {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
@@ -602,6 +605,12 @@ void computeCoreHamiltonianMatrix(
 
     sycl::queue& workq = GPUHandle::syclqueue();
 //    sycl::queue workq;
+    Int1eMethod method;
+
+    if(int1e_method == "md") method = int1e_md;
+    else if(int1e_method == "os") method = int1e_os;
+    else method = method = int1e_hybrid;
+
     // compute the core Hamiltonian matrix
     const int threads_per_block = 128; // the number of threads per block
 
@@ -667,7 +676,7 @@ void computeCoreHamiltonianMatrix(
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                        [=](sycl::nd_item<1> item_ct1) {
                 launch_overlap_kinetic_kernel( item_ct1,
-                    s0, s1, d_overlap_matrix,
+                    s0, s1, method, d_overlap_matrix,
                     d_core_hamiltonian_matrix, d_primitive_shells,
                     d_cgto_normalization_factors, shell_s0, shell_s1,
                     num_shell_pairs, num_basis);
@@ -678,7 +687,7 @@ void computeCoreHamiltonianMatrix(
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                        [=](sycl::nd_item<1> item_ct1) {
                 launch_nuclear_attraction_kernel( item_ct1,
-                    s0, s1, d_core_hamiltonian_matrix, d_primitive_shells,
+                    s0, s1, method, d_core_hamiltonian_matrix, d_primitive_shells,
                     d_cgto_normalization_factors, d_atoms, num_atoms, shell_s0,
                     shell_s1, num_shell_pairs, num_basis, d_boys_grid);
             });

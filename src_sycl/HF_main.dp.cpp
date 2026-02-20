@@ -51,6 +51,8 @@ int main(int argc, char* argv[]){
     hf->solve(); // Solve the HF equation (SCF procedure)
     hf->report(); // Print the HF results
 
+    // hf->compute_Energy_Gradient(); // Calculate the gradient of the stotal electronic energy
+
     // Export the SAD density matrix to a file
     if (parameters.contains("export_sad_cache")) {
         std::cout << "Exporting SAD cache to 'temp_sad_cache.dat'..." << std::endl;

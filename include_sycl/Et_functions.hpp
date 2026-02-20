@@ -3687,9 +3687,14 @@ inline real_t callFunction(int index, real_t a, real_t b, real_t c, real_t d, re
 // MD法におけるEに関して，(i,l,t)の対応するデバイス関数を選択
 inline real_t MD_Et_NonRecursion(int i, int l, int t, real_t alpha, real_t beta, real_t dist){
 //    return MD_EtArray[4 * i * (10 + i) + (i + l) * (i + l + 1) / 2 + t](
-    return callFunction(4 * i * (10 + i) + (i + l) * (i + l + 1) / 2 + t,
-        alpha, beta, alpha + beta, dist,
-        sycl::exp(-alpha * beta / (alpha + beta) * dist * dist));
+//    return callFunction(4 * i * (10 + i) + (i + l) * (i + l + 1) / 2 + t, alpha, beta, alpha + beta, dist, sycl::exp(-alpha * beta / (alpha + beta) * dist * dist));
+    if( i<0 || l<0 || t<0 || i+l<t){ // 範囲外の処理
+        return 0.0;
+    }else{
+        return callFunction(4 * i * (10 + i) + (i + l) * (i + l + 1) / 2 + t,
+            alpha, beta, alpha + beta, dist,
+            sycl::exp(-alpha * beta / (alpha + beta) * dist * dist));
+    }
 }
 
 

@@ -21,6 +21,7 @@
 #include "utils_cuda.hpp"
 
 #include "int1e.hpp"
+#include "compile_flag_int1e.hpp"
 #include "int2e.hpp"
 #include "Et_functions.hpp"
 
@@ -44,9 +45,6 @@ namespace gansu::gpu{
 //#include "MD_kernel.txt"
 // OS method
 //#include "OS_kernel.txt"
-
-
-
 
 // すべての行列要素にatomicAddを行う（汎用カーネルで使用）
 inline void AddToResult(double result, double *g_V, int y, int x, int sumCGTO, bool flag)
@@ -100,71 +98,6 @@ inline void AddToResult(double result, double *g_V, int y, int x, int sumCGTO, b
 //     return 1.0;
 // }
 
-
-
-// MD法のRの再帰関係をトリプルバッファリングで計算
-inline void compute_R_TripleBuffer(
-    real_t *R, real_t *R_mid, const real_t *Boys, const sycl::double3 &P,
-    const Coordinate &coord, const int K, const int t_max, const int u_max,
-    const int v_max) {
-    //Step 0: Boys関数評価
-    R[0]=Boys[0];
-    for(int i=0; i <= K; i++){
-        R_mid[i]=Boys[i];
-    } 
-
-    //Step 1~Kの計算
-    for(int k=1; k <= K; k++){
-        for(int z=0; z<=(K+1)*comb_max(k); z++){
-            int i = z/comb_max(k);
-            if(i <= K-k){
-                int t = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][0];
-                int u = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][1];
-                int v = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][2];
-                if((t <= t_max) && (u <= u_max) && (v <= v_max)){
-                    if(t >= 1){
-                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k),
-                                            size_one_Rmid)] =
-                            (P.x() - coord.x) *
-                                R_mid[calc_Idx_Rmid(k - 1, u, v, i + 1,
-                                                    comb_max(k - 1),
-                                                    size_one_Rmid)] +
-                            (t - 1) * R_mid[calc_Idx_Rmid(k - 2, u, v, i + 1,
-                                                          comb_max(k - 2),
-                                                          size_one_Rmid)];
-                    }
-                    else if(u >= 1){
-                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k),
-                                            size_one_Rmid)] =
-                            (P.y() - coord.y) *
-                                R_mid[calc_Idx_Rmid(k - 1, u - 1, v, i + 1,
-                                                    comb_max(k - 1),
-                                                    size_one_Rmid)] +
-                            (u - 1) * R_mid[calc_Idx_Rmid(
-                                          k - 2, u - 2, v, i + 1,
-                                          comb_max(k - 2), size_one_Rmid)];
-                    }
-                    else{
-                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k),
-                                            size_one_Rmid)] =
-                            (P.z() - coord.z) *
-                                R_mid[calc_Idx_Rmid(k - 1, u, v - 1, i + 1,
-                                                    comb_max(k - 1),
-                                                    size_one_Rmid)] +
-                            (v - 1) * R_mid[calc_Idx_Rmid(
-                                          k - 2, u, v - 2, i + 1,
-                                          comb_max(k - 2), size_one_Rmid)];
-                    }
-                }
-            }
-        }
-
-        //必要な結果を配列Rに書き込み
-        for(int i=0; i<=comb_max(k); i++){
-            R[static_cast<int>(k*(k+1)*(k+2)/6) + i] = R_mid[(k%3)*static_cast<int>(size_one_Rmid) + i];
-        }
-    }
-}
 
 /*
 DPCT1110:50: The total declared local variable size in device function
@@ -278,6 +211,44 @@ SYCL_EXTERNAL void compute_kinetic_energy_integral(const sycl::nd_item<1>& item_
     }
 }
 
+// MD法のRの再帰関係をトリプルバッファリングで計算（汎用カーネルで使用）
+inline void compute_R_TripleBuffer( real_t *R, real_t *R_mid, const real_t *Boys, const double3 &P, const Coordinate &coord, const int K, const int t_max, const int u_max, const int v_max) {
+    //Step 0: Boys関数評価
+    R[0]=Boys[0];
+    for(int i=0; i <= K; i++){
+        R_mid[i]=Boys[i];
+    } 
+
+    //Step 1~Kの計算
+    for(int k=1; k <= K; k++){
+        for(int z=0; z<=(K+1)*comb_max(k); z++){
+            int i = z/comb_max(k);
+            if(i <= K-k){
+                int t = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][0];
+                int u = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][1];
+                int v = tuv_list[(k*(k+1)*(k+2))/6 + z%comb_max(k)][2];
+                if((t <= t_max) && (u <= u_max) && (v <= v_max)){
+                    if(t >= 1){
+                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k), size_one_Rmid)] = (P.x - coord.x) * R_mid[calc_Idx_Rmid(k - 1, u, v, i + 1, comb_max(k - 1), size_one_Rmid)] + (t - 1) * R_mid[calc_Idx_Rmid(k - 2, u, v, i + 1, comb_max(k - 2), size_one_Rmid)];
+                    }
+                    else if(u >= 1){
+                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k), size_one_Rmid)] = (P.y - coord.y) * R_mid[calc_Idx_Rmid(k - 1, u - 1, v, i + 1, comb_max(k - 1), size_one_Rmid)] + (u - 1) * R_mid[calc_Idx_Rmid( k - 2, u - 2, v, i + 1, comb_max(k - 2), size_one_Rmid)];
+                    }
+                    else{
+                        R_mid[calc_Idx_Rmid(k, u, v, i, comb_max(k), size_one_Rmid)] = (P.z - coord.z) * R_mid[calc_Idx_Rmid(k - 1, u, v - 1, i + 1, comb_max(k - 1), size_one_Rmid)] + (v - 1) * R_mid[calc_Idx_Rmid( k - 2, u, v - 2, i + 1, comb_max(k - 2), size_one_Rmid)];
+                    }
+                }
+            }
+        }
+
+        //必要な結果を配列Rに書き込み
+        for(int i=0; i<=comb_max(k); i++){
+            R[static_cast<int>(k*(k+1)*(k+2)/6) + i] = R_mid[(k%3)*static_cast<int>(size_one_Rmid) + i];
+        }
+    }
+}
+
+
 /*
 DPCT1110:51: The total declared local variable size in device function
 compute_nuclear_attraction_integral exceeds 128 bytes and may cause high
@@ -307,7 +278,7 @@ SYCL_EXTERNAL void compute_nuclear_attraction_integral(const sycl::nd_item<1>& i
 
 	const double p = a.exponent + b.exponent;
 
-        const sycl::double3 P = sycl::double3(
+        const double3 P = make_double3(
             (a.exponent * a.coordinate.x + b.exponent * b.coordinate.x) / p,
             (a.exponent * a.coordinate.y + b.exponent * b.coordinate.y) / p,
             (a.exponent * a.coordinate.z + b.exponent * b.coordinate.z) / p);
