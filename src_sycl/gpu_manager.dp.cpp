@@ -16,7 +16,7 @@
 #include <sycl/sycl.hpp>
 #include <cmath>
 #include "gpu_manager.hpp"
-//#include "int1e.hpp"
+#include "int1e.hpp"
 #include "int2e.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
 #include "int2c2e.hpp"
@@ -36,30 +36,6 @@
 
 namespace gansu::gpu{
 
-// int1e_method for device                                                                                                              
-enum Int1eMethod {
-    int1e_md = 0,
-    int1e_os = 1,
-    int1e_hybrid = 2,
-};
-
-SYCL_EXTERNAL
-void matrixSymmetrization(const sycl::id<1>& item, double* g_matrix, const int num_basis);
-
-SYCL_EXTERNAL
-void launch_overlap_kinetic_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, const Int1eMethod int1e_method,
-    real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
-    const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
-                        const size_t num_threads,
-                        const int num_basis);
-
-SYCL_EXTERNAL
-void launch_nuclear_attraction_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, const Int1eMethod method,
-    real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
-                        const Atom* g_atom, const int num_atoms,
-                        const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
-                        const size_t num_threads,
-                        const int num_basis, const real_t* g_boys_grid);
 
 
 
@@ -4851,5 +4827,126 @@ catch (sycl::exception const &exc) {
             << ", line:" << __LINE__ << std::endl;
   std::exit(1);
 }
+
+
+// エネルギー微分を計算する関数
+void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+                                const Atom* d_atoms, const real_t* d_density_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, 
+                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors, 
+                                const int num_atoms, const int num_basis, const int num_electron, const bool verbose)
+{
+    sycl::queue& workq = GPUHandle::syclqueue();
+    // メモリサイズ
+    const int n = 3*num_atoms; // 配列のサイズ
+    const size_t wmat_bytes = num_basis * num_basis * sizeof(real_t);
+    const size_t gradients_bytes = n * sizeof(double);  // dx, dy, dz の計算結果を1次元配列に格納
+
+    // CPU側のメモリ確保
+    real_t* W_matrix = nullptr;
+    double* grad_N = nullptr;
+    double* grad_S = nullptr;
+    double* grad_K = nullptr;
+    double* grad_V = nullptr;
+    double* grad_G = nullptr;
+    double* grad_total = nullptr;
+
+    W_matrix   = sycl::malloc_host<real_t>(num_basis * num_basis, workq);
+    grad_N     = sycl::malloc_host<double>(3 * num_atoms, workq);
+    grad_S     = sycl::malloc_host<double>(3 * num_atoms, workq);
+    grad_K     = sycl::malloc_host<double>(3 * num_atoms, workq);
+    grad_V     = sycl::malloc_host<double>(3 * num_atoms, workq);
+    grad_G     = sycl::malloc_host<double>(3 * num_atoms, workq);
+    grad_total = sycl::malloc_host<double>(3 * num_atoms, workq);
+/*
+    cudaMallocHost((void**)&W_matrix, wmat_bytes);
+    cudaMallocHost((void**)&grad_N, gradients_bytes);
+    cudaMallocHost((void**)&grad_S, gradients_bytes);
+    cudaMallocHost((void**)&grad_K, gradients_bytes);
+    cudaMallocHost((void**)&grad_V, gradients_bytes);
+    cudaMallocHost((void**)&grad_G, gradients_bytes);
+    cudaMallocHost((void**)&grad_total, gradients_bytes);
+*/
+
+    // GPU側のメモリ確保
+    real_t* d_W_matrix = nullptr;
+    double* d_grad_N = nullptr;
+    double* d_grad_S = nullptr;
+    double* d_grad_K = nullptr;
+    double* d_grad_V = nullptr;
+    double* d_grad_G = nullptr;
+    double* d_grad_total = nullptr;
+
+    d_W_matrix   = sycl::malloc_device<real_t>(num_basis * num_basis, workq);
+    d_grad_N     = sycl::malloc_device<double>(3 * num_atoms, workq);
+    d_grad_S     = sycl::malloc_device<double>(3 * num_atoms, workq);
+    d_grad_K     = sycl::malloc_device<double>(3 * num_atoms, workq);
+    d_grad_V     = sycl::malloc_device<double>(3 * num_atoms, workq);
+    d_grad_G     = sycl::malloc_device<double>(3 * num_atoms, workq);
+    d_grad_total = sycl::malloc_device<double>(3 * num_atoms, workq);
+
+    // GPUメモリの初期化
+    workq.memset(d_W_matrix, 0, wmat_bytes);
+    workq.memset(d_grad_N, 0, gradients_bytes);
+    workq.memset(d_grad_S, 0, gradients_bytes);
+    workq.memset(d_grad_K, 0, gradients_bytes);
+    workq.memset(d_grad_V, 0, gradients_bytes);
+    workq.memset(d_grad_G, 0, gradients_bytes);
+    workq.memset(d_grad_total, 0, gradients_bytes);
+
+    workq.wait();
+
+    // コールスタックのサイズを増加
+//    size_t stackSize = 64 * 1024;
+//    cudaDeviceSetLimit(cudaLimitStackSize, stackSize);
+
+    // 重なりの係数Wの計算
+    compute_W(d_W_matrix, d_coefficient_matrix, d_orbital_energies, num_basis, num_electron);
+
+    // 各分子積分の微分を同時に計算
+    computeMolucularGradients(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G, d_W_matrix, 
+                              shell_type_infos, shell_pair_type_infos, d_atoms, 
+                              d_density_matrix, d_coefficient_matrix, d_orbital_energies, d_primitive_shells,
+                              d_boys_grid, d_cgto_normalization_factors, num_atoms, num_basis, num_electron, verbose);
+
+                              
+    // CPU側へ結果コピー（方向別に）
+    workq.memcpy(W_matrix, d_W_matrix, wmat_bytes).wait();
+    workq.memcpy(grad_N, d_grad_N, gradients_bytes).wait();
+    workq.memcpy(grad_S, d_grad_S, gradients_bytes).wait();
+    workq.memcpy(grad_K, d_grad_K, gradients_bytes).wait();
+    workq.memcpy(grad_V, d_grad_V, gradients_bytes).wait();
+    workq.memcpy(grad_G, d_grad_G, gradients_bytes).wait();
+    workq.memcpy(grad_total, d_grad_total, gradients_bytes).wait();
+
+    // 結果を出力
+    // print_W_Matrix("W matrix", W_matrix, num_basis);
+    // printGradientMatrix("N-Term Gradient", grad_N, num_atoms);
+    // printGradientMatrix("S-Term Gradient", grad_S, num_atoms);
+    // printGradientMatrix("K-Term Gradient", grad_K, num_atoms);
+    // printGradientMatrix("V-Term Gradient", grad_V, num_atoms);
+    // printGradientMatrix("G-Term Gradient", grad_G, num_atoms);
+    // printGradientMatrix("Total Gradient", grad_total, num_atoms);
+
+    // GPUメモリの解放
+    sycl::free(d_W_matrix, workq);
+    sycl::free(d_grad_N, workq);
+    sycl::free(d_grad_S, workq);
+    sycl::free(d_grad_K, workq);
+    sycl::free(d_grad_V, workq);
+    sycl::free(d_grad_G, workq);
+    sycl::free(d_grad_total, workq);
+
+    // CPUメモリの解放
+    sycl::free(W_matrix, workq);
+    sycl::free(grad_N, workq);
+    sycl::free(grad_S, workq);
+    sycl::free(grad_K, workq);
+    sycl::free(grad_V, workq);
+    sycl::free(grad_G, workq);
+    sycl::free(grad_total, workq);
+}
+
+
+
 
 } // namespace gansu::gpu
