@@ -16,7 +16,7 @@
 #include <sycl/sycl.hpp>
 #include <cmath>
 #include "gpu_manager.hpp"
-#include "int1e.hpp"
+//#include "int1e.hpp"
 #include "int2e.hpp"
 #include "utils.hpp" // THROW_EXCEPTION
 #include "int2c2e.hpp"
@@ -36,8 +36,30 @@
 
 namespace gansu::gpu{
 
+// int1e_method for device                                                                                                              
+enum Int1eMethod {
+    int1e_md = 0,
+    int1e_os = 1,
+    int1e_hybrid = 2,
+};
 
+SYCL_EXTERNAL
+void matrixSymmetrization(const sycl::id<1>& item, double* g_matrix, const int num_basis);
 
+SYCL_EXTERNAL
+void launch_overlap_kinetic_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, const Int1eMethod int1e_method,
+    real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
+    const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
+                        const size_t num_threads,
+                        const int num_basis);
+
+SYCL_EXTERNAL
+void launch_nuclear_attraction_kernel(const sycl::nd_item<1>& item_ct1, int a, int b, const Int1eMethod method,
+    real_t* g_nucattr, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors,
+                        const Atom* g_atom, const int num_atoms,
+                        const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
+                        const size_t num_threads,
+                        const int num_basis, const real_t* g_boys_grid);
 
 
 
@@ -4573,6 +4595,261 @@ auto boys_grid            = d_boys_grid;
 
     cudaFree(d_coefficient_matrix_diff);
 */
+}
+
+
+/// @brief Check the validity and contents of the W matrix.
+/// @param label 
+/// @param W_matrix 
+/// @param num_basis 
+void print_W_Matrix(const char* label, const real_t* W_matrix, int num_basis){
+    std::cout << "=== " << label << " ===" << std::endl;
+    std::cout << "[\n";
+    for(int i=0; i<num_basis; i++) {
+        for(int j=0; j<num_basis; j++){
+            if (j == 0) std::cout <<  "  [";
+
+            std::cout << std::right << std::setfill(' ') << std::setw(10) << std::fixed << std::setprecision(6) << W_matrix[i*num_basis + j];
+
+            if (j != num_basis - 1) std::cout << ",";
+        }
+        std::cout << "]\n";
+    }
+    std::cout << "]\n\n";
+}
+
+
+/// @brief Check the validity and contents of the Gradient Matrix.
+/// @param label 
+/// @param grad 
+/// @param num_atoms 
+void printGradientMatrix(const char* label, const double* grad, int num_atoms) {
+    std::cout << std::setfill(' '); 
+    std::cout << "=== " << label << " ===" << std::endl;
+    std::cout << "[\n";
+
+    double sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
+
+    for (int i = 0; i < num_atoms; ++i) {
+        std::cout << "  [" 
+                  << std::setw(14) << std::fixed << std::setprecision(8) << grad[3*i + 0] << ", "
+                  << std::setw(14) << std::fixed << std::setprecision(8) << grad[3*i + 1] << ", "
+                  << std::setw(14) << std::fixed << std::setprecision(8) << grad[3*i + 2] << " ]";
+        if (i != num_atoms - 1) std::cout << ",";
+        std::cout << "\n";
+        sum_x += grad[3*i + 0];
+        sum_y += grad[3*i + 1];
+        sum_z += grad[3*i + 2];
+    }
+    std::cout << "]\n";
+
+    std::cout << std::fixed << std::setprecision(8) << "(x, y, z) = (" << sum_x << ", " << sum_y << ", " << sum_z << ")" << std::endl;
+
+    const double tol = 1e-8;
+    std::cout << "Check if sums are zero: " << ((std::fabs(sum_x) < tol && std::fabs(sum_y) < tol && std::fabs(sum_z) < tol) ? "YES" : "NO") << std::endl << std::endl;
+}
+
+
+// 核座標微分をGPUで実装する前処理(重なり部分の係数Wの計算)
+void compute_W(real_t* d_W_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, const int num_basis, const int num_electron)
+{
+    const int threads_per_block = 128;
+    const int blocks = (num_basis*num_basis + threads_per_block - 1) / threads_per_block;
+    sycl::queue& workq = GPUHandle::syclqueue();
+        workq.parallel_for(
+        sycl::nd_range<1>(blocks * threads_per_block, threads_per_block),
+        [=](sycl::nd_item<1> item_ct1) {
+            compute_W_Matrix_kernel(item_ct1, d_W_matrix, d_coefficient_matrix,
+                                    d_orbital_energies, num_electron,
+                                    num_basis);
+        });
+}
+
+
+
+
+// 各分子積分の微分を同時に計算
+void computeMolucularGradients(
+    double *d_grad_total, double *d_grad_N, double *d_grad_S, double *d_grad_K,
+    double *d_grad_V, double *d_grad_G, real_t *d_W_matrix,
+    const std::vector<ShellTypeInfo> &shell_type_infos,
+    const std::vector<ShellPairTypeInfo> &shell_pair_type_infos,
+    const Atom *d_atoms, const real_t *d_density_matrix,
+    const real_t *d_coefficient_matrix, const real_t *d_orbital_energies,
+    const PrimitiveShell *d_primitive_shells, const real_t *d_boys_grid,
+    const real_t *d_cgto_normalization_factors, const int num_atoms,
+    const int num_basis, const int num_electron, const bool verbose) try {
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+    sycl::queue& workq = GPUHandle::syclqueue();
+    // block size, thread sizeの指定
+    const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+
+    // 2電子部分の微分の前処理
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+    // multi streamの作成
+    int stream_id = 0;
+    const int num_kernels = shell_quadruples.size() + 3*((shell_type_count)*(shell_type_count+1)/2) + 1;
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for(int i=0; i<num_kernels; i++) {
+        streams.emplace_back(GPUHandle::syclqueue());
+//            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") +
+//                            std::string(dpct::get_error_string_dummy(err)));
+    }
+    
+
+    // 2電子部分の微分
+    for(const auto& quadruple: shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
+        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
+        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket; // equal to the number of threads
+        const int num_blocks = (num_braket + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+        sycl::range<1> blocks(num_blocks);
+        sycl::range<1> threads(threads_per_block);
+
+        streams[stream_id].submit([&](sycl::handler& cgh){
+            cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                     [=](sycl::nd_item<1> item_ct1) {
+                compute_gradients_two_electron(item_ct1,
+                    d_grad_G, d_density_matrix,
+                    d_primitive_shells, d_cgto_normalization_factors, shell_s0,
+                    shell_s1, shell_s2, shell_s3, num_braket, num_basis, d_boys_grid);
+            });
+        });
+    }
+
+    // 1電子部分の微分
+    for (int s0 = shell_type_count-1; s0 >= 0; s0--) {
+        for (int s1 = shell_type_count-1; s1 >= s0; s1--) {
+            const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+            const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+
+            const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count); // the number of pairs of primitive shells = the number of threads
+            const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block; // the number of blocks
+
+            sycl::range<1> blocks(num_blocks);
+            sycl::range<1> threads(threads_per_block);
+
+            streams[stream_id].submit([&](sycl::handler& cgh){
+                cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                         [=](sycl::nd_item<1> item_ct1) {
+                    compute_gradients_overlap(item_ct1,
+                        d_grad_S, d_W_matrix, d_primitive_shells,
+                        d_cgto_normalization_factors, num_basis,
+                        shell_s0, shell_s1, num_shell_pairs);
+                });
+            });
+
+            streams[stream_id].submit([&](sycl::handler& cgh){
+                cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                         [=](sycl::nd_item<1> item_ct1) {
+                    compute_gradients_kinetic(item_ct1,
+                        d_grad_K, d_density_matrix,
+                        d_primitive_shells, d_cgto_normalization_factors, num_basis,
+                        shell_s0, shell_s1, num_shell_pairs);
+                });
+            });
+
+            streams[stream_id].submit([&](sycl::handler& cgh){
+                cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                         [=](sycl::nd_item<1> item_ct1) {
+                    compute_gradients_nuclear(item_ct1,
+                        d_grad_V, d_density_matrix,
+                        d_primitive_shells, d_cgto_normalization_factors, d_atoms,
+                        num_atoms, num_basis, shell_s0, shell_s1, num_shell_pairs,
+                        d_boys_grid);
+                });
+            });
+        }
+    }
+
+    const int NR_blocks = (num_atoms * num_atoms + threads_per_block - 1) / threads_per_block;
+    streams[stream_id].parallel_for(
+        sycl::nd_range<1>(NR_blocks * threads_per_block, threads_per_block),
+        [=](sycl::nd_item<1> item_ct1) {
+            compute_nuclear_repulsion_gradient_kernel(item_ct1, d_grad_N, d_atoms,
+                                                      num_atoms);
+        });
+
+    // syncronize streams
+    //dpct::err0 err = DPCT_CHECK_ERROR(dev_ct1.queues_wait_and_throw());
+    /*
+    DPCT1000:245: Error handling if-stmt was detected but could not be
+    rewritten.
+    */
+    //if (err != 0) {
+        /*
+        DPCT1009:249: SYCL reports errors using exceptions and does not use
+        error codes. Please replace the "get_error_string_dummy(...)" with a
+        real error-handling function.
+        */
+        /*
+        DPCT1001:244: The statement could not be removed.
+        */
+        //std::cerr << "CUDA error: " << dpct::get_error_string_dummy(err)
+        //          << std::endl;
+        //abort();
+    //}
+
+    // destory streams
+    //for(int i=0; i<num_kernels; i++) {
+    //    dev_ct1.destroy_queue(streams[i]);
+    //}
+
+    // 微分の影響を合計
+    const double alpha = 1.0;
+/*
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_S, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_K, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_V, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_G, 1, d_grad_total, 1);
+
+    cublasDestroy(handle);
+*/
+
+    workq.memcpy(d_grad_total, d_grad_N, sizeof(double) * 3 * num_atoms).wait();
+
+    oneapi::mkl::blas::row_major::axpy(
+    workq, 3*num_atoms, alpha, d_grad_S, 1, d_grad_total, 1);
+
+    oneapi::mkl::blas::row_major::axpy(
+    workq, 3*num_atoms, alpha, d_grad_K, 1, d_grad_total, 1);
+
+    oneapi::mkl::blas::row_major::axpy(
+    workq, 3*num_atoms, alpha, d_grad_V, 1, d_grad_total, 1);
+
+    oneapi::mkl::blas::row_major::axpy(
+    workq, 3*num_atoms, alpha, d_grad_G, 1, d_grad_total, 1);
+
+    workq.wait();
+}
+catch (sycl::exception const &exc) {
+  std::cerr << exc.what() << "Exception caught at file:" << __FILE__
+            << ", line:" << __LINE__ << std::endl;
+  std::exit(1);
 }
 
 } // namespace gansu::gpu

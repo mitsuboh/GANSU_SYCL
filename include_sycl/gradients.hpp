@@ -58,15 +58,18 @@ namespace gansu::gpu{
 void printGradientMatrix_Kernel(const double* g_grad, int num_atoms);
 
 // define the kernel to calculate nuclear repulsion gradient
-void compute_nuclear_repulsion_gradient_kernel(double* g_grad, const Atom* g_atom, const int num_atoms);
+SYCL_EXTERNAL
+void compute_nuclear_repulsion_gradient_kernel(const sycl::nd_item<1>& item_ct1, double* g_grad, const Atom* g_atom, const int num_atoms);
 
 
 // define the kernel to calculate W matrix for overlap gradient
-void compute_W_Matrix_kernel(real_t* d_W_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, const int num_electron, const int num_basis);
+SYCL_EXTERNAL
+void compute_W_Matrix_kernel(const sycl::nd_item<1>& item_ct1, real_t* d_W_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, const int num_electron, const int num_basis);
 
 
 // define the kernel to calculate the gradients of moliucular integrals
-void compute_gradients_overlap(double *g_gradients, const real_t *g_W_matrix,
+SYCL_EXTERNAL
+void compute_gradients_overlap(const sycl::nd_item<1>& item_ct1, double *g_gradients, const real_t *g_W_matrix,
                                const PrimitiveShell *g_shell,
                                const real_t *g_cgto_normalization_factors,
                                const int num_basis, ShellTypeInfo shell_s0,
@@ -79,8 +82,8 @@ void compute_gradients_overlap_wrapper(
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const int num_basis, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
     const size_t num_threads);
-
-void compute_gradients_kinetic(double *g_gradients,
+SYCL_EXTERNAL
+void compute_gradients_kinetic(const sycl::nd_item<1>& item_ct1, double *g_gradients,
                                const real_t *g_density_matrix,
                                const PrimitiveShell *g_shell,
                                const real_t *g_cgto_normalization_factors,
@@ -94,8 +97,8 @@ void compute_gradients_kinetic_wrapper(
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const int num_basis, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1,
     const size_t num_threads);
-
-void compute_gradients_nuclear(double *g_gradients,
+SYCL_EXTERNAL
+void compute_gradients_nuclear(const sycl::nd_item<1>& item_ct1, double *g_gradients,
                                const real_t *g_density_matrix,
                                const PrimitiveShell *g_shell,
                                const real_t *g_cgto_normalization_factors,
@@ -113,7 +116,8 @@ void compute_gradients_nuclear_wrapper(
     const real_t *g_boys_grid);
 
 // define the kernel to calculate the gradient of the two-electron part
-void compute_gradients_two_electron(
+SYCL_EXTERNAL
+void compute_gradients_two_electron(const sycl::nd_item<1>& item_ct1,
     double *g_gradients, const real_t *g_density_matrix,
     const PrimitiveShell *g_shell, const real_t *g_cgto_normalization_factors,
     const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1,
