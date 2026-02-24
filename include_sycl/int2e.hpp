@@ -263,6 +263,9 @@ long long int calcIdx4Dim(size_t i, size_t j, size_t k, size_t l, size_t nao)
     return nao * nao * nao * i + nao * nao * j + nao * k + l;
 }
 
+SYCL_EXTERNAL void get_schwarz_upper_bound_factors_general_for_SAD_K_computation(sycl::nd_item<1> item_ct1, const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t head, const size_t num_bra, const size_t num_primitive_shells, const double* g_boys_grid, double* g_max_upper_bound_factors,ShellPairSorter* g_max_upper_bound_factors_for_SAD_K_computation);
+
+
 inline 
 double calcNorm(double exp, int l, int m, int n){
     /*
