@@ -5180,7 +5180,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     double* d_eri_mo = nullptr;
 //    size_t bytes_mo = (size_t)N * (size_t)N * sizeof(double);
 //    d_eri_mo = (double *)sycl::malloc_device(bytes_mo, q_ct1);
-    d_eri_mo = tracked_syclMalloc<double>((size_t) N * N);
+    d_eri_mo = tracked_syclMalloc<double>((size_t) N * N, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -5206,7 +5206,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     // 3) MP2 energy from full MO ERI
     // ------------------------------------------------------------
     real_t* d_mp2_energy;
-    d_mp2_energy = tracked_syclMalloc<real_t>(1);
+    d_mp2_energy = tracked_syclMalloc<real_t>(1, q_ct1);
     if(d_mp2_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP2 energy.");
     }
@@ -5251,7 +5251,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
     // 4) MP3 energy from full MO ERI
     // ------------------------------------------------------------
     real_t* d_mp3_energy;
-    d_mp3_energy = tracked_syclMalloc<real_t>(3); // Allocate space for 3 terms
+    d_mp3_energy = tracked_syclMalloc<real_t>(3, q_ct1); // Allocate space for 3 terms
     if(d_mp3_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP3 energy.");
     }
@@ -5392,7 +5392,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
         int kernel_offset = 0;
 
         real_t* d_contrib;
-        d_contrib = tracked_syclMalloc<real_t>(1);
+        d_contrib = tracked_syclMalloc<real_t>(1, q_ct1);
         q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
 
         // Launch the kernel for single excitation terms
@@ -5432,7 +5432,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
         int kernel_offset = num_mp4_terms_single;
 
         real_t* d_contrib;
-        d_contrib = tracked_syclMalloc<real_t>(1);
+        d_contrib = tracked_syclMalloc<real_t>(1, q_ct1);
         q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
 
         // Launch the kernel for double excitation terms
@@ -5473,7 +5473,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
         int kernel_offset = num_mp4_terms_single + num_mp4_terms_double;
 
         real_t* d_contrib;
-        d_contrib = tracked_syclMalloc<real_t>(1);
+        d_contrib = tracked_syclMalloc<real_t>(1, q_ct1);
         q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
 
         // Launch the kernel for triple excitation terms
@@ -5517,7 +5517,7 @@ real_t mp4_from_aoeri_via_full_moeri_factorization(
         int kernel_offset = num_mp4_terms_single + num_mp4_terms_double + num_mp4_terms_triple;
 
         real_t* d_contrib;
-        d_contrib = tracked_syclMalloc<real_t>(1);
+        d_contrib = tracked_syclMalloc<real_t>(1, q_ct1);
         q_ct1.memset(d_contrib, 0.0, sizeof(real_t)).wait();
 
         // Launch the kernel for quadruple excitation terms

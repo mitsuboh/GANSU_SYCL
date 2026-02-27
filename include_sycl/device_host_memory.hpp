@@ -46,13 +46,15 @@ namespace gansu{
  * @tparam T The type of elements stored in the memory.
  */
 template <typename T>
-class CudaMemoryManager {
+class SyclMemoryManager {
 protected:
     T* device_ptr_;   ///< Pointer to the device memory
     T* host_ptr_;     ///< Pointer to the host memory
     size_t size_;     ///< Number of elements in the memory
     size_t device_bytes_; ///< Number of bytes allocated on device for this instance
     size_t host_bytes_;   ///< Number of bytes allocated on host for this instance
+
+    sycl::queue* owning_queue_;
 
     // Static members for memory statistics (shared across all instances)
     inline static size_t current_allocated_bytes_ = 0;  ///< Current total allocated device memory
@@ -62,30 +64,29 @@ protected:
 
 public:
     /**
-     * @brief Constructs a CudaMemoryManager with the given size.
+     * @brief Constructs a SyclMemoryManager with the given size.
      *
      * This constructor initializes the memory manager without allocating memory.
      *
      * @param size The number of elements in the memory.
      */
-    CudaMemoryManager(size_t size)
+    SyclMemoryManager(size_t size)
         : device_ptr_(nullptr), host_ptr_(nullptr), size_(size),
-          device_bytes_(0), host_bytes_(0) {}
+          device_bytes_(0), host_bytes_(0), owning_queue_(nullptr) {}
 
     /**
      * @brief Virtual destructor that ensures proper memory cleanup.
      *
      * Frees the allocated device and host memory if they exist and updates statistics.
      */
-    virtual ~CudaMemoryManager() {
-    sycl::queue& workq = gpu::GPUHandle::syclqueue();
-        if (device_ptr_) {
-            sycl::free(device_ptr_, workq);
+    virtual ~SyclMemoryManager() {
+        if (device_ptr_&& owning_queue_) {
+            sycl::free(device_ptr_, *owning_queue_);
             // Update memory statistics
             track_deallocation(device_bytes_);
         }
         if (host_ptr_) {
-            sycl::free(host_ptr_, workq);
+            sycl::free(host_ptr_, *owning_queue_);
         }
     }
 
@@ -141,7 +142,7 @@ public:
     virtual void toHost() = 0;
 
     /**
-     * @brief Reports memory statistics for all CudaMemoryManager instances.
+     * @brief Reports memory statistics for all SyclMemoryManager instances.
      *
      * Prints current, total, and peak device memory usage.
      */
@@ -241,16 +242,16 @@ protected:
 };
 
 template <typename T>
-class DeviceHostMemory : public CudaMemoryManager<T> {
+class DeviceHostMemory : public SyclMemoryManager<T> {
 public:
     DeviceHostMemory(size_t size, bool allocate_host_memory_in_advance = false)
-        : CudaMemoryManager<T>(size),
+        : SyclMemoryManager<T>(size),
           allocate_host_memory_in_advance(allocate_host_memory_in_advance) {
         allocate();
     }
 
     DeviceHostMemory(const std::vector<T>& vec)
-        : CudaMemoryManager<T>(vec.size()),
+        : SyclMemoryManager<T>(vec.size()),
           allocate_host_memory_in_advance(true) {
         allocate();
         std::copy(vec.begin(), vec.end(), this->host_ptr_);
@@ -259,6 +260,7 @@ public:
     void allocate() override {
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
+    this->owning_queue_ = &workq;
 
     if (allocate_host_memory_in_advance) {
         try {
@@ -739,7 +741,8 @@ protected:
  * This map stores the size of each allocated memory block, keyed by the pointer address.
  * This is necessary because cudaFree doesn't provide size information.
  */
-inline std::unordered_map<void*, size_t> g_allocated_memory_map;
+//inline std::unordered_map<void*, size_t> g_allocated_memory_map;
+inline std::unordered_map<void*, std::pair<size_t, sycl::queue*>> g_allocated_memory_map;
 inline std::mutex g_allocated_memory_map_mutex;
 
 /**
@@ -754,28 +757,28 @@ inline std::mutex g_allocated_memory_map_mutex;
  * @return cudaError_t Error code from cudaMalloc
  */
 template <typename T>
-inline T* tracked_syclMalloc(size_t size) {
-    sycl::queue& q = gpu::GPUHandle::syclqueue();
-
+inline T* tracked_syclMalloc(size_t num_elements, sycl::queue& q) {
     void* raw = nullptr;
+    size_t size = num_elements * sizeof(T);
 
     try {
         raw = sycl::malloc_device(size, q);
+        if (!raw) throw std::bad_alloc();
 
         {
             std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-            g_allocated_memory_map[raw] = size;
+            g_allocated_memory_map[raw] = {size, &q};
         }
 
-        CudaMemoryManager<T>::track_allocation(size);
+        SyclMemoryManager<T>::track_allocation(size);
 
     } catch (const sycl::exception& exc) {
-        size_t current_mem = CudaMemoryManager<T>::get_current_allocated_bytes();
+        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
 
         std::cerr << "tracked_syclMalloc failed: " << exc.what() << "\n"
-                  << "  Attempted to allocate: " << CudaMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << CudaMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << CudaMemoryManager<T>::format_bytes(current_mem + size) << "\n";
+                  << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
+                  << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
+                  << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << "\n";
 
         return nullptr;
     }
@@ -795,14 +798,14 @@ inline cudaError_t tracked_cudaMalloc(T** ptr, size_t size) {
         }
 
         // Update memory statistics
-        CudaMemoryManager<T>::track_allocation(size);
+        SyclMemoryManager<T>::track_allocation(size);
     } else {
         // Print detailed error message with current memory statistics
-        size_t current_mem = CudaMemoryManager<T>::get_current_allocated_bytes();
+        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
         std::cerr << "tracked_cudaMalloc failed: " << cudaGetErrorString(err) << "\n"
-                  << "  Attempted to allocate: " << CudaMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << CudaMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << CudaMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
+                  << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
+                  << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
+                  << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
     }
 
     return err;
@@ -825,23 +828,28 @@ inline void tracked_syclFree(T* ptr) {
 
     // Get the size of the allocation
     size_t size = 0;
+    sycl::queue* owning_queue = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
         auto it = g_allocated_memory_map.find(ptr);
         if (it != g_allocated_memory_map.end()) {
-            size = it->second;
+            size = it->second.first;
+            owning_queue = it->second.second;
             g_allocated_memory_map.erase(it);
         }
     }
 
+    if (!owning_queue) {
+        std::cerr << "tracked_syclFree error: owning_queue is null\n";
+        return;
+    }
     // Free the memory
-    sycl::queue& q = gpu::GPUHandle::syclqueue();
     try {
-        sycl::free(ptr, q);
+        sycl::free(ptr, *owning_queue);
 
         // Update statistics if free was successful and size was tracked
         if (size > 0) {
-            CudaMemoryManager<T>::track_deallocation(size);
+            SyclMemoryManager<T>::track_deallocation(size);
         }
 
     } catch (sycl::exception const& exc) {
@@ -871,7 +879,7 @@ inline cudaError_t tracked_cudaFree(void* ptr) {
 
     // Update statistics if free was successful and size was tracked
     if (err == cudaSuccess && size > 0) {
-        CudaMemoryManager<double>::track_deallocation(size);
+        SyclMemoryManager<double>::track_deallocation(size);
     }
 
     return err;
@@ -890,33 +898,6 @@ inline cudaError_t tracked_cudaFree(void* ptr) {
  * @param stream CUDA stream for asynchronous allocation
  * @return cudaError_t Error code from cudaMallocAsync
  */
-template <typename T>
-inline T* tracked_syclMallocAsync(size_t size, sycl::queue& q) {
-    void* raw = nullptr;
-
-    try {
-        raw = sycl::malloc_device(size, q);  // これが“非同期”扱い
-
-        {
-            std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-            g_allocated_memory_map[raw] = size;
-        }
-
-        CudaMemoryManager<T>::track_allocation(size);
-
-    } catch (sycl::exception const& exc) {
-        size_t current_mem = CudaMemoryManager<T>::get_current_allocated_bytes();
-
-        std::cerr << "tracked_syclMallocAsync failed: " << exc.what() << "\n"
-                  << "  Attempted to allocate: " << CudaMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << CudaMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << CudaMemoryManager<T>::format_bytes(current_mem + size) << "\n";
-
-        return nullptr;
-    }
-
-    return static_cast<T*>(raw);
-}
 /*
 template<typename T>
 inline cudaError_t tracked_cudaMallocAsync(T** ptr, size_t size, cudaStream_t stream) {
@@ -930,14 +911,14 @@ inline cudaError_t tracked_cudaMallocAsync(T** ptr, size_t size, cudaStream_t st
         }
 
         // Update memory statistics
-        CudaMemoryManager<T>::track_allocation(size);
+        SyclMemoryManager<T>::track_allocation(size);
     } else {
         // Print detailed error message with current memory statistics
-        size_t current_mem = CudaMemoryManager<T>::get_current_allocated_bytes();
+        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
         std::cerr << "tracked_cudaMallocAsync failed: " << cudaGetErrorString(err) << "\n"
-                  << "  Attempted to allocate: " << CudaMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << CudaMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << CudaMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
+                  << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
+                  << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
+                  << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
     }
 
     return err;
@@ -953,36 +934,6 @@ inline cudaError_t tracked_cudaMallocAsync(T** ptr, size_t size, cudaStream_t st
  * @param stream CUDA stream for asynchronous deallocation
  * @return cudaError_t Error code from cudaFreeAsync
  */
-template <typename T>
-inline void tracked_syclFreeAsync(T* ptr, sycl::queue& q) {
-    if (ptr == nullptr) {
-        return;
-    }
-
-    // Get the size of the allocation
-    size_t size = 0;
-    {
-        std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-        auto it = g_allocated_memory_map.find(ptr);
-        if (it != g_allocated_memory_map.end()) {
-            size = it->second;
-            g_allocated_memory_map.erase(it);
-        }
-    }
-
-    // Free the memory asynchronously
-    try {
-        sycl::free(ptr, q);
-
-        // Update statistics if free was successful and size was tracked
-        if (size > 0) {
-            CudaMemoryManager<T>::track_deallocation(size);
-        }
-
-    } catch (sycl::exception const& exc) {
-        std::cerr << "tracked_syclFreeAsync failed: " << exc.what() << "\n";
-    }
-}
 /*
 inline cudaError_t tracked_cudaFreeAsync(void* ptr, cudaStream_t stream) {
     if (ptr == nullptr) {
@@ -1005,7 +956,7 @@ inline cudaError_t tracked_cudaFreeAsync(void* ptr, cudaStream_t stream) {
 
     // Update statistics if free was successful and size was tracked
     if (err == cudaSuccess && size > 0) {
-        CudaMemoryManager<double>::track_deallocation(size);
+        SyclMemoryManager<double>::track_deallocation(size);
     }
 
     return err;

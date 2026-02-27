@@ -130,11 +130,11 @@ void transform_ao_eri_to_mo_eri_full(const double *d_eri_ao, const double *d_C,
     double* d_T = nullptr;
 
 //    d_D = sycl::malloc_device<double>((size_t)N * N, q_ct1);
-    d_D = tracked_syclMalloc<double>((size_t)N * N);
+    d_D = tracked_syclMalloc<double>((size_t)N * N, q_ct1);
     if(!d_D){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_D.");
     }
-    d_T = tracked_syclMalloc<double>((size_t)N * N);
+    d_T = tracked_syclMalloc<double>((size_t)N * N, q_ct1);
     if(!d_T){
 //        sycl::free(d_D, q_ct1);
         tracked_syclFree(d_D);
@@ -329,7 +329,7 @@ double mp2_from_aoeri_via_full_moeri(
     double* d_eri_mo = nullptr;
     size_t bytes_mo = (size_t)N * (size_t)N * sizeof(double);
 //    d_eri_mo = (double *)sycl::malloc_device(bytes_mo, q_ct1);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo);
+    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -381,7 +381,7 @@ double mp2_from_aoeri_via_full_moeri(
     size_t total = (size_t)occ * (size_t)occ * (size_t)vir * (size_t)vir;
 
     double* d_E = nullptr;
-    d_E = tracked_syclMalloc<double>(1);
+    d_E = tracked_syclMalloc<double>(1, q_ct1);
     q_ct1.memset(d_E, 0, sizeof(double)).wait();
 
     int threads = 128;
@@ -495,7 +495,7 @@ real_t mp2_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
     size_t shmem = (size_t)num_threads * sizeof(double);
 
     real_t* d_mp2_energy;
-    d_mp2_energy = tracked_syclMalloc<real_t>(1);
+    d_mp2_energy = tracked_syclMalloc<real_t>(1, q_ct1);
     if(d_mp2_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP2 energy.");
     }
@@ -764,7 +764,7 @@ real_t mp3_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
 
     real_t* d_mp3_energy;
     d_mp3_energy =
-        tracked_syclMalloc<real_t>(3); // Allocate space for 3 terms
+        tracked_syclMalloc<real_t>(3, q_ct1); // Allocate space for 3 terms
     if(d_mp3_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP3 energy.");
     }
@@ -1079,7 +1079,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
     // ------------------------------------------------------------
     double* d_eri_mo = nullptr;
     size_t bytes_mo = (size_t)N * (size_t)N * sizeof(double);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo);
+    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -1105,7 +1105,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
     // 3) MP2 energy from full MO ERI
     // ------------------------------------------------------------
     real_t* d_mp2_energy;
-    d_mp2_energy = tracked_syclMalloc<real_t>(1);
+    d_mp2_energy = tracked_syclMalloc<real_t>(1, q_ct1);
     if(d_mp2_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP2 energy.");
     }
@@ -1152,7 +1152,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
     // ------------------------------------------------------------
     real_t* d_mp3_energy;
     d_mp3_energy =
-        tracked_syclMalloc<real_t>(3); // Allocate space for 3 terms
+        tracked_syclMalloc<real_t>(3, q_ct1); // Allocate space for 3 terms
     if(d_mp3_energy == nullptr) {
         THROW_EXCEPTION("Failed to allocate device memory for MP3 energy.");
     }
@@ -2283,7 +2283,7 @@ real_t compute_t_amplitude_diff(const real_t* __restrict__ t_ia_new, const real_
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     real_t h_max_norm = 0.0;
     real_t* d_max_norm = nullptr;
-    d_max_norm = tracked_syclMalloc<real_t>(1);
+    d_max_norm = tracked_syclMalloc<real_t>(1, q_ct1);
     if(!d_max_norm){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_max_norm.");
     }
@@ -2401,7 +2401,7 @@ real_t compute_t_amplitude_rms(const real_t* __restrict__ t_ia_new, const real_t
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     real_t h_rms = 0.0;
     real_t* d_rms = nullptr;
-    d_rms = tracked_syclMalloc<real_t>(1);
+    d_rms = tracked_syclMalloc<real_t>(1, q_ct1);
     if(!d_rms){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_rms.");
     }
@@ -2604,7 +2604,7 @@ real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     real_t h_ccsd_energy = 0.0;
     real_t* d_ccsd_energy = nullptr;
-    d_ccsd_energy = tracked_syclMalloc<real_t>(1);
+    d_ccsd_energy = tracked_syclMalloc<real_t>(1, q_ct1);
     if(!d_ccsd_energy){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_ccsd_energy.");
     }
@@ -2646,12 +2646,12 @@ void allocate_ccsd_intermediates(const int num_spin_occ, const int num_spin_vir,
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     // intermediates
-    *F_ae = tracked_syclMalloc<real_t>(num_spin_vir * num_spin_vir);
-    *F_mi = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_occ);
-    *F_me = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_vir);
-    *W_mnij = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_occ * num_spin_occ * num_spin_occ);
-    *W_abef = tracked_syclMalloc<real_t>(num_spin_vir * num_spin_vir * num_spin_vir * num_spin_vir);
-    *W_mbej = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_vir * num_spin_vir * num_spin_occ);
+    *F_ae = tracked_syclMalloc<real_t>(num_spin_vir * num_spin_vir, q_ct1);
+    *F_mi = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_occ, q_ct1);
+    *F_me = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_vir, q_ct1);
+    *W_mnij = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_occ * num_spin_occ * num_spin_occ, q_ct1);
+    *W_abef = tracked_syclMalloc<real_t>(num_spin_vir * num_spin_vir * num_spin_vir * num_spin_vir, q_ct1);
+    *W_mbej = tracked_syclMalloc<real_t>(num_spin_occ * num_spin_vir * num_spin_vir * num_spin_occ, q_ct1);
 
     // error checks
     if(!(*F_ae) || !(*F_mi) || !(*F_me) || !(*W_mnij) || !(*W_abef) || !(*W_mbej)){
@@ -3502,7 +3502,7 @@ real_t compute_ccsd_t_energy(const real_t* __restrict__ d_eri_mo,
     // Compute CCSD(T) energy
     real_t h_E_CCSD_T = 0.0;
     real_t* d_E_CCSD_T = nullptr;
-    d_E_CCSD_T = tracked_syclMalloc<real_t>(1);
+    d_E_CCSD_T = tracked_syclMalloc<real_t>(1, q_ct1);
     if(!d_E_CCSD_T){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_E_CCSD_T.");
     }
@@ -3626,7 +3626,7 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
     // ------------------------------------------------------------
     double* d_eri_mo = nullptr;
     size_t bytes_mo = (size_t)num_basis * num_basis * num_basis * num_basis * sizeof(double);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo);
+    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }

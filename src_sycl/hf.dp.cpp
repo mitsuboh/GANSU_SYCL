@@ -477,7 +477,7 @@ void HF::report(){
     }
 
     // report memory statistics
-    CudaMemoryManager<double>::report_memory_statistics();
+    SyclMemoryManager<double>::report_memory_statistics();
 
     if(is_export_molden_){
         export_molden_file("output.molden"); // Export the molecular orbitals to a molden file

@@ -18,7 +18,7 @@
 #define GRADIENTS
 
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include "int2e.hpp"
 #include "Et_functions.hpp"
 #include "Et_grad_functions.hpp"
@@ -176,8 +176,10 @@ inline double calc_dist_GPU(const double3 &coord1,
 inline 
 void AddToResult(double* g_result, size_t index, double result, bool flag) {
     double val = flag ? 2.0 * result : result;
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_result[index], val);
+    sycl::atomic_ref< double, sycl::memory_order::relaxed, sycl::memory_scope::device,
+    sycl::access::address_space::global_space > atomic_data(g_result[index]);
+
+    atomic_data.fetch_add(val);
 }
 
 
@@ -185,8 +187,11 @@ void AddToResult(double* g_result, size_t index, double result, bool flag) {
 inline 
 void AddToResult_TEI(double* g_result, size_t index, double result, bool sym_bra, bool sym_ket, bool sym_braket) {
     int f = 1 + static_cast<int>(!sym_bra) + static_cast<int>(!sym_ket) + static_cast<int>(!sym_bra && !sym_ket) + static_cast<int>(!sym_braket) * ( 1 + static_cast<int>(!sym_bra) + static_cast<int>(!sym_ket) + static_cast<int>(!sym_bra && !sym_ket) );
-    dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-        &g_result[index], result * f);
+
+    sycl::atomic_ref< double, sycl::memory_order::relaxed, sycl::memory_scope::device,
+    sycl::access::address_space::global_space > atomic_data(g_result[index]);
+
+    atomic_data.fetch_add(result * f);
 }
 
 // // 係数部E_t(i,l)を計算する関数

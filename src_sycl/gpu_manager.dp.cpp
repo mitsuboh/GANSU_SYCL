@@ -87,7 +87,7 @@ catch (std::exception const& e) {
 
     // workspace allocation
 try {
-    d_workspace = tracked_syclMalloc<real_t>(numElementsOnDevice);
+    d_workspace = tracked_syclMalloc<real_t>(numElementsOnDevice, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -99,7 +99,7 @@ catch (sycl::exception const& e) {
     // temporary matrix allocation for d_matrix since the eigenvectors will be stored in the same memory of d_matrix
     real_t * d_temp_matrix;
 try {
-     d_temp_matrix = tracked_syclMalloc<real_t>(static_cast<size_t>(size) * size);
+     d_temp_matrix = tracked_syclMalloc<real_t>(static_cast<size_t>(size) * size, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -331,7 +331,7 @@ double innerProduct(const double* d_vector_A, const double* d_vector_B, const in
     sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t result;
-    real_t * d_result = tracked_syclMalloc<real_t>(1);
+    real_t * d_result = tracked_syclMalloc<real_t>(1, workq);
     oneapi::mkl::blas::column_major::dot(
         workq,
         size,
@@ -525,7 +525,7 @@ void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size
     sycl::queue& workq = GPUHandle::syclqueue();
 
     real_t zero = 0;
-    real_t* d_trace = tracked_syclMalloc<real_t>(1);
+    real_t* d_trace = tracked_syclMalloc<real_t>(1,workq);
     workq.memset(d_trace, 0, sizeof(real_t)).wait();
 
     real_t h_trace = 0.0;
@@ -903,7 +903,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     real_t* d_tempEigenvalues = nullptr; // if d_orbital_energies is nullptr, the eigenvalues are stored in d_tempEigenvalues
 
     try {
-        d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -913,7 +913,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     }
 
     try {
-        d_tempSymFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_tempSymFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -923,7 +923,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     }
 
     try {
-        d_tempEigenvectors = tracked_syclMalloc<real_t>( num_basis * num_basis);
+        d_tempEigenvectors = tracked_syclMalloc<real_t>( num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -934,7 +934,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
 
     if (d_orbital_energies == nullptr){
         try {
-            d_tempEigenvalues = tracked_syclMalloc<real_t>(num_basis);
+            d_tempEigenvalues = tracked_syclMalloc<real_t>(num_basis, workq);
         }
         catch (sycl::exception const& e) {
             std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -978,7 +978,7 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
     tracked_syclFree(d_tempEigenvectors);
 
     if (d_orbital_energies == nullptr){
-            tracked_syclFree(d_tempEigenvectors);
+            tracked_syclFree(d_tempEigenvalues);
     }
 }
 catch (sycl::exception const &exc) {
@@ -1198,7 +1198,7 @@ void computeFockMatrix_ROHF(
     real_t* d_temp_matrix2 = nullptr;
 
     try {
-        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1208,7 +1208,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1218,7 +1218,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1228,7 +1228,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1238,7 +1238,7 @@ void computeFockMatrix_ROHF(
     }
 
     try {
-        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1425,9 +1425,9 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
     real_t* d_tempDiffDensityMatrix = nullptr;
     real_t* d_tempMatrix = nullptr;
 
-    d_tempDiffFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
-    d_tempDiffDensityMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
-    d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    d_tempDiffFockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
+    d_tempDiffDensityMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
+    d_tempMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
 
     // calculate the difference between the Fock matrices
     // \f$ F_{\mathrm{diff}} = F_{\mathrm{new}} - F_{\mathrm{old}}  \f$
@@ -1503,7 +1503,7 @@ void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha,
     real_t* d_tempMatrix;
 
 try {
-    d_tempMatrix = tracked_syclMalloc<real_t>( num_basis * num_basis);
+    d_tempMatrix = tracked_syclMalloc<real_t>( num_basis * num_basis, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1550,7 +1550,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     real_t* d_tempMatrix1;
 
     try {
-        d_tempFPS = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_tempFPS = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1560,7 +1560,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     }
 
     try {
-        d_tempSPF = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_tempSPF = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1570,7 +1570,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     }
 
     try {
-        d_tempMatrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_tempMatrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1636,7 +1636,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     }
 
     try {
-        d_DIIS_matrix = tracked_syclMalloc<real_t>(num_size * num_size);
+        d_DIIS_matrix = tracked_syclMalloc<real_t>(num_size * num_size, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1667,7 +1667,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     }
     real_t* d_DIIS_rhs;
     try {
-        d_DIIS_rhs = tracked_syclMalloc<real_t>(num_size);
+        d_DIIS_rhs = tracked_syclMalloc<real_t>(num_size, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(std::string("Failed to allocate device memory for DIIS "
@@ -1695,7 +1695,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     // allocate the workspace
     real_t* d_work;
     try {
-        d_work = tracked_syclMalloc<real_t>(work_size);
+        d_work = tracked_syclMalloc<real_t>(work_size, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1707,7 +1707,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
     int64_t* d_pivot = nullptr;
     int64_t* d_info = nullptr;
     try {
-        d_pivot = tracked_syclMalloc<int64_t>(num_size);
+        d_pivot = tracked_syclMalloc<int64_t>(num_size, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1715,7 +1715,7 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
             std::string(e.what()));
     }
     try {
-        d_info = tracked_syclMalloc<int64_t>(1);
+        d_info = tracked_syclMalloc<int64_t>(1,workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1789,7 +1789,7 @@ catch (sycl::exception const &exc) {
     real_t* d_temp_FockMatrix = nullptr;
     real_t* h_temp_FockMatrix = new real_t[num_basis * num_basis];
     try {
-        d_temp_FockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_FockMatrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -1842,11 +1842,11 @@ void invertMatrix(double *d_A, const int N) try {
     int lda = N;
 
     // Pivot indices
-    d_ipiv = tracked_syclMalloc<int64_t>(N);
+    d_ipiv = tracked_syclMalloc<int64_t>(N, workq);
 
     // Scratchpad size
     int64_t lwork_rf = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>( workq, N, N, lda);
-    real_t *d_work_rf = tracked_syclMalloc<real_t>(lwork_rf);
+    real_t *d_work_rf = tracked_syclMalloc<real_t>(lwork_rf, workq);
 
     // LU Decomposition
     oneapi::mkl::lapack::getrf( workq, N, N, d_A, N, d_ipiv, d_work_rf, lwork_rf).wait();
@@ -1855,7 +1855,7 @@ void invertMatrix(double *d_A, const int N) try {
 
     // Inversion scratchpad size
     int64_t lwork_ri = oneapi::mkl::lapack::getri_scratchpad_size<real_t>( workq, N, lda);
-    real_t *d_work_ri = tracked_syclMalloc<real_t>(lwork_ri);
+    real_t *d_work_ri = tracked_syclMalloc<real_t>(lwork_ri, workq);
 
     // Inverse computation
     oneapi::mkl::lapack::getri( workq, N, d_A, lda, d_ipiv, d_work_ri, lwork_ri).wait();
@@ -1900,7 +1900,7 @@ catch (oneapi::mkl::lapack::invalid_argument const& e) {
 
     // workspace allocation
 try {
-    d_work = tracked_syclMalloc<real_t>(lwork);
+    d_work = tracked_syclMalloc<real_t>(lwork, workq);
 }
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception: " << e.what() << std::endl;
@@ -1985,7 +1985,7 @@ catch (sycl::exception const& e) {
 
     real_t *d_tmp;
     try {
-        d_tmp = tracked_syclMalloc<real_t>(row * col);
+        d_tmp = tracked_syclMalloc<real_t>(row * col, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2125,7 +2125,7 @@ void compute_RI_IntermediateMatrixB(
     // Allocate device memory for the two-center ERIs
     real_t* d_two_center_eri;
     try {
-        d_two_center_eri = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_auxiliary_basis);
+        d_two_center_eri = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2159,7 +2159,7 @@ void compute_RI_IntermediateMatrixB(
     // Allocate device memory for the three-center ERIs
     real_t* d_three_center_eri;
     try {
-        d_three_center_eri = tracked_syclMalloc<real_t>((size_t)num_basis * (size_t)num_basis * (size_t)num_auxiliary_basis);
+        d_three_center_eri = tracked_syclMalloc<real_t>((size_t)num_basis * (size_t)num_basis * (size_t)num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2336,7 +2336,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     real_t* d_J = nullptr;
     real_t* d_density_matrix = nullptr;
     try {
-        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2344,7 +2344,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
             std::string(e.what()));
     }
     try {
-        d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2358,7 +2358,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
     real_t* d_W = nullptr;
     try {
-        d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis);
+        d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2390,7 +2390,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     real_t* d_T = nullptr;
     real_t* d_V = nullptr;
     try {
-        d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
+        d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2398,7 +2398,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
             std::string(e.what()));
     }
     try {
-        d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
+        d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2409,7 +2409,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     ////////////// compute Ka-matrix //////////////
     real_t* d_Ka = nullptr;
     try {
-        d_Ka = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_Ka = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2439,7 +2439,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     ////////////// compute Kb-matrix //////////////
     real_t* d_Kb = nullptr;
     try {
-        d_Kb = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_Kb = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2518,7 +2518,7 @@ void computeFockMatrix_RI_ROHF(
     real_t* d_temp_matrix1 = nullptr;
     real_t* d_temp_matrix2 = nullptr;
     try {
-        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_F_MO_closed = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2526,7 +2526,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_F_MO_open = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2534,7 +2534,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_R_MO = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2542,7 +2542,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_matrix1 = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2550,7 +2550,7 @@ void computeFockMatrix_RI_ROHF(
             std::string(e.what()));
     }
     try {
-        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_matrix2 = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -2568,7 +2568,7 @@ void computeFockMatrix_RI_ROHF(
         real_t* d_J = nullptr;
         real_t* d_density_matrix = nullptr;
         try {
-            d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
+            d_J = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2576,7 +2576,7 @@ void computeFockMatrix_RI_ROHF(
                 std::string(e.what()));
         }
         try {
-            d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+            d_density_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2590,7 +2590,7 @@ void computeFockMatrix_RI_ROHF(
         // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
         real_t* d_W = nullptr;
         try {
-            d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis);
+            d_W = tracked_syclMalloc<real_t>(num_auxiliary_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2625,7 +2625,7 @@ void computeFockMatrix_RI_ROHF(
         real_t* d_T = nullptr;
         real_t* d_V = nullptr;
         try {
-            d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
+            d_T = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2633,7 +2633,7 @@ void computeFockMatrix_RI_ROHF(
                 std::string(e.what()));
         }
         try {
-            d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis);
+            d_V = tracked_syclMalloc<real_t>(num_auxiliary_basis * num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2644,7 +2644,7 @@ void computeFockMatrix_RI_ROHF(
         ////////////// compute Kclosed-matrix //////////////
         real_t* d_Kclosed = nullptr;
         try {
-            d_Kclosed = tracked_syclMalloc<real_t>(num_basis * num_basis);
+            d_Kclosed = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -2674,7 +2674,7 @@ void computeFockMatrix_RI_ROHF(
         ////////////// compute Kopen-matrix //////////////
         real_t* d_Kopen = nullptr;
         try {
-            d_Kopen = tracked_syclMalloc<real_t>(num_basis * num_basis);
+            d_Kopen = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
         }
         catch (sycl::exception const& e) {
             THROW_EXCEPTION(
@@ -3384,7 +3384,7 @@ void computeMullikenPopulation_RHF(const real_t *d_density_matrix,
 
     real_t* d_mulliken_population = nullptr;
     try {
-        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis);
+        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3428,7 +3428,7 @@ void computeMullikenPopulation_UHF(const real_t *d_density_matrix_a,
 
     real_t* d_mulliken_population = nullptr;
     try {
-        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis);
+        d_mulliken_population = tracked_syclMalloc<real_t>(num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3472,7 +3472,7 @@ void computeDensityOverlapMatrix(const real_t* d_density_matrix,
 
     real_t* d_result_matrix = nullptr;
     try {
-        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3507,7 +3507,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
 
     real_t* d_eigval = nullptr;
     try {
-        d_eigval = tracked_syclMalloc<real_t>(num_basis);
+        d_eigval = tracked_syclMalloc<real_t>(num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3517,7 +3517,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
 
     real_t* d_eigvec = nullptr;
     try {
-        d_eigvec = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_eigvec = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3534,7 +3534,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // Make diag(eigval)^(1/2) matrix
     real_t* d_sqrt_eigval_matrix = nullptr;
     try {
-        d_sqrt_eigval_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_sqrt_eigval_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3546,7 +3546,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // temp_matrix = U * diag(eigval)^(1/2) * U^T
     real_t* d_temp_matrix = nullptr;
     try {
-        d_temp_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_temp_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3558,7 +3558,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // S_sqrt = temp_matrix * U^T
     real_t* d_S_sqrt = nullptr;
     try {
-        d_S_sqrt = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_S_sqrt = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -3570,7 +3570,7 @@ void computeSqrtOverlapDensitySqrtOverlapMatrix(
     // result_matrix = S^(1/2) * D * S^(1/2)
     real_t* d_result_matrix = nullptr;
     try {
-        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_result_matrix = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4043,7 +4043,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
     ////////////////////////////////// compute J-matrix //////////////////////////////////
     real_t* d_J = nullptr;
     try {
-        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_J = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4055,7 +4055,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
     // compute c_q = \sum_{a b} D_{a b} (q|ab)
     real_t* d_c = nullptr;
     try {
-        d_c = tracked_syclMalloc<real_t>(num_auxiliary_basis);
+        d_c = tracked_syclMalloc<real_t>(num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4186,7 +4186,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
     ////////////////////////////////// compute K-matrix //////////////////////////////////
     real_t* d_K = nullptr;
     try {
-        d_K = tracked_syclMalloc<real_t>(num_basis * num_basis);
+        d_K = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4205,7 +4205,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
 
     real_t* d_Z = nullptr;
     try {
-        d_Z = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+        d_Z = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4216,7 +4216,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
 
     real_t* d_Z_prev = nullptr;
     try {
-        d_Z_prev = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+        d_Z_prev = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4227,7 +4227,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
 
     real_t* d_W_diff = nullptr;
     try {
-        d_W_diff = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis);
+        d_W_diff = tracked_syclMalloc<real_t>(num_basis * num_auxiliary_basis, workq);
     }
     catch (sycl::exception const& e) {
         THROW_EXCEPTION(
@@ -4241,7 +4241,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
 //    real_t* d_coefficient_matrix_diff;
 //    cudaMalloc((void**)&d_coefficient_matrix_diff, sizeof(real_t) * num_basis * num_basis);
 //    cudaMemcpy(d_coefficient_matrix_diff, d_coefficient_matrix_prev, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice);
-    real_t* d_coefficient_matrix_diff = tracked_syclMalloc<real_t>(num_basis * num_basis);
+    real_t* d_coefficient_matrix_diff = tracked_syclMalloc<real_t>(num_basis * num_basis, workq);
     workq.memset(d_coefficient_matrix_diff, 0.0, sizeof(real_t) * num_basis * num_basis).wait();
 
 //    calcDiffMatrix<<< ((num_basis * num_basis) + 1024 - 1) / 1024, 1024>>>(d_coefficient_matrix, d_coefficient_matrix_diff, num_basis); //d_coefficient_matrix_diff = |C_new - C_prev|
