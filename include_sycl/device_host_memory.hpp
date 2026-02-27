@@ -80,13 +80,17 @@ public:
      * Frees the allocated device and host memory if they exist and updates statistics.
      */
     virtual ~SyclMemoryManager() {
-        if (device_ptr_&& owning_queue_) {
-            sycl::free(device_ptr_, *owning_queue_);
-            // Update memory statistics
-            track_deallocation(device_bytes_);
-        }
-        if (host_ptr_) {
-            sycl::free(host_ptr_, *owning_queue_);
+        try {
+            if (device_ptr_ ) {
+                sycl::free(device_ptr_, *owning_queue_);
+                // Update memory statistics
+                track_deallocation(device_bytes_);
+            }
+            if (host_ptr_ ) {
+                sycl::free(host_ptr_, *owning_queue_);
+            }
+        } catch (sycl::exception& e) {
+            std::cerr << "SYCL free failed: " << e.what() << std::endl;
         }
     }
 
@@ -259,25 +263,44 @@ public:
 
     void allocate() override {
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
-
     this->owning_queue_ = &workq;
+
+    this->host_bytes_   = this->size_ * sizeof(T);
+    this->device_bytes_ = this->size_ * sizeof(T);
 
     if (allocate_host_memory_in_advance) {
         try {
-            this->host_bytes_   = this->size_ * sizeof(T);
             this->host_ptr_ = static_cast<T*>(sycl::malloc_host(this->host_bytes_, workq));
+            if (!this->host_ptr_) {
+                THROW_EXCEPTION("sycl::malloc_host returned nullptr");
+            }
         } catch (sycl::exception const &exc) {
-                std::string error_msg =
-                    "Failed to allocate host memory: " +
-                    std::string(exc.what());
+            this->host_ptr_ = nullptr;
+            this->owning_queue_ = nullptr;
+            std::string error_msg = "Failed to allocate host memory: " + std::string(exc.what());
                 THROW_EXCEPTION(error_msg);
         }
     }
 
     try {
-        this->device_bytes_ = this->size_ * sizeof(T);
         this->device_ptr_ = static_cast<T*>(sycl::malloc_device(this->device_bytes_, workq));
+        if (!this->device_ptr_) {
+            // free host memory if allocated
+            if (this->host_ptr_) {
+                sycl::free(this->host_ptr_, workq);
+                this->host_ptr_ = nullptr;
+            }
+            this->owning_queue_ = nullptr;
+            THROW_EXCEPTION("sycl::malloc_device returned nullptr");
+        }
     } catch (sycl::exception const &exc) {
+        // free host memory if allocated
+        if (this->host_ptr_) {
+            sycl::free(this->host_ptr_, workq);
+            this->host_ptr_ = nullptr;
+        }
+        this->owning_queue_ = nullptr;
+
         // Get current memory statistics for error message
         size_t current_mem = this->get_current_allocated_bytes();
         size_t total_mem = workq.get_device().get_info<sycl::info::device::global_mem_size>();
@@ -299,38 +322,57 @@ public:
     }
 
     void toDevice() override {
-        sycl::queue& workq = gpu::GPUHandle::syclqueue();
+        if (!this->owning_queue_) {
+            THROW_EXCEPTION("toDevice() called before allocate(): owning_queue_ is null");
+        }
+        sycl::queue& workq = *this->owning_queue_;
+
         if (!this->device_ptr_) {
             allocate();
         }
-        if (this->device_ptr_ && this->host_ptr_) {
-            workq 
-                .memcpy(this->device_ptr_, this->host_ptr_,
-//                        this->size_ * sizeof(T))
-                 this->device_bytes_)
-                .wait();
+
+        if (!this->host_ptr_) {
+            THROW_EXCEPTION("toDevice() called but host_ptr_ is null");
         }
+
+        try {
+            workq.memcpy(this->device_ptr_, this->host_ptr_, this->device_bytes_).wait();
+        } catch (sycl::exception const& exc) {
+            std::ostringstream oss;
+            oss << "toDevice() memcpy failed: " << exc.what();
+            THROW_EXCEPTION(oss.str());
+       }
     }
 
     void toHost() override {
-    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+        if (!this->owning_queue_) {
+           THROW_EXCEPTION("toHost() called before allocate(): owning_queue_ is null");
+        }
+        sycl::queue& workq = *this->owning_queue_;
+
         if (!this->host_ptr_) {
             this->host_bytes_ = this->size_ * sizeof(T);
             try {
-                    this->host_ptr_ = static_cast<T*>(sycl::malloc_host(this->host_bytes_, workq));
+                this->host_ptr_ = static_cast<T*>(sycl::malloc_host(this->host_bytes_, workq));
+                if (!this->host_ptr_) {
+                    THROW_EXCEPTION("sycl::malloc_host returned nullptr");
+                }
             } catch (sycl::exception const &exc) {
-                    std::string error_msg =
-                        "Failed to allocate host memory: " +
-                        std::string(exc.what());
-                    THROW_EXCEPTION(error_msg);
+                std::string error_msg = "Failed to allocate host memory: " + std::string(exc.what());
+                THROW_EXCEPTION(error_msg);
             }
         }
-        if (this->device_ptr_ && this->host_ptr_) {
-            workq
-                .memcpy(this->host_ptr_, this->device_ptr_,
-//                        this->size_ * sizeof(T))
-                        this->host_bytes_)
-                .wait();
+
+        if (!this->device_ptr_) {
+            THROW_EXCEPTION("toHost() called but device_ptr_ is null");
+        }
+
+        try {
+            workq.memcpy(this->host_ptr_, this->device_ptr_, this->host_bytes_).wait();
+        } catch (sycl::exception const& exc) {
+            std::ostringstream oss;
+            oss << "toHost() memcpy failed: " << exc.what();
+            THROW_EXCEPTION(oss.str());
         }
     }
 /*    catch (sycl::exception const &exc) {
