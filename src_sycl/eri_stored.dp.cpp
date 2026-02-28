@@ -327,9 +327,10 @@ double mp2_from_aoeri_via_full_moeri(
     // 1) allocate full MO ERI on device: d_eri_mo (N x N)
     // ------------------------------------------------------------
     double* d_eri_mo = nullptr;
+    size_t elements_mo = (size_t)N * (size_t)N;
     size_t bytes_mo = (size_t)N * (size_t)N * sizeof(double);
 //    d_eri_mo = (double *)sycl::malloc_device(bytes_mo, q_ct1);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
+    d_eri_mo = tracked_syclMalloc<double>(elements_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -1078,8 +1079,9 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
     // 1) allocate full MO ERI on device: d_eri_mo (N x N)
     // ------------------------------------------------------------
     double* d_eri_mo = nullptr;
+    size_t elements_mo = (size_t)N * (size_t)N;
     size_t bytes_mo = (size_t)N * (size_t)N * sizeof(double);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
+    d_eri_mo = tracked_syclMalloc<double>(elements_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -2605,6 +2607,7 @@ real_t compute_ccsd_energy(const real_t* __restrict__ d_eri_mo,
     real_t h_ccsd_energy = 0.0;
     real_t* d_ccsd_energy = nullptr;
     d_ccsd_energy = tracked_syclMalloc<real_t>(1, q_ct1);
+    q_ct1.memset(d_ccsd_energy, 0, sizeof(real_t)).wait();
     if(!d_ccsd_energy){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_ccsd_energy.");
     }
@@ -2676,8 +2679,8 @@ void allocate_ccsd_amplitudes(const int num_spin_occ, const int num_spin_vir,
     real_t* t1t2_new_buffer = nullptr;
     real_t* t1t2_old_buffer = nullptr;
 
-    t1t2_new_buffer = sycl::malloc_device<real_t>((num_t1 + num_t2), q_ct1);
-    t1t2_old_buffer = sycl::malloc_device<real_t>((num_t1 + num_t2), q_ct1);
+    t1t2_new_buffer = tracked_syclMalloc<real_t>((num_t1 + num_t2), q_ct1);
+    t1t2_old_buffer = tracked_syclMalloc<real_t>((num_t1 + num_t2), q_ct1);
     if(!t1t2_new_buffer || !t1t2_old_buffer){
         THROW_EXCEPTION("cudaMalloc failed for CCSD amplitudes buffer.");
     }
@@ -2714,7 +2717,7 @@ void deallocate_ccsd_amplitudes(real_t* __restrict__ t_ia_new,
 {
 //  dpct::device_ext &dev_ct1 = dpct::get_current_device();
 //  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
-    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+//    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     // t_ijab_new and t_ijab_old are part of t_ia_new and t_ia_old buffers, so no need to free them separately
     tracked_syclFree(t_ia_new); // free both t_ia_new and t_ijab_new as they are in the same buffer
     tracked_syclFree(t_ia_old); // free both t_ia_old and t_ijab_old as they are in the same buffer
@@ -3625,8 +3628,9 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
     // 1) allocate full MO ERI on device: d_eri_mo (N x N) for RHF (closed-shell)
     // ------------------------------------------------------------
     double* d_eri_mo = nullptr;
+    size_t elements_mo = (size_t)num_basis * num_basis * num_basis * num_basis;
     size_t bytes_mo = (size_t)num_basis * num_basis * num_basis * num_basis * sizeof(double);
-    d_eri_mo = tracked_syclMalloc<double>(bytes_mo, q_ct1);
+    d_eri_mo = tracked_syclMalloc<double>(elements_mo, q_ct1);
     if(!d_eri_mo){
         THROW_EXCEPTION("tracked_syclMalloc failed for d_eri_mo.");
     }
@@ -3756,7 +3760,7 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
 
 
         //debug: print t_ia and t_ijab amplitudes
-        ///*
+        /*
         real_t* h_t_ia_old = new real_t[num_spin_occ * num_spin_vir];
         real_t* h_t_ijab_old = new real_t[num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir];
         q_ct1.memcpy(h_t_ia_old, t_ia_old, sizeof(real_t) * num_spin_occ * num_spin_vir).wait();
@@ -3788,7 +3792,7 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
    
         delete[] h_t_ia_old;
         delete[] h_t_ijab_old;
-        //*/
+        */
 
 
         compute_t_amplitude(d_eri_mo, d_orbital_energies, num_basis, num_spin_occ, num_spin_vir,
