@@ -190,7 +190,9 @@ void ERI_RI::precomputation() {
 //    d_primitive_shell_pair_indices = tracked_syclMalloc<size_t2>(num_primitive_shell_pairs);
 
     int pair_idx = 0;
-    const int threads_per_block = 1024;
+//    const int threads_per_block = 1024;
+    size_t max_wg = q_ct1.get_device().get_info<sycl::info::device::max_work_group_size>();
+    size_t threads_per_block = std::min<size_t>(1024, max_wg);
     for(int s0 = 0; s0 < shell_type_infos.size(); s0++){
         for(int s1 = s0; s1 < shell_type_infos.size(); s1++){
             const int num_blocks = (shell_pair_type_infos[pair_idx].count + threads_per_block - 1) / threads_per_block; // the number of blocks
@@ -410,7 +412,9 @@ void ERI_Direct::precomputation() {
 
     // Store the pairs of primitive shell indices and sort them based on the Schwarz upper bound factors
     int pair_idx = 0;
-    const int threads_per_block = 1024;
+//    const int threads_per_block = 1024;
+    size_t max_wg = q_ct1.get_device().get_info<sycl::info::device::max_work_group_size>();
+    size_t threads_per_block = std::min<size_t>(1024, max_wg);
     for(int s0 = 0; s0 < shell_type_infos.size(); s0++){
         for(int s1 = s0; s1 < shell_type_infos.size(); s1++){
             const int num_blocks = (shell_pair_type_infos[pair_idx].count + threads_per_block - 1) / threads_per_block; // the number of blocks

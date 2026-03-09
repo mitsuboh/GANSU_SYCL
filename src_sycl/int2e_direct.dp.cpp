@@ -85,9 +85,9 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -112,7 +112,7 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -139,7 +139,7 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         is_braket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -178,9 +178,9 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -205,7 +205,7 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -231,7 +231,7 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                                            // is_braket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -271,9 +271,9 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -298,7 +298,7 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -324,7 +324,7 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         is_ket_asymmetric, // is_braket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -364,9 +364,9 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -391,7 +391,7 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -418,7 +418,7 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         is_braket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -458,9 +458,9 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -485,7 +485,7 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -512,7 +512,7 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         is_ket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -551,9 +551,9 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
-             (item_ct1.get_local_id(2) / TASK_GROUP_SIZE);
+             (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
         while (true) {
-            if (item_ct1.get_local_id(2) == 0) {
+            if (item_ct1.get_local_id(0) == 0) {
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
@@ -578,7 +578,7 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 
             if (s_significant_flag[0]) {
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
-                     (item_ct1.get_local_id(2) % TASK_GROUP_SIZE);
+                     (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
                     primitive_shell_index_a =
                         g_primitive_shell_pair_indices[head_bra + ab].x() +
@@ -604,7 +604,7 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         is_braket_asymmetric,
                         g_fock_matrix_replicas +
                             num_basis * num_basis *
-                                (item_ct1.get_local_id(2) % num_fock_replicas),
+                                (item_ct1.get_local_id(0) % num_fock_replicas),
                         num_basis, g_boys_grid, g_density_matrix,
                         g_cgto_normalization_factors);
                 }
@@ -638,12 +638,7 @@ void ssss2e_direct(real_t *g_fock_matrix,
 {
     // 2D grid and 1D block to linear thread index
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        (static_cast<size_t>(item_ct1.get_group_range(2)) *
-             item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -719,12 +714,7 @@ void sssp2e_direct(real_t *g_fock_matrix,
 {
     // 2D grid and 1D block to linear thread index
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        (static_cast<size_t>(item_ct1.get_group_range(2)) *
-             item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -784,11 +774,7 @@ void sspp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        ((size_t)item_ct1.get_group_range(2) * item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -846,11 +832,7 @@ void spsp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        ((size_t)item_ct1.get_group_range(2) * item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -920,11 +902,7 @@ void sppp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        ((size_t)item_ct1.get_group_range(2) * item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -984,11 +962,7 @@ void pppp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const size_t idx_linear =
-        ((size_t)item_ct1.get_group_range(2) * item_ct1.get_group(1) +
-         item_ct1.get_group(2)) *
-            item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+    const int idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }

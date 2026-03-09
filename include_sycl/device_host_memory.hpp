@@ -798,13 +798,22 @@ inline std::mutex g_allocated_memory_map_mutex;
  * @param size Number of bytes to allocate
  * @return cudaError_t Error code from cudaMalloc
  */
-template <typename T>
-inline T* tracked_syclMalloc(size_t num_elements, sycl::queue& q) {
+template <typename T = void>
+inline auto tracked_syclMalloc(size_t n, sycl::queue& q) {
     void* raw = nullptr;
-    size_t size = num_elements * sizeof(T);
+    size_t size = 0;
 
     try {
-        raw = sycl::malloc_device(size, q);
+        if constexpr (std::is_same_v<T, void>) {
+            // Byte-based allocation (default)
+            size = n;
+            raw = sycl::malloc_device(size, q);
+        }
+        else {
+            // Element-based allocation
+            size = n * sizeof(T);
+            raw = sycl::malloc_device<T>(n, q);
+        }
         if (!raw) throw std::bad_alloc();
 
         {
@@ -812,20 +821,23 @@ inline T* tracked_syclMalloc(size_t num_elements, sycl::queue& q) {
             g_allocated_memory_map[raw] = {size, &q};
         }
 
-        SyclMemoryManager<T>::track_allocation(size);
+        SyclMemoryManager<void>::track_allocation(size);
 
-    } catch (const sycl::exception& exc) {
-        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
+    } catch (const std::exception& exc) {
+        size_t current_mem = SyclMemoryManager<void>::get_current_allocated_bytes();
 
         std::cerr << "tracked_syclMalloc failed: " << exc.what() << "\n"
                   << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
                   << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
                   << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << "\n";
 
-        return nullptr;
+        return static_cast< std::conditional_t<std::is_same_v<T, void>, void*, T*> >(nullptr);
     }
 
-    return static_cast<T*>(raw);
+    if constexpr (std::is_same_v<T, void>)
+        return raw;                 // returns void*
+    else
+        return static_cast<T*>(raw); // returns T*
 }
 /*
 template<typename T>
