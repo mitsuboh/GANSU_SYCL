@@ -51,132 +51,80 @@ namespace gansu::gpu{
  * @return Error status (0 if successful).
  * @details Since the eigenvectors are stored in the same memory as the input matrix, the input matrix is copied to a temporary matrix before.
  */
-int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues,
-                       real_t *d_eigenvectors, const int size) try {
-    //cusolverManager cusolver;
-    sycl::queue& workq = GPUHandle::syclqueue();
+int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues, real_t *d_eigenvectors, const int size)
+{
+    try {
 
-    size_t numElementsOnDevice;
-//    size_t workspaceInBytesOnHost;
-    real_t* d_workspace=nullptr;
-//    real_t* h_workspace=nullptr;
+        sycl::queue& workq = GPUHandle::syclqueue();
 
-    sycl::event ev;
+        size_t matrix_elems = static_cast<size_t>(size) * size;
 
-    // Query the workspace sizes of the device and host memory
-try {
-    numElementsOnDevice = oneapi::mkl::lapack::syevd_scratchpad_size<real_t>(
-        workq,
-        oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size,
-        size
-        );
-}
-catch (oneapi::mkl::lapack::invalid_argument const& e) {
-    std::cerr << "Invalid argument in syevd_scratchpad_size: "
-              << e.what() << std::endl;
-    return -1;
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception: " << e.what() << std::endl;
-    return -2;
-}
-catch (std::exception const& e) {
-    std::cerr << "Other exception: " << e.what() << std::endl;
-    return -3;
-}
+        //-----------------------------------------
+        // scratchpad size
+        //-----------------------------------------
+        size_t scratch_size =
+            oneapi::mkl::lapack::syevd_scratchpad_size<real_t>(workq, oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size, size);
 
-    // workspace allocation
-try {
-    d_workspace = tracked_syclMalloc<real_t>(numElementsOnDevice, workq);
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception: " << e.what() << std::endl;
-    if (e.code() == sycl::errc::memory_allocation) {
-        std::cerr << "Failed to allocate device memory for workspace " << std::endl;
+        //-----------------------------------------
+        // device memory allocation
+        //-----------------------------------------
+        real_t* d_temp = nullptr;
+        real_t* d_workspace = nullptr;
+
+        try {
+            d_temp = tracked_syclMalloc<real_t>(matrix_elems, workq);
+            d_workspace = tracked_syclMalloc<real_t>(scratch_size, workq);
+        } catch (sycl::exception const& e) {
+            std::cerr << "Device memory allocation failed: " << e.what() << std::endl;
+            if (d_temp) tracked_syclFree(d_temp);
+            if (d_workspace) tracked_syclFree(d_workspace);
+            return -1;
+        }
+
+        //-----------------------------------------
+        // copy matrix (because syevd overwrites)
+        //-----------------------------------------
+        auto ev_copy = workq.memcpy(d_temp, d_matrix, matrix_elems * sizeof(real_t));
+
+        //-----------------------------------------
+        // eigen decomposition
+        //-----------------------------------------
+        auto ev_eig = oneapi::mkl::lapack::syevd( workq, oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size,
+                d_temp, size, d_eigenvalues, d_workspace, scratch_size, {ev_copy});
+
+        //-----------------------------------------
+        // transpose column-major -> row-major
+        //-----------------------------------------
+        auto ev_trans = oneapi::mkl::blas::row_major::omatcopy( workq, oneapi::mkl::transpose::trans, size, size,
+                static_cast<real_t>(1.0), d_temp, size, d_eigenvectors, size, {ev_eig});
+
+        //-----------------------------------------
+        // wait final event
+        //-----------------------------------------
+        ev_trans.wait_and_throw();
+
+        //-----------------------------------------
+        // free memory
+        //-----------------------------------------
+        tracked_syclFree(d_temp);
+        tracked_syclFree(d_workspace);
+
+        return 0;
+    }
+    catch (oneapi::mkl::lapack::exception const& e) {
+        std::cerr << "oneMKL LAPACK error: " << e.what() << std::endl;
+        return -2;
+    }
+    catch (sycl::exception const& e) {
+        std::cerr << "SYCL exception: " << e.what() << std::endl;
+        return -3;
+    }
+    catch (std::exception const& e) {
+        std::cerr << "Standard exception: " << e.what() << std::endl;
+        return -4;
     }
 }
 
-    // temporary matrix allocation for d_matrix since the eigenvectors will be stored in the same memory of d_matrix
-    real_t * d_temp_matrix;
-try {
-     d_temp_matrix = tracked_syclMalloc<real_t>(static_cast<size_t>(size) * size, workq);
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception: " << e.what() << std::endl;
-    if (e.code() == sycl::errc::memory_allocation) {
-        std::cerr << "Failed to allocate device memory for temporary matrix " << std::endl;
-    }
-}
-
-    // copy the d_matrix since the eigenvectors will be stored in the same memory
-    workq.memcpy(d_temp_matrix, d_matrix, size * size * sizeof(real_t)).wait();
-
-    // Perform eigenvalue decomposition
-try {
-    ev = oneapi::mkl::lapack::syevd( workq,
-        oneapi::mkl::job::vec, oneapi::mkl::uplo::upper, size,
-        d_temp_matrix, size,
-        d_eigenvalues,
-        d_workspace,
-        numElementsOnDevice
-    );
- // 実際の実行完了を待つ
-    ev.wait_and_throw();
-}
-catch (oneapi::mkl::lapack::invalid_argument const& e) {
-    std::cerr << "Invalid argument in syevd: " << e.what() << std::endl;
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception during syevd: " << e.what() << std::endl;
-}
-
-    // Copy the eigenvectors to d_eigenvectors
-    workq.memcpy(d_eigenvectors, d_temp_matrix, size * size * sizeof(real_t)).wait();
-
-    // transpose the eigenvectors since the eigenvectors are stored by column-major order
-//    transposeMatrixInPlace(d_eigenvectors, size);
-// 転置処理：A → B（転置＋スケーリング係数 1.0）
-try {
-    ev = oneapi::mkl::blas::row_major::omatcopy( workq,
-        oneapi::mkl::transpose::trans, size, size,
-        1.0,                           // スケーリング係数
-        d_temp_matrix, size,
-        d_eigenvectors,
-        size
-    );
- // 実際の実行完了を待つ
-    ev.wait_and_throw();
-}
-catch (oneapi::mkl::lapack::invalid_argument const& e) {
-    std::cerr << "Invalid argument in omatcopy: " << e.what() << std::endl;
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception during omatcopy: " << e.what() << std::endl;
-}
-
-    // transpose the eigenvectors since the eigenvectors are stored by column-major order
-    // return the error status
-    int h_info = 0;
-
-//    if (err == 0) h_info = 0;
-    workq.wait_and_throw();
-//    q_ct1.memcpy(&h_info, d_info, sizeof(int)).wait();
-
-    // free the temporary memory
-    tracked_syclFree(d_temp_matrix);
-    tracked_syclFree(d_workspace);
-//    sycl::free(h_workspace, syclsolverHandle);
-//    sycl::free(d_info, syclsolverHandle);
-
-    return h_info; // 0 if successful
-}
-
-catch (sycl::exception const &exc) {
-  std::cerr << exc.what() << "Exception caught at file:" << __FILE__
-            << ", line:" << __LINE__ << std::endl;
-//  std::exit(1);
-    return(1);
-}
 
 /**
  * @brief Computes the product of a matrix and a matrix using cuBLAS.
@@ -1958,121 +1906,84 @@ catch (sycl::exception const &exc) {
  * @param row The number of rows.
  * @param row The number of columns.
  */
-void solve_lower_triangular(double *d_A, double *d_B, int row, int col) try {
-    sycl::queue& workq = GPUHandle::syclqueue();
-    sycl::event ev;
-
-    // 転置
-//    transposeMatrixInPlace(d_A, row);
-// 転置処理：A → B（転置＋スケーリング係数 1.0）
-try {
-    ev = oneapi::mkl::blas::row_major::omatcopy( workq,
-        oneapi::mkl::transpose::trans, row, row,
-        1.0,                           // スケーリング係数
-        d_A, row,
-        d_A,
-        row
-    );
- // 実際の実行完了を待つ
-    ev.wait_and_throw();
-}
-catch (oneapi::mkl::lapack::invalid_argument const& e) {
-    std::cerr << "Invalid argument in omatcopy: " << e.what() << std::endl;
-}
-catch (sycl::exception const& e) {
-    std::cerr << "SYCL exception during omatcopy: " << e.what() << std::endl;
-}
-
-    real_t *d_tmp;
+void solve_lower_triangular(double* d_A, double* d_B, int row, int col) {
     try {
-        d_tmp = tracked_syclMalloc<real_t>(row * col, workq);
+        sycl::queue& workq = GPUHandle::syclqueue();
+
+        // 1. 転置用バッファを用意
+        double* d_A_tmp = tracked_syclMalloc<double>(row * row, workq);
+
+        // 転置 A → d_A_tmp
+        auto ev_trans = oneapi::mkl::blas::row_major::omatcopy(
+            workq,
+            oneapi::mkl::transpose::trans,  // 転置
+            row, row,
+            1.0,                           // スケーリング
+            d_A, row,
+            d_A_tmp, row
+        );
+        ev_trans.wait_and_throw();
+
+        // 2. 一時バッファ d_tmp を用意
+        double* d_tmp = tracked_syclMalloc<double>(row * col, workq);
+
+        // ゼロ初期化バッファ（nullptr 回避用）
+        double* d_zero = tracked_syclMalloc<double>(row * col, workq);
+        workq.fill(d_zero, 0.0, row * col).wait();
+
+        const double alpha = 1.0;
+        const double beta = 0.0;
+
+        // 3. d_B を column-major に転置して d_tmp にコピー
+        auto ev_copy = oneapi::mkl::blas::column_major::omatadd(
+            workq,
+            oneapi::mkl::transpose::trans,  // B^T
+            oneapi::mkl::transpose::nontrans,
+            row, col,
+            alpha, d_B, col,
+            beta, d_zero, row,
+            d_tmp, row
+        );
+        ev_copy.wait_and_throw();
+
+        // 4. TRSM: solve d_A_tmp * X = d_tmp
+        auto ev_trsm = oneapi::mkl::blas::column_major::trsm(
+            workq,
+            oneapi::mkl::side::left,
+            oneapi::mkl::uplo::lower,
+            oneapi::mkl::transpose::nontrans,
+            oneapi::mkl::diag::nonunit,
+            row, col,
+            alpha,
+            d_A_tmp, row,
+            d_tmp, row
+        );
+        ev_trsm.wait_and_throw();
+
+        // 5. 結果を再び row-major に転置して d_B に書き戻す
+        auto ev_back = oneapi::mkl::blas::column_major::omatadd(
+            workq,
+            oneapi::mkl::transpose::trans,  // X^T → row-major
+            oneapi::mkl::transpose::nontrans,
+            col, row,
+            alpha,
+            d_tmp, row,
+            beta,
+            d_zero, col,
+            d_B, col
+        );
+        ev_back.wait_and_throw();
+
+        // 6. 一時メモリ解放
+        tracked_syclFree(d_A_tmp);
+        tracked_syclFree(d_tmp);
+        tracked_syclFree(d_zero);
     }
-    catch (sycl::exception const& e) {
-        THROW_EXCEPTION(
-            std::string("Failed to allocate device memory for temporary matrix: ") +
-            std::string(e.what()));
+    catch (sycl::exception const& exc) {
+        std::cerr << "SYCL exception caught in solve_lower_triangular: " 
+                  << exc.what() << std::endl;
+        std::exit(1);
     }
-
-    const real_t alpha = 1.0;
-    const real_t beta = 0.0; //これ必要
-
-    oneapi::mkl::blas::column_major::omatadd(
-        workq,
-        oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
-        row, col,
-        alpha, d_B, col,
-        beta, nullptr, (row >= col) ? row : col,
-        d_tmp, row
-    );
-/*
-    cublasDgeam(
-        cublasHandle,
-        CUBLAS_OP_T, CUBLAS_OP_N,
-        row, col,
-        &alpha, d_B, col,
-        &beta, nullptr, (row >= col) ? row : col,
-        d_tmp, row
-    );
-*/
-
-    // // Solve A * X = B → X overwrites B
-    oneapi::mkl::blas::column_major::trsm(
-        workq,
-        oneapi::mkl::side::left,
-        oneapi::mkl::uplo::lower,
-        oneapi::mkl::transpose::nontrans,
-        oneapi::mkl::diag::nonunit,
-        row,
-        col,
-        alpha,
-        d_A, row,
-        d_tmp, row
-    );
-/*
-    cublasDtrsm(
-        cublasHandle,
-        CUBLAS_SIDE_LEFT,
-        CUBLAS_FILL_MODE_LOWER,
-        CUBLAS_OP_N,
-        CUBLAS_DIAG_NON_UNIT,
-        row,
-        col,
-        &alpha,
-        d_A, row,
-        d_tmp, row
-    );
-*/
-
-    oneapi::mkl::blas::column_major::omatadd(
-        workq,
-        oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
-        col, row,
-        alpha,
-        d_tmp, row,
-        beta,
-        nullptr, (row >= col) ? row : col,
-        d_B, col
-    );
-/*
-    cublasDgeam(
-        cublasHandle,
-        CUBLAS_OP_T,
-        CUBLAS_OP_N,
-        col, row,
-        &alpha,
-        d_tmp, row,
-        &beta,
-        nullptr, (row >= col) ? row : col,
-        d_B, col
-    );
-*/
-
-    tracked_syclFree(d_tmp);
-}
-catch (sycl::exception const &exc) {
-  std::cerr << exc.what() << "Exception caught at file:" << __FILE__
-            << ", line:" << __LINE__ << std::endl;
-  std::exit(1);
 }
 
 inline void writeMatrixToFile(std::string filename, double* array, size_t size) {
@@ -2953,7 +2864,7 @@ void computeThreeCenterERIs(
                 gpu::launch_3center_kernel( item_ct1,
                     s0, s1, s2,
                     d_three_center_eri, d_primitive_shells,
-                    d_auxiliary_primitive_shells, d_auxiliary_cgto_normalization_factors,
+                    d_auxiliary_primitive_shells, d_cgto_normalization_factors,
                     d_auxiliary_cgto_normalization_factors, shell_s0, shell_s1, shell_s2,
                     num_tasks, num_basis, 
 //                    &d_primitive_shell_pair_indices[shell_pair_type_infos
