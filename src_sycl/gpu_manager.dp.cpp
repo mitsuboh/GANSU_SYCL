@@ -1103,8 +1103,8 @@ void computeFockMatrix_UHF(const real_t* d_density_matrix_a, const real_t* d_den
     sycl::queue& workq = GPUHandle::syclqueue();
     workq.submit([&](sycl::handler& cgh){
 //    dpct::get_default_queue().submit([&](sycl::handler& cgh){
-    sycl::local_accessor<real_t, 1> s_Fa_ij(sycl::range<1>(1), cgh);
-    sycl::local_accessor<real_t, 1> s_Fb_ij(sycl::range<1>(1), cgh);
+    sycl::local_accessor<real_t, 1> s_Fa_ij(sycl::range<1>(threadsPerBlock), cgh);
+    sycl::local_accessor<real_t, 1> s_Fb_ij(sycl::range<1>(threadsPerBlock), cgh);
     cgh.parallel_for(
         sycl::nd_range<1>(blocks * threads, threads),
         [=](sycl::nd_item<1> item_ct1) {
