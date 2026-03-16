@@ -1,16 +1,16 @@
 ## Updates
 
-- Mar 16 2026: To verify the equivalence of the migrated program with the original implementation, we compared the outputs of the CUDA and SYCL versions for H, H₂, and H₂O (standard, RI, and direct). All final energies, SCF iteration counts, and convergence behaviors agreed within rounding-error levels of ~10⁻¹²–10⁻¹⁴ hartree, confirming numerical consistency across all algorithmic branches, including RI and direct methods. Additional tests on open-shell systems also showed full agreement, with no observable deviations introduced by the migration. A SYCL-specific initialization overhead was observed in performance; however, it did not affect numerical correctness. The following quantities were compared:
-    ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m UHF
-    ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m ROHF
-    ./HF_main -x ../xyz/H2.xyz -g ../basis/sto-3g.gbs -m RHF
-    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -m RHF
-    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs --eri_method ri -ag ../auxiliary_basis/cc-pvdz-rifit.gbs -m RHF
-    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs --eri_method direct -m RHF
-    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m RHF
-    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m ROHF
-    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m UHF --charge 0 --beta_to_alpha 1 --initial_guess sad
-    ./HF_main -x ../xyz/HF.xyz -g ../basis/sto-3g.gbs -m UHF
+- Mar 16 2026: To verify the equivalence of the migrated program with the original implementation, we compared the outputs of the CUDA and SYCL versions for H, H₂, and H₂O (standard, RI, and direct). All final energies, SCF iteration counts, and convergence behaviors agreed within rounding-error levels of ~10⁻¹²–10⁻¹⁴ hartree, confirming numerical consistency across all algorithmic branches, including RI and direct methods. Additional tests on open-shell systems also showed full agreement, with no observable deviations introduced by the migration. A SYCL-specific initialization overhead was observed in performance; however, it did not affect numerical correctness. The following quantities were compared:  
+    ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m UHF  
+    ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m ROHF  
+    ./HF_main -x ../xyz/H2.xyz -g ../basis/sto-3g.gbs -m RHF  
+    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -m RHF  
+    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs --eri_method ri -ag ../auxiliary_basis/cc-pvdz-rifit.gbs -m RHF  
+    ./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs --eri_method direct -m RHF  
+    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m RHF  
+    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m ROHF  
+    ./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m UHF --charge 0 --beta_to_alpha 1 --initial_guess sad  
+    ./HF_main -x ../xyz/HF.xyz -g ../basis/sto-3g.gbs -m UHF  
 - Feb 27 2026: Merged GANSU e65e88.
 - Feb 05 2026: Merged GANSU updates upto update eri_stored(d758e7) are included into sycl.
 - Jan 31 2026: Merged GANSU updates upto support RMP4(35ec9a) are included into sycl but not tested new features.
