@@ -59,7 +59,8 @@ public:
     void compute_coefficient_matrix_impl() override;
     void compute_energy() override;
     void update_fock_matrix() override;
-    void compute_Energy_Gradient() override;
+    void reset_convergence() override;
+    std::vector<double> compute_Energy_Gradient() override;
 
     real_t get_energy() const override { return energy_; }
 
@@ -115,6 +116,18 @@ public:
     DeviceHostMatrix<real_t>& get_fock_matrix_b() { return fock_matrix_b; }
 
     /**
+     * @brief Get the reference to the orbital energies (alpha spin)
+     * @return Reference to the orbital energies (alpha spin)
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies_a() { return orbital_energies_a; }
+
+    /**
+     * @brief Get the reference to the orbital energies (beta spin)
+     * @return Reference to the orbital energies (beta spin)
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies_b() { return orbital_energies_b; }
+
+    /**
      * @brief Export the density matrix
      * @param density_matrix_a Density matrix (alpha spin) if UHF, otherwise the density matrix
      * @param density_matrix_b Density matrix (beta spin) if UHF, otherwise no use
@@ -136,6 +149,13 @@ public:
      * @param filename File name
      */
     void export_molden_file(const std::string& filename) override;
+
+    /**
+     * @brief Post process after SCF convergence
+     * @details This function performs post-HF calculations after the SCF convergence, in which the selected post-HF method is applied.
+     * @details This function overrides the virtual function in the base class HF.
+     */
+    void post_process_after_scf() override;
 
 private:
     real_t energy_; ///< Energy
@@ -188,6 +208,8 @@ public:
      * @return Algorithm name as a string
      */
     virtual std::string get_algorithm_name() const = 0;
+
+    virtual void reset() {} ///< Reset internal state (e.g., DIIS history) for a new SCF cycle
 
 protected:
     UHF& hf_; ///< UHF
@@ -272,6 +294,8 @@ public:
         }
         return name;
     }
+
+    void reset() override { first_iteration_ = true; }
 
 private:
     real_t damping_factor_; ///< Damping factor
@@ -396,6 +420,8 @@ public:
         return name;
     }
 
+    void reset() override { iteration_ = 0; }
+
 private:
     int iteration_; ///< count of iterations
 
@@ -431,56 +457,101 @@ public:
      * @details This function breaks the symmetry of the density matrix.
      * @details Copy the density matrix of the alpha spin to the density matrix of the beta spin only for diagonal blocks.
      */
-    void break_symmetry(){ 
+    void break_symmetry(){
 
-        hf_.get_coefficient_matrix_b().toHost();
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_basis()-1) * hf_.get_num_basis() + i] = 0;
-            hf_.get_coefficient_matrix_b().host_ptr()[i * hf_.get_num_basis() + hf_.get_num_basis()-1] = 0;
-        }
-        hf_.get_coefficient_matrix_b().toDevice();
-
-/*
         hf_.get_coefficient_matrix_a().toHost();
         hf_.get_coefficient_matrix_b().toHost();
 
-        std::unique_ptr<real_t[]> homo(new real_t[hf_.get_num_basis()]);
-        std::unique_ptr<real_t[]> lumo(new real_t[hf_.get_num_basis()]);
+        const int N = hf_.get_num_basis();
+        std::unique_ptr<real_t[]> homo(new real_t[N]);
+        std::unique_ptr<real_t[]> lumo(new real_t[N]);
 
-        // alpha-spin
-        const double alpha = 0.25;
-        const double cos_alpha = std::cos(alpha);
-        const double sin_alpha = std::cos(alpha);
+        // alpha-spin: rotate HOMO and LUMO by +theta
+        const double theta = 0.25;
+        const double c = std::cos(theta);
+        const double s = std::sin(theta);
 
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            homo[i] = hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * hf_.get_num_basis() + i];
-            lumo[i] = hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * hf_.get_num_basis() + i];
+        if(hf_.get_num_alpha_spins() < N) {
+            for(int i=0; i<N; i++){
+                homo[i] = hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i];
+                lumo[i] = hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i];
+            }
+            for(int i=0; i<N; i++){
+                hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i] =  c * homo[i] + s * lumo[i];
+                hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i]     = -s * homo[i] + c * lumo[i];
+            }
         }
-        
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * hf_.get_num_basis() + i] = cos_alpha * homo[i] + sin_alpha * lumo[i];
-            hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * hf_.get_num_basis() +  i] = sin_alpha * homo[i] + cos_alpha * lumo[i];
-        }
 
-        // beta-spin
-        const double beta = -alpha;
-        const double cos_beta = std::cos(beta);
-        const double sin_beta = std::cos(beta);
-
-
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            homo[i] = hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * hf_.get_num_basis() + i];
-            lumo[i] = hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * hf_.get_num_basis() + i];
-        }
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * hf_.get_num_basis() + i] = cos_beta * homo[i] + sin_beta * lumo[i];
-            hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * hf_.get_num_basis() + i] = sin_beta * homo[i] + cos_beta * lumo[i];
+        // beta-spin: rotate HOMO and LUMO by -theta
+        if(hf_.get_num_beta_spins() > 0 && hf_.get_num_beta_spins() < N) {
+            for(int i=0; i<N; i++){
+                homo[i] = hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i];
+                lumo[i] = hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i];
+            }
+            for(int i=0; i<N; i++){
+                hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i] =  c * homo[i] - s * lumo[i];
+                hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i]     =  s * homo[i] + c * lumo[i];
+            }
         }
 
         hf_.get_coefficient_matrix_a().toDevice();
         hf_.get_coefficient_matrix_b().toDevice();
-*/
     }
+
+
+    ///**
+    // * @brief Break the symmetry of the density matrix
+    // * @details A small opposite HOMO-LUMO rotation is applied to alpha/beta coefficients.
+    // *          This preserves orthonormality and is more stable than zeroing rows/columns.
+    // */
+    //void break_symmetry(){
+    //    const int num_basis = hf_.get_num_basis();
+    //    const int num_alpha = hf_.get_num_alpha_spins();
+    //    const int num_beta  = hf_.get_num_beta_spins();
+  
+    //    // Need at least one occupied and one virtual orbital for each spin.
+    //    if (num_basis < 2 || num_alpha <= 0 || num_beta <= 0 || num_alpha >= num_basis || num_beta >=
+    //num_basis){
+    //        return;
+    //    }
+  
+    //    hf_.get_coefficient_matrix_a().toHost();
+    //    hf_.get_coefficient_matrix_b().toHost();
+  
+    //    // Small angle avoids over-perturbing the initial guess while breaking spin symmetry.
+    //    constexpr real_t theta = static_cast<real_t>(0.03);
+    //    const real_t c = std::cos(theta);
+    //    const real_t s = std::sin(theta);
+  
+    //    auto rotate_homo_lumo = [&](real_t* coeff, const int occ, const real_t sign) {
+    //        const int homo = occ - 1;
+    //        const int lumo = occ;
+  
+    //        std::vector<real_t> homo_vec(num_basis);
+    //        std::vector<real_t> lumo_vec(num_basis);
+  
+    //        for (int i = 0; i < num_basis; ++i) {
+    //            homo_vec[i] = coeff[homo * num_basis + i];
+    //            lumo_vec[i] = coeff[lumo * num_basis + i];
+    //        }
+  
+    //        for (int i = 0; i < num_basis; ++i) {
+    //            coeff[homo * num_basis + i] = c * homo_vec[i] + sign * s * lumo_vec[i];
+    //            coeff[lumo * num_basis + i] = -sign * s * homo_vec[i] + c * lumo_vec[i];
+    //        }
+    //    };
+  
+    //    // Apply opposite rotations to alpha and beta channels.
+    //    rotate_homo_lumo(hf_.get_coefficient_matrix_a().host_ptr(), num_alpha,
+    //static_cast<real_t>(+1.0));
+    //    rotate_homo_lumo(hf_.get_coefficient_matrix_b().host_ptr(), num_beta,
+    //static_cast<real_t>(-1.0));
+  
+    //    hf_.get_coefficient_matrix_a().toDevice();
+    //    hf_.get_coefficient_matrix_b().toDevice();
+    //}
+
+
 
 protected:
     UHF& hf_;
@@ -602,7 +673,9 @@ public:
             return {density_matrix_alpha.data(), density_matrix_beta.data()};
         }
 
-        std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+        if(hf_.get_run_type() != "optimize"){
+            std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+        }
 
         ParameterManager parameters;
         parameters.set_default_values_to_unspecified_parameters();
@@ -682,7 +755,9 @@ public:
         for(int i=0; i<hf_.get_atoms().size(); i++){
             const std::string element_name = atomic_number_to_element_name(hf_.get_atoms()[i].atomic_number);
 
-            std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            if(hf_.get_run_type() != "optimize"){
+                std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            }
 
             int atom_num_basis;
             auto [atom_density_matrix_alpha, atom_density_matrix_beta] = read_density_from_sad(element_name, hf_.get_gbsfilename(), atom_num_basis);
@@ -730,6 +805,9 @@ public:
 
     ERI_Stored_UHF(const ERI_Stored_UHF&) = delete; ///< copy constructor is deleted
     ~ERI_Stored_UHF() = default; ///< destructor
+
+    real_t compute_mp2_energy() override;
+    //real_t compute_mp3_energy() override;
 
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix_a = uhf_.get_density_matrix_a();
@@ -826,5 +904,7 @@ protected:
     UHF& uhf_; ///< UHF
 };
 
+
+inline void UHF::reset_convergence() { if(convergence_method_) convergence_method_->reset(); }
 
 } // namespace gansu

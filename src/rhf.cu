@@ -72,19 +72,28 @@ RHF::RHF(const Molecular& molecular, const ParameterManager& parameters) :
     // Set an algorithm for ERI calculation (default: ERI_Stored_RHF)
     const std::string eri_method = parameters.get<std::string>("eri_method");
     if(eri_method == "stored"){ // ERI matrices are stored in the device memory
-        set_eri_method(std::make_unique<ERI_Stored_RHF>(*this));
+        auto eri_stored = std::make_unique<ERI_Stored_RHF>(*this);
+        // Set CCSD algorithm: 0=spatial-optimized, 1=spatial-naive, 2=spin-orbital
+        if (parameters.contains("ccsd_algorithm")) {
+            eri_stored->set_ccsd_algorithm(parameters.get<int>("ccsd_algorithm"));
+        }
+        set_eri_method(std::move(eri_stored));
     }else if(eri_method == "ri"){ // Resolution of Identity (RI) method
-        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
-        Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
+        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename");
+        BasisSet aux_basis = get_auxiliary_basis(molecular, auxiliary_gbsfilename);
+        Molecular auxiliary_molecular(molecular.get_atoms(), aux_basis);
+        std::cout << "[RI] Auxiliary basis: " << auxiliary_molecular.get_num_basis() << " functions" << std::endl;
         set_eri_method(std::make_unique<ERI_RI_RHF>(*this, auxiliary_molecular));
     }else if(eri_method == "direct"){
         set_eri_method(std::make_unique<ERI_Direct_RHF>(*this));
     }else if(eri_method == "hash"){
         set_eri_method(std::make_unique<ERI_Hash_RHF>(*this));
     }else if(eri_method == "direct_ri"){
-        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
-        Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
-        set_eri_method(std::make_unique<ERI_RI_Direct_RHF>(*this,  auxiliary_molecular));
+        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename");
+        BasisSet aux_basis = get_auxiliary_basis(molecular, auxiliary_gbsfilename);
+        Molecular auxiliary_molecular(molecular.get_atoms(), aux_basis);
+        std::cout << "[RI] Auxiliary basis: " << auxiliary_molecular.get_num_basis() << " functions" << std::endl;
+        set_eri_method(std::make_unique<ERI_RI_Direct_RHF>(*this, auxiliary_molecular));
     }else{
         THROW_EXCEPTION("Invalid ERI method name: " + eri_method);
     }
@@ -139,6 +148,8 @@ void RHF::post_process_after_scf() {
     if(post_hf_method == PostHFMethod::None){
         post_hf_energy_ = 0.0;
         return; // do nothing
+    }else if(post_hf_method == PostHFMethod::FCI){
+        post_hf_energy_ = eri_method_->compute_fci_energy();
     }else if(post_hf_method == PostHFMethod::MP2){
         post_hf_energy_ = eri_method_->compute_mp2_energy();
     }else if(post_hf_method == PostHFMethod::MP3){
@@ -332,10 +343,24 @@ void RHF::export_density_matrix(real_t* density_matrix_a, real_t* density_martix
  * @brief Compute the gradient of the total electronic energy
  * @details This function calculates the gradient of the total electronic energy with respect to nuclear coordinates.
  */
-void RHF::compute_Energy_Gradient() {
+std::vector<double> RHF::compute_Energy_Gradient() {
     PROFILE_FUNCTION();
-    // Compute the gradient of the total electronic energy
-    gpu::computeEnergyGradient_RHF(shell_type_infos, shell_pair_type_infos, atoms.device_ptr(), density_matrix.device_ptr(), coefficient_matrix.device_ptr(), orbital_energies.device_ptr(), primitive_shells.device_ptr(), boys_grid.device_ptr(), cgto_normalization_factors.device_ptr(), atoms.size(), num_basis, num_electrons, verbose);
+
+    return gpu::computeEnergyGradient_RHF(
+        shell_type_infos,
+        shell_pair_type_infos,
+        atoms.device_ptr(),
+        density_matrix.device_ptr(),
+        coefficient_matrix.device_ptr(),
+        orbital_energies.device_ptr(),
+        primitive_shells.device_ptr(),
+        boys_grid.device_ptr(),
+        cgto_normalization_factors.device_ptr(),
+        static_cast<int>(atoms.size()),
+        num_basis,
+        num_electrons,
+        verbose
+    );
 }
 
 
@@ -396,6 +421,25 @@ void RHF::report() {
         std::cout.precision(old_precision);
     }
 
+    // Orbital energies
+    {
+        std::cout << std::endl;
+        std::cout << "[Orbital Energies]" << std::endl;
+        const int N = num_basis;
+        const int num_occ = num_electrons / 2;
+        std::vector<real_t> eps(N);
+        cudaMemcpy(eps.data(), orbital_energies.device_ptr(), N * sizeof(real_t), cudaMemcpyDeviceToHost);
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_prec = std::cout.precision();
+        for (int i = 0; i < N; ++i) {
+            std::cout << "  MO " << std::setw(4) << (i + 1)
+                      << (i < num_occ ? " (occ) " : " (vir) ")
+                      << std::fixed << std::setprecision(6) << eps[i] << " hartree" << std::endl;
+        }
+        std::cout.flags(old_flags);
+        std::cout.precision(old_prec);
+    }
+
     std::cout << std::endl;
     std::cout << "[Calculation Summary]" << std::endl;
     std::cout << "Method: Restricted Hartree-Fock (RHF)" << std::endl;
@@ -413,7 +457,9 @@ void RHF::report() {
         std::cout << std::endl;
         std::cout << "[Calculation Summary (Post-HF)]" << std::endl;
         std::cout << "Post-HF method: ";
-        if(get_post_hf_method() == PostHFMethod::MP2){
+        if(get_post_hf_method() == PostHFMethod::FCI){
+            std::cout << "FCI" << std::endl;
+        }else if(get_post_hf_method() == PostHFMethod::MP2){
             std::cout << "MP2" << std::endl;
         }else if(get_post_hf_method() == PostHFMethod::MP3){
             std::cout << "MP3" << std::endl;

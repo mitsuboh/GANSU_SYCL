@@ -39,6 +39,22 @@ namespace gansu{
 class ERI;
 
 /**
+ * @brief Get or generate an auxiliary basis set for RI approximation
+ * @param molecular Primary molecular object
+ * @param auxiliary_gbsfilename Auxiliary basis set file name (if empty, auto-generate from primary basis)
+ * @return Auxiliary BasisSet
+ */
+inline BasisSet get_auxiliary_basis(const Molecular& molecular, const std::string& auxiliary_gbsfilename) {
+    if (!auxiliary_gbsfilename.empty()) {
+        return BasisSet::construct_from_gbs(auxiliary_gbsfilename);
+    }
+    // Auto-generate auxiliary basis from primary basis
+    std::cout << "[RI] No auxiliary basis set file specified. Auto-generating from primary basis..." << std::endl;
+    BasisSet primary_basis = BasisSet::construct_from_gbs(molecular.get_gbs_filename());
+    return BasisSet::generate_auxiliary_basis(primary_basis);
+}
+
+/**
  * @brief HF class
  * @details This class is a virtual class for the Hartree-Fock method.
  * Computations related only to AO basis are implemented in this class
@@ -110,6 +126,16 @@ public:
      * @brief Get the boolean value of verbose mode
      */
     bool get_verbose() const { return verbose; }
+
+    /**
+     * @brief Get the run type (energy, gradient, optimize)
+     */
+    const std::string& get_run_type() const { return run_type_; }
+
+    /**
+     * @brief Get the optimizer name (bfgs)
+     */
+    const std::string& get_optimizer() const { return optimizer_; }
 
     /**
      * @brief Get the nuclear repulsion energy
@@ -205,6 +231,11 @@ public:
     const std::vector<ShellPairTypeInfo>& get_shell_pair_type_infos() const { return shell_pair_type_infos; }
 
     /**
+     * @brief Get num_primitive_shells
+     */
+    size_t get_num_primitive_shells() const { return num_primitive_shells; }
+
+    /**
      * @brief Get num_primitive_shell_pairs
      */
     size_t get_num_primitive_shell_pairs() const { return num_primitive_shell_pairs; }
@@ -281,8 +312,8 @@ protected:
     const int max_iter; ///< Maximum number of iterations
     int iter_; ///< Number of iterations
     real_t energy_difference_; ///< Energy difference between the current and the previous iteration
-    const int geometry_optimization; ///< Geometry optimization flag
-    const std::string geometry_optimization_method; ///< Geometry optimization method
+    const std::string run_type_; ///< Run type: "energy", "gradient", "optimize"
+    const std::string optimizer_; ///< Optimizer: "bfgs"
     
     const std::vector<ShellTypeInfo> shell_type_infos; ///< Shell type info in the primitive shell list
     const std::vector<BasisRange> atom_to_basis_range; ///< Basis range for each atom
@@ -309,6 +340,7 @@ protected:
 
     // for Diect SCF
     std::vector<ShellPairTypeInfo> shell_pair_type_infos;
+    size_t num_primitive_shells;
     size_t num_primitive_shell_pairs;
 
     // for ERI (stored, RI, direct)
@@ -375,6 +407,8 @@ protected:
      * @details This function is implemented in the derived class.
      */
     virtual void update_fock_matrix() = 0;
+
+    virtual void reset_convergence() {} ///< Reset convergence method state for a new SCF cycle
 
 
 
@@ -449,7 +483,7 @@ public:
      * @details This function evaluates the energy derivatives with respect to each nuclear coordinate (x, y, z) by summing the derivatives of the one-electron and two-electron integrals.
      * @details The result can be used for geometry optimization or force calculations.
      */
-    virtual void compute_Energy_Gradient() = 0;
+    virtual std::vector<double> compute_Energy_Gradient() = 0;
     
 
     /**

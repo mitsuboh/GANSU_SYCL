@@ -34,8 +34,8 @@ link_directories(${CMAKE_SOURCE_DIR}/../build)
 set(TEST_SOURCES
     test_gpu_manager.cu
     test_gpu_kernels.cu
-#    test_davidson_solver.cu
-#    test_validation.cu
+    test_davidson_solver.cu
+    test_validation.cu
 )
 
 # Create test executable

@@ -183,6 +183,129 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
 }
 
 /**
+ * @brief Computes the product of two rectangular matrices using cuBLAS.
+ *
+ * Computes C = alpha * op(A) * op(B) + beta * C
+ * where op(X) = X if transpose=false, X^T if transpose=true.
+ *
+ * @param d_A  Row-major matrix. Without transpose: M×K. With transpose: K×M.
+ * @param d_B  Row-major matrix. Without transpose: K×N. With transpose: N×K.
+ * @param d_C  Row-major output matrix M×N.
+ * @param M    Number of rows of op(A) and C.
+ * @param N    Number of columns of op(B) and C.
+ * @param K    Number of columns of op(A) / rows of op(B).
+ * @param transpose_A  If true, A is K×M and transposed.
+ * @param transpose_B  If true, B is N×K and transposed.
+ * @param accumulate   If true, C += alpha*op(A)*op(B). If false, C = alpha*op(A)*op(B).
+ * @param alpha        Scalar multiplier (default 1.0).
+ */
+void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
+                              const int M, const int N, const int K,
+                              const bool transpose_A, const bool transpose_B,
+                              const bool accumulate, const double alpha)
+{
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+    double beta = accumulate ? 1.0 : 0.0;
+
+    // cuBLAS uses column-major. For row-major A(M×K), cuBLAS sees it as
+    // column-major A'(K×M). So we compute C' = B' * A' to get row-major C.
+    // Row-major op(A)[M×K]: stored as M×K. cuBLAS sees K×M column-major.
+    // Row-major op(B)[K×N]: stored as K×N. cuBLAS sees N×K column-major.
+    // We want row-major C[M×N]: cuBLAS sees N×M column-major.
+    // cuBLAS call: C' = B' * A' → (N×M) = (N×K) * (K×M)
+
+    // Leading dimensions in memory (row-major storage):
+    // A stored as (transpose_A ? K×M : M×K) → lda = (transpose_A ? M : K)
+    // B stored as (transpose_B ? N×K : K×N) → ldb = (transpose_B ? K : N)
+    const int lda = transpose_A ? M : K;  // physical row width of A
+    const int ldb = transpose_B ? K : N;  // physical row width of B
+    const int ldc = N;                     // physical row width of C
+
+    // cuBLAS sees row-major as column-major transposed.
+    // For row-major A[M×K] without transpose:
+    //   cuBLAS sees col-major A'[K×M], which is A^T in cuBLAS notation → CUBLAS_OP_T to undo
+    //   But we need op(A)=A, so cuBLAS must apply T to get A from A'.
+    // For row-major A[K×M] with transpose:
+    //   cuBLAS sees col-major A'[M×K], which is A^T in cuBLAS notation → CUBLAS_OP_N gives A^T
+    //
+    // Simpler approach: C = op(A)*op(B) in row-major
+    // ↔ C^T = op(B)^T * op(A)^T in col-major
+    // ↔ cuBLAS(C^T[N×M]) = cuBLAS_op_B * cuBLAS_op_A
+    //
+    // For cuBLAS: we call cublasDgemm with:
+    //   op_cuB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N  (for B in C^T = B^T * A^T)
+    //   op_cuA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N  (for A in C^T = B^T * A^T)
+    //   But row-major→col-major already gives transpose, so we need to invert:
+    //   cuBLAS_opB for B^T in col-major: if transpose_B=false, B is K×N row-major = N×K col-major,
+    //     we need B^T[N×K] col-major → CUBLAS_OP_T on the N×K col-major → gives K×N which is wrong.
+    //
+    // Let me use the standard row-major trick directly:
+    // C[M×N] = op(A)[M×K] * op(B)[K×N]  in row-major
+    // Equivalent to: C_col[N×M] = op(B)_col[N×K] * op(A)_col[K×M] in col-major
+    //
+    // A is stored row-major. Without transpose: shape M×K, col-major view: K×M.
+    //   op(A) in row-major = A[M×K]. In col-major: we see A'[K×M].
+    //   For op(A)_col[K×M] we need CUBLAS_OP_N on A' → gives K×M. ✓
+    //   → cuBLAS_opA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N
+    //
+    // Similarly: cuBLAS_opB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N
+
+    const cublasOperation_t cuOpB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N;
+    const cublasOperation_t cuOpA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    // cublasDgemm(handle, opB, opA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc)
+    cublasDgemm(
+        cublasHandle,
+        cuOpB, cuOpA,
+        N, M, K,
+        &alpha,
+        d_B, ldb,
+        d_A, lda,
+        &beta,
+        d_C, ldc
+    );
+}
+
+/**
+ * @brief Strided batched DGEMM for row-major matrices.
+ *
+ * Computes C[i] = alpha * op(A[i]) * op(B[i]) + beta * C[i] for i=0..batchCount-1,
+ * where A[i] = d_A + i*strideA, B[i] = d_B + i*strideB, C[i] = d_C + i*strideC.
+ * Set strideA=0 to broadcast the same A matrix across all batches.
+ */
+void matrixMatrixProductBatched(const double* d_A, const double* d_B, double* d_C,
+                                 const int M, const int N, const int K,
+                                 const long long strideA, const long long strideB, const long long strideC,
+                                 const int batchCount,
+                                 const bool transpose_A, const bool transpose_B,
+                                 const bool accumulate, const double alpha)
+{
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+    double beta = accumulate ? 1.0 : 0.0;
+
+    const int lda = transpose_A ? M : K;
+    const int ldb = transpose_B ? K : N;
+    const int ldc = N;
+
+    // Row-major → col-major: C^T = op(B)^T * op(A)^T
+    const cublasOperation_t cuOpB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N;
+    const cublasOperation_t cuOpA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    cublasDgemmStridedBatched(
+        cublasHandle,
+        cuOpB, cuOpA,
+        N, M, K,
+        &alpha,
+        d_B, ldb, strideB,
+        d_A, lda, strideA,
+        &beta,
+        d_C, ldc, strideC,
+        batchCount
+    );
+}
+
+/**
  * @brief Computes the weighted sum of two matrices using cuBLAS.
  * @param d_matrix_A Device pointer to the size x size matrix
  * @param d_matrix_B Device pointer to the size x size matrix
@@ -231,6 +354,10 @@ void matrixAddition(const double* d_matrix_A, const double* d_matrix_B, double* 
  * @details The matrix subtraction is computed as \f$ C = A - B \f$.
  */
 void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
+    weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
+}
+
+void matrixSubtractionInPlace(const double* d_matrix_A, double* d_matrix_B, double* d_matrix_C, const int size) {
     weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
 }
 
@@ -454,6 +581,9 @@ size_t makeShellPairTypeInfo(const std::vector<ShellTypeInfo>& shell_type_infos,
 }
 
 void computeERIMatrix(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,  real_t* d_eri_matrix, const real_t* d_schwarz_upper_bound_factors, const real_t schwarz_screening_threshold, const int num_basis, const bool verbose) {
+
+    // Zero-initialize ERI matrix (kernels use atomicAdd)
+    cudaMemset(d_eri_matrix, 0, (size_t)num_basis * num_basis * num_basis * num_basis * sizeof(real_t));
 
     // compute the electron repulsion integrals
     const int threads_per_block = 256; // the number of threads per block
@@ -1539,8 +1669,19 @@ void computeIntermediateMatrixB(
 
 
 
-
-void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix, const int num_basis, const int num_auxiliary_basis, real_t* d_J, real_t* d_K, real_t* d_W, real_t* d_T, real_t* d_V){
+//* With density matrix
+void computeFockMatrix_RI_RHF_with_density_matrix(
+    const real_t* d_density_matrix, 
+    const real_t* d_core_hamiltonian_matrix, 
+    const real_t* d_intermediate_matrix_B, 
+    real_t* d_fock_matrix, 
+    const int num_basis, 
+    const int num_auxiliary_basis, 
+    real_t* d_J, 
+    real_t* d_K, 
+    real_t* d_W, 
+    real_t* d_T, 
+    real_t* d_V){
     //cublasManager cublas;
     cublasHandle_t cublasHandle = GPUHandle::cublas();
 
@@ -1587,6 +1728,97 @@ void computeFockMatrix_RI_RHF(const real_t* d_density_matrix, const real_t* d_co
     computeFockMatrix_RI_RHF_kernel<<<num_blocks, num_threads>>>(d_core_hamiltonian_matrix, d_J, d_K, d_fock_matrix, num_basis);
     cudaDeviceSynchronize();
 }
+/**/
+
+
+
+
+
+
+//* With coefficient matrix
+__global__ void packThreeDimensionalTensorX(
+    const real_t* d_X_in, real_t* d_X_out, 
+    const int num_basis, const int num_auxiliary_basis, const int num_occ)
+{
+    const size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+    const size_t total_size = (size_t)num_auxiliary_basis * num_basis * num_occ;
+
+    if (idx >= total_size) {
+        return;
+    }
+
+    const int p = idx / (num_basis * num_occ);
+    const int mu = (idx % (num_basis * num_occ)) / num_occ;
+    const int k = (idx % (num_basis * num_occ)) % num_occ;
+
+    d_X_out[((size_t)num_auxiliary_basis * num_occ) * mu + num_occ * p + k] = d_X_in[idx];
+}
+
+
+void computeFockMatrix_RI_RHF_with_coefficient_matrix(
+    const real_t* d_coefficient_matrix, 
+    const real_t* d_density_matrix, 
+    const real_t* d_core_hamiltonian_matrix, 
+    const real_t* d_intermediate_matrix_B, 
+    real_t* d_fock_matrix, 
+    const int num_basis, 
+    const int num_auxiliary_basis, 
+    const int num_occ, 
+    real_t* d_J, 
+    real_t* d_K, 
+    real_t* d_W, 
+    real_t* d_X, 
+    real_t* d_X_packed)
+{
+    cublasHandle_t cublasHandle = GPUHandle::cublas();
+
+    double alpha = 1.0;
+    double beta = 0.0;
+    const int num_threads = 256;
+    const int num_blocks = (num_basis * num_basis + num_threads - 1) / num_threads;
+
+    ////////////////////////////////// compute J-matrix //////////////////////////////////
+    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
+    // J = sum(W[i] * B[i])
+    weighted_sum_matrices_kernel<<<num_blocks, num_threads>>>(d_J, d_intermediate_matrix_B, d_W, num_basis, num_auxiliary_basis);
+
+    ////////////////////////////////// compute K-matrix //////////////////////////////////
+    cudaMemset(d_K, 0, sizeof(real_t) * num_basis * num_basis);
+    cublasDgemmStridedBatched(
+        cublasHandle,
+        CUBLAS_OP_N, CUBLAS_OP_N,
+        num_occ, num_basis, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis, 0,
+        d_intermediate_matrix_B, num_basis, num_basis * num_basis,
+        &beta,
+        d_X, num_occ, num_basis * num_occ,
+        num_auxiliary_basis
+    );
+    packThreeDimensionalTensorX<<<(num_auxiliary_basis * num_basis * num_occ + num_threads - 1) / num_threads, num_threads>>>(d_X, d_X_packed, num_basis, num_auxiliary_basis, num_occ);
+    alpha = 2.0;
+    cublasDgemm(
+        cublasHandle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        num_basis, num_basis, num_occ * num_auxiliary_basis,
+        &alpha,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        &beta,
+        d_K, num_basis
+    );
+
+    ////////////////////////////////// compute Fock matrix //////////////////////////////////
+    // F = H + J - (1/2)*K
+    computeFockMatrix_RI_RHF_kernel<<<num_blocks, num_threads>>>(d_core_hamiltonian_matrix, d_J, d_K, d_fock_matrix, num_basis);
+    cudaDeviceSynchronize();
+}
+/**/
+
+
+
+
+
 
 void computeFockMatrix_RI_UHF(const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_intermediate_matrix_B, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, const int num_basis, const int num_auxiliary_basis){
     //cublasManager cublas;
@@ -2186,6 +2418,7 @@ __global__ void computeFockMatrix_DFT_kernel(const double* d_core_hamiltonian_ma
 
 
 
+/*
 void computeFockMatrix_Direct_RHF(
     const real_t* d_density_matrix,
     const real_t* d_core_hamiltonian_matrix,
@@ -2318,6 +2551,254 @@ void computeFockMatrix_Direct_RHF(
 
     cudaDeviceSynchronize();
 }
+/**/
+
+
+
+
+
+//*
+__global__ void densityMatrixDifferenceShellPairsKernel(
+    real_t* g_density_matrix_diff_shell, 
+    const real_t* g_density_matrix_diff, 
+    const PrimitiveShell* g_primitive_shells, 
+    const int2* g_primitive_shell_pair_indices, 
+    const int num_primitive_shells, 
+    const int num_basis)
+{
+    const int serial = blockDim.x * blockIdx.x + threadIdx.x;
+    if (serial >= (num_primitive_shells * (num_primitive_shells + 1) / 2)) {
+        return;
+    }
+    //const int shell_index_a = serial / num_primitive_shells;
+    //const int shell_index_b = serial % num_primitive_shells;
+    const int2 shell_pair_index = g_primitive_shell_pair_indices[serial];
+    const int shell_index_a = shell_pair_index.x;
+    const int shell_index_b = shell_pair_index.y;
+    const PrimitiveShell a = g_primitive_shells[shell_index_a];
+    const PrimitiveShell b = g_primitive_shells[shell_index_b];
+
+    const int shell_size_a = (a.shell_type == 0) ? 1 : 3;
+    const int shell_size_b = (b.shell_type == 0) ? 1 : 3;
+
+    //real_t diff_abs;
+    real_t max_value = 0.0;
+    for (int i = 0; i < shell_size_a; ++i) {
+        for (int j = 0; j < shell_size_b; ++j) {
+            const int mu = a.basis_index + i;
+            const int nu = b.basis_index + j;
+            //diff_abs = fabs(g_density_matrix_diff[num_basis * mu + nu]);
+            //if (diff_abs > max_value) {
+            //    max_value = diff_abs;
+            //}
+            //const real_t density_diff = g_density_matrix_diff[(mu < nu) ? (num_basis * mu + nu) : (num_basis * nu + mu)];
+            const real_t density_diff = g_density_matrix_diff[num_basis * mu + nu];
+            max_value = fmax(max_value, fabs(density_diff));
+        }
+    }
+    g_density_matrix_diff_shell[num_primitive_shells * shell_index_a + shell_index_b] = max_value;
+    if (shell_index_a != shell_index_b) {
+        g_density_matrix_diff_shell[num_primitive_shells * shell_index_b + shell_index_a] = max_value;
+    }
+}
+
+void makeDensityMatrixDifferenceShellPairs(
+    real_t* d_density_matrix_diff_shell, 
+    const real_t* d_density_matrix_diff, 
+    const PrimitiveShell* d_primitive_shells, 
+    const int2* d_primitive_shell_pair_indices, 
+    const int num_primitive_shells, 
+    const int num_basis)
+{
+    const int threads_per_block = 256;
+    const int num_primitive_shell_pairs = num_primitive_shells * (num_primitive_shells + 1) / 2;
+    const int num_blocks = (num_primitive_shell_pairs + threads_per_block - 1) / threads_per_block;
+    densityMatrixDifferenceShellPairsKernel<<<num_blocks, threads_per_block>>>(d_density_matrix_diff_shell, d_density_matrix_diff, d_primitive_shells, d_primitive_shell_pair_indices, num_primitive_shells, num_basis);
+    cudaDeviceSynchronize();
+}
+
+void computeFockMatrix_Direct_RHF(
+    const real_t* d_density_matrix,
+    real_t* d_density_matrix_diff,
+    real_t* d_density_matrix_diff_shell,
+    const real_t* d_core_hamiltonian_matrix,
+    const std::vector<ShellTypeInfo>& shell_type_infos, 
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+    const PrimitiveShell* d_primitive_shells, 
+    const int2* d_primitive_shell_pair_indices,
+    const real_t* d_cgto_normalization_factors, 
+    const real_t* d_boys_grid, 
+    const real_t* d_schwarz_upper_bound_factors,
+    const real_t schwarz_screening_threshold,
+    real_t* d_fock_matrix,
+    real_t* d_fock_matrix_prev,
+    const int num_basis,
+    std::vector<int*>& d_global_counters,
+    std::vector<int*>& d_min_skipped_columns,
+    real_t* d_fock_matrix_replicas,
+    const int num_fock_replicas,
+    const int verbose,
+    bool& is_first_call)
+{
+    if (is_first_call) {
+        cudaMemset(d_fock_matrix_prev, 0, sizeof(real_t) * num_basis * num_basis);
+        cudaMemset(d_density_matrix_diff, 0, sizeof(real_t) * num_basis * num_basis);
+    }
+    // D_diff = D_new - D_old
+    matrixSubtractionInPlace(d_density_matrix, d_density_matrix_diff, d_density_matrix_diff, num_basis);
+    int num_primitive_shells = 0;
+    for (const auto& x : shell_type_infos) {
+        num_primitive_shells += x.count;
+    }
+    makeDensityMatrixDifferenceShellPairs(d_density_matrix_diff_shell, d_density_matrix_diff, d_primitive_shells, d_primitive_shell_pair_indices, num_primitive_shells, num_basis);
+    cudaDeviceSynchronize();
+
+    //int h_num_screened_shell_quartets = 0;
+    //int* d_num_screened_shell_quartets;
+    //cudaMalloc(&d_num_screened_shell_quartets, sizeof(int));
+    //cudaMemset(d_num_screened_shell_quartets, 0, sizeof(int));
+
+    // compute the electron repulsion integrals
+    const int num_threads_per_block = 256;
+    const int shell_type_count = shell_type_infos.size();
+    cudaMemset(d_fock_matrix_replicas, 0, sizeof(real_t) * num_basis * num_basis * num_fock_replicas);
+
+    // list shell-quadruples for sorted shell-type (s0, s1, s2, s3)
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    // reverse the order of the shell_quadruples to make it sorted by (s0, s1, s2, s3)
+    // e.g. (pp|pp), (sp|pp), (sp|sp), (ss|pp), (ss|sp), (ss|ss) for s and p shells
+    //std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+    // make multi stream
+    const int num_kernels = shell_quadruples.size();
+    std::vector<cudaStream_t> streams(num_kernels);
+    for (int i = 0; i < num_kernels; i++) {
+        cudaError_t err = cudaStreamCreate(&streams[i]);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") + std::string(cudaGetErrorString(err)));
+        }
+    }
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int kernel_idx = 0;
+    const int task_group_size = 16;
+    const int num_cuda_blocks = 256;
+    for (const auto& quadruple: shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
+        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
+        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket; // equal to the number of threads
+        const size_t num_blocks = (num_braket + num_threads_per_block - 1) / num_threads_per_block; // the number of blocks
+        const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
+        const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
+
+        if (s0 <= 1 && s1 <= 1 && s2 <= 1 && s3 <= 1) {
+            // initialzie global counters and minimum skipped columns for dynamic screening
+            const int num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
+            const int num_ket_groups = (num_ket + task_group_size - 1) / task_group_size;
+            const int num_init_blocks = (num_bra_groups + num_threads_per_block - 1) / num_threads_per_block;
+            //cudaMemset(d_global_counters[kernel_idx], 0, sizeof(int) * num_bra_groups);
+            cudaMemsetAsync(d_global_counters[kernel_idx], 0, sizeof(int) * num_bra_groups, streams[kernel_idx]);
+            initializeMinSkippedColumns<<<num_init_blocks, num_threads_per_block, 0, streams[kernel_idx]>>>(d_min_skipped_columns[kernel_idx], num_bra_groups, num_ket_groups);
+
+            //if (s0 == 0 && s1 == 0 && s2 == 0 && s3 == 0) {
+            if (false) {
+                //ssss2e_dynamic_test<<<num_cuda_blocks, num_threads_per_block, 0, streams[kernel_idx]>>>
+                //    (d_fock_matrix_replicas, d_primitive_shells, d_primitive_shell_pair_indices, 
+                //     d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
+                //     schwarz_screening_threshold, d_schwarz_upper_bound_factors, 
+                //     num_basis, num_primitive_shells, 
+                //     d_boys_grid, d_density_matrix_diff, d_density_matrix_diff_shell, 
+                //     d_global_counters[kernel_idx], d_min_skipped_columns[kernel_idx],
+                //     head_bra, head_ket, num_bra, num_ket, num_fock_replicas, d_num_screened_shell_quartets);
+            }
+            else {
+                //gpu::get_eri_kernel_direct(s0, s1, s2, s3)<<<num_blocks, num_threads_per_block, 0, streams[kernel_idx]>>>
+                //    (d_fock_matrix_replicas, d_primitive_shells, d_primitive_shell_pair_indices, 
+                //     d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
+                //     num_braket, schwarz_screening_threshold, d_schwarz_upper_bound_factors, 
+                //     num_basis, d_boys_grid, d_density_matrix, head_bra, head_ket, num_fock_replicas);
+                gpu::get_eri_kernel_dynamic(s0, s1, s2, s3)<<<num_cuda_blocks, num_threads_per_block, 0, streams[kernel_idx]>>>
+                    (d_fock_matrix_replicas, d_primitive_shells, d_primitive_shell_pair_indices, 
+                     d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
+                     schwarz_screening_threshold, d_schwarz_upper_bound_factors, 
+                     num_basis, num_primitive_shells, 
+                     d_boys_grid, d_density_matrix_diff, d_density_matrix_diff_shell, 
+                     d_global_counters[kernel_idx], d_min_skipped_columns[kernel_idx],
+                     head_bra, head_ket, num_bra, num_ket, num_fock_replicas);
+                }
+        }
+        else {
+            MD_direct_SCF_1T1SP<<<num_blocks, num_threads_per_block, 0, streams[kernel_idx]>>>
+                (d_fock_matrix_replicas, d_density_matrix_diff, d_primitive_shells, num_fock_replicas, 
+                 d_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
+                 num_braket, schwarz_screening_threshold, d_schwarz_upper_bound_factors, 
+                 d_primitive_shell_pair_indices, num_basis, d_boys_grid, head_bra, head_ket);
+        }
+        kernel_idx++;
+    
+        if (verbose) {
+            std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2) << shell_type_to_shell_name(s3) << "): ";
+            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s3) << "|=" << shell_s1.count << ", ";
+            std::cout << "|bra|= " << num_bra << ", " ;
+            std::cout << "|ket|= " << num_ket << ", " ;
+            std::cout << "|braket|= " << num_braket << ", " ;
+            std::cout << "num_blocks: " << num_blocks << std::endl;
+        }
+    }
+    // syncronize streams
+    cudaDeviceSynchronize();
+
+    // destory streams
+    for (int i = 0; i < num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+
+    const int num_blocks_fock = ((num_basis * (num_basis + 1) / 2) + num_threads_per_block - 1) / num_threads_per_block;
+    //composeFockMatrix<<<num_blocks_fock, num_threads_per_block>>>(d_fock_matrix, d_fock_matrix_replicas, d_core_hamiltonian_matrix, num_basis, num_fock_replicas, is_first_call);
+    composeFockMatrix<<<num_blocks_fock, num_threads_per_block>>>(d_fock_matrix_prev, d_fock_matrix_replicas, d_core_hamiltonian_matrix, num_basis, num_fock_replicas, is_first_call);
+    cudaMemcpy(d_fock_matrix, d_fock_matrix_prev, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice);
+
+    //cudaDeviceSynchronize();
+    // update D_old = D_new for the next iteration
+    cudaMemcpy(d_density_matrix_diff, d_density_matrix, sizeof(real_t) * num_basis * num_basis, cudaMemcpyDeviceToDevice);
+
+    if (is_first_call) {
+        is_first_call = false;
+    }
+
+    //cudaMemcpy(&h_num_screened_shell_quartets, d_num_screened_shell_quartets, sizeof(int), cudaMemcpyDeviceToHost);
+    //std::cout << "Number of screened shell quartets: " << h_num_screened_shell_quartets << std::endl;
+}
+/**/
+
+
+
+
+
+
+
 
 
 void computeMullikenPopulation_RHF(
@@ -3351,9 +3832,9 @@ void computeMolucularGradients(double* d_grad_total, double* d_grad_N, double* d
 
 
 // エネルギー微分を計算する関数
-void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
-                                const Atom* d_atoms, const real_t* d_density_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, 
-                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors, 
+std::vector<double> computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+                                const Atom* d_atoms, const real_t* d_density_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies,
+                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,
                                 const int num_atoms, const int num_basis, const int num_electron, const bool verbose)
 {
     // メモリサイズ
@@ -3362,22 +3843,8 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     const size_t gradients_bytes = n * sizeof(double);  // dx, dy, dz の計算結果を1次元配列に格納
 
     // CPU側のメモリ確保
-    real_t* W_matrix = nullptr;
-    double* grad_N = nullptr;
-    double* grad_S = nullptr;
-    double* grad_K = nullptr;
-    double* grad_V = nullptr;
-    double* grad_G = nullptr;
     double* grad_total = nullptr;
-
-    cudaMallocHost((void**)&W_matrix, wmat_bytes);
-    cudaMallocHost((void**)&grad_N, gradients_bytes);
-    cudaMallocHost((void**)&grad_S, gradients_bytes);
-    cudaMallocHost((void**)&grad_K, gradients_bytes);
-    cudaMallocHost((void**)&grad_V, gradients_bytes);
-    cudaMallocHost((void**)&grad_G, gradients_bytes);
     cudaMallocHost((void**)&grad_total, gradients_bytes);
-
 
     // GPU側のメモリ確保
     real_t* d_W_matrix = nullptr;
@@ -3413,30 +3880,16 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     compute_W(d_W_matrix, d_coefficient_matrix, d_orbital_energies, num_basis, num_electron);
 
     // 各分子積分の微分を同時に計算
-    computeMolucularGradients(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G, d_W_matrix, 
-                              shell_type_infos, shell_pair_type_infos, d_atoms, 
+    computeMolucularGradients(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G, d_W_matrix,
+                              shell_type_infos, shell_pair_type_infos, d_atoms,
                               d_density_matrix, d_coefficient_matrix, d_orbital_energies, d_primitive_shells,
                               d_boys_grid, d_cgto_normalization_factors, num_atoms, num_basis, num_electron, verbose);
 
-                              
-    // CPU側へ結果コピー（方向別に）
-    cudaMemcpy(W_matrix, d_W_matrix, wmat_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(grad_N, d_grad_N, gradients_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(grad_S, d_grad_S, gradients_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(grad_K, d_grad_K, gradients_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(grad_V, d_grad_V, gradients_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(grad_G, d_grad_G, gradients_bytes, cudaMemcpyDeviceToHost);
+    // CPU側へ結果コピー
     cudaMemcpy(grad_total, d_grad_total, gradients_bytes, cudaMemcpyDeviceToHost);
 
-
-    // 結果を出力
-    // print_W_Matrix("W matrix", W_matrix, num_basis);
-    // printGradientMatrix("N-Term Gradient", grad_N, num_atoms);
-    // printGradientMatrix("S-Term Gradient", grad_S, num_atoms);
-    // printGradientMatrix("K-Term Gradient", grad_K, num_atoms);
-    // printGradientMatrix("V-Term Gradient", grad_V, num_atoms);
-    // printGradientMatrix("G-Term Gradient", grad_G, num_atoms);
-    // printGradientMatrix("Total Gradient", grad_total, num_atoms);
+    // Copy to std::vector for return
+    std::vector<double> gradient(grad_total, grad_total + n);
 
     // GPUメモリの解放
     cudaFree(d_W_matrix);
@@ -3448,16 +3901,224 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     cudaFree(d_grad_total);
 
     // CPUメモリの解放
-    cudaFreeHost(W_matrix);
-    cudaFreeHost(grad_N);
-    cudaFreeHost(grad_S);
-    cudaFreeHost(grad_K);
-    cudaFreeHost(grad_V);
-    cudaFreeHost(grad_G);
     cudaFreeHost(grad_total);
+
+    return gradient;
 }
 
 
+
+// UHF版: 各分子積分の微分を同時に計算
+void computeMolucularGradients_UHF(double* d_grad_total, double* d_grad_N, double* d_grad_S, double* d_grad_K, double* d_grad_V, double* d_grad_G,
+                                    real_t* d_W_total, const real_t* d_D_total,
+                                    const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos, const Atom* d_atoms,
+                                    const real_t* d_density_matrix_a, const real_t* d_density_matrix_b,
+                                    const PrimitiveShell* d_primitive_shells,
+                                    const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,
+                                    const int num_atoms, const int num_basis, const bool verbose)
+{
+    const int threads_per_block = 128;
+    const int shell_type_count = shell_type_infos.size();
+
+    // 2電子部分の微分の前処理
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+    // multi streamの作成
+    int stream_id = 0;
+    const int num_kernels = shell_quadruples.size() + 3*((shell_type_count)*(shell_type_count+1)/2) + 1;
+    std::vector<cudaStream_t> streams(num_kernels);
+    for(int i=0; i<num_kernels; i++) {
+        cudaError_t err = cudaStreamCreate(&streams[i]);
+        if (err != cudaSuccess) {
+            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") + std::string(cudaGetErrorString(err)));
+        }
+    }
+
+    // 2電子部分の微分 (UHF版: alpha/beta密度行列を別々に渡す)
+    for(const auto& quadruple: shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
+        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
+        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket;
+        const int num_blocks = (num_braket + threads_per_block - 1) / threads_per_block;
+
+        get_compute_gradients_repulsion_uhf()<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(
+            d_grad_G, d_density_matrix_a, d_density_matrix_b,
+            d_primitive_shells, d_cgto_normalization_factors,
+            shell_s0, shell_s1, shell_s2, shell_s3, num_braket, num_basis, d_boys_grid);
+    }
+
+    // 1電子部分の微分 (D_total, W_totalを使用 — RHFカーネルを再利用)
+    for (int s0 = shell_type_count-1; s0 >= 0; s0--) {
+        for (int s1 = shell_type_count-1; s1 >= s0; s1--) {
+            const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+            const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+
+            const int num_shell_pairs = (s0==s1) ? (shell_s0.count*(shell_s0.count+1)/2) : (shell_s0.count*shell_s1.count);
+            const int num_blocks = (num_shell_pairs + threads_per_block - 1) / threads_per_block;
+
+            get_compute_gradients_overlap()<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_grad_S, d_W_total, d_primitive_shells, d_cgto_normalization_factors, num_basis, shell_s0, shell_s1, num_shell_pairs);
+            get_compute_gradients_kinetic()<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_grad_K, d_D_total, d_primitive_shells, d_cgto_normalization_factors, num_basis, shell_s0, shell_s1, num_shell_pairs);
+            get_compute_gradients_nuclear()<<<num_blocks, threads_per_block, 0, streams[stream_id++]>>>(d_grad_V, d_D_total, d_primitive_shells, d_cgto_normalization_factors, d_atoms, num_atoms, num_basis, shell_s0, shell_s1, num_shell_pairs, d_boys_grid);
+        }
+    }
+
+    const int NR_blocks = (num_atoms * num_atoms + threads_per_block - 1) / threads_per_block;
+    compute_nuclear_repulsion_gradient_kernel<<<NR_blocks, threads_per_block, 0, streams[stream_id]>>>(d_grad_N, d_atoms, num_atoms);
+
+    cudaError_t err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+        abort();
+    }
+
+    for(int i=0; i<num_kernels; i++) {
+        cudaStreamDestroy(streams[i]);
+    }
+
+    // 微分の影響を合計
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+    const double alpha = 1.0;
+
+    cudaMemcpy(d_grad_total, d_grad_N, sizeof(double) * 3*num_atoms, cudaMemcpyDeviceToDevice);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_S, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_K, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_V, 1, d_grad_total, 1);
+    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_G, 1, d_grad_total, 1);
+
+    cublasDestroy(handle);
+}
+
+
+
+// UHF版エネルギー微分を計算する関数
+std::vector<double> computeEnergyGradient_UHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+                                const Atom* d_atoms,
+                                const real_t* d_density_matrix_a, const real_t* d_density_matrix_b,
+                                const real_t* d_coefficient_matrix_a, const real_t* d_coefficient_matrix_b,
+                                const real_t* d_orbital_energies_a, const real_t* d_orbital_energies_b,
+                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,
+                                const int num_atoms, const int num_basis, const int num_alpha, const int num_beta, const bool verbose)
+{
+    const int n = 3*num_atoms;
+    const size_t mat_bytes = num_basis * num_basis * sizeof(real_t);
+    const size_t gradients_bytes = n * sizeof(double);
+
+    // CPU側のメモリ確保
+    double* grad_total = nullptr;
+    cudaMallocHost((void**)&grad_total, gradients_bytes);
+
+    // GPU側のメモリ確保
+    real_t* d_W_a = nullptr;
+    real_t* d_W_b = nullptr;
+    real_t* d_W_total = nullptr;
+    real_t* d_D_total = nullptr;
+    double* d_grad_N = nullptr;
+    double* d_grad_S = nullptr;
+    double* d_grad_K = nullptr;
+    double* d_grad_V = nullptr;
+    double* d_grad_G = nullptr;
+    double* d_grad_total = nullptr;
+
+    cudaMalloc(&d_W_a, mat_bytes);
+    cudaMalloc(&d_W_b, mat_bytes);
+    cudaMalloc(&d_W_total, mat_bytes);
+    cudaMalloc(&d_D_total, mat_bytes);
+    cudaMalloc(&d_grad_N, gradients_bytes);
+    cudaMalloc(&d_grad_S, gradients_bytes);
+    cudaMalloc(&d_grad_K, gradients_bytes);
+    cudaMalloc(&d_grad_V, gradients_bytes);
+    cudaMalloc(&d_grad_G, gradients_bytes);
+    cudaMalloc(&d_grad_total, gradients_bytes);
+
+    cudaMemset(d_W_a, 0, mat_bytes);
+    cudaMemset(d_W_b, 0, mat_bytes);
+    cudaMemset(d_W_total, 0, mat_bytes);
+    cudaMemset(d_grad_N, 0, gradients_bytes);
+    cudaMemset(d_grad_S, 0, gradients_bytes);
+    cudaMemset(d_grad_K, 0, gradients_bytes);
+    cudaMemset(d_grad_V, 0, gradients_bytes);
+    cudaMemset(d_grad_G, 0, gradients_bytes);
+    cudaMemset(d_grad_total, 0, gradients_bytes);
+
+    // コールスタックのサイズを増加
+    size_t stackSize = 64 * 1024;
+    cudaDeviceSetLimit(cudaLimitStackSize, stackSize);
+
+    // D_total = Da + Db
+    cudaMemcpy(d_D_total, d_density_matrix_a, mat_bytes, cudaMemcpyDeviceToDevice);
+    {
+        cublasHandle_t handle;
+        cublasCreate(&handle);
+        const double one = 1.0;
+        cublasDaxpy(handle, num_basis * num_basis, &one, d_density_matrix_b, 1, d_D_total, 1);
+        cublasDestroy(handle);
+    }
+
+    // W_a = 2 * Σ_k Ca_ik * Ca_jk * εa_k (既存カーネルは num_electron/2 でループ、結果に2.0を掛ける)
+    // W_b = 2 * Σ_k Cb_ik * Cb_jk * εb_k
+    // UHFでは W_total = Σ_k Ca_ik*Ca_jk*εa_k + Σ_k Cb_ik*Cb_jk*εb_k = (W_a + W_b) / 2
+    compute_W(d_W_a, d_coefficient_matrix_a, d_orbital_energies_a, num_basis, 2 * num_alpha);
+    compute_W(d_W_b, d_coefficient_matrix_b, d_orbital_energies_b, num_basis, 2 * num_beta);
+    {
+        cublasHandle_t handle;
+        cublasCreate(&handle);
+        const double half = 0.5;
+        // W_total = 0.5 * W_a
+        cudaMemcpy(d_W_total, d_W_a, mat_bytes, cudaMemcpyDeviceToDevice);
+        cublasDscal(handle, num_basis * num_basis, &half, d_W_total, 1);
+        // W_total += 0.5 * W_b
+        cublasDaxpy(handle, num_basis * num_basis, &half, d_W_b, 1, d_W_total, 1);
+        cublasDestroy(handle);
+    }
+
+    // 各分子積分の微分を同時に計算
+    computeMolucularGradients_UHF(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G,
+                                   d_W_total, d_D_total,
+                                   shell_type_infos, shell_pair_type_infos, d_atoms,
+                                   d_density_matrix_a, d_density_matrix_b,
+                                   d_primitive_shells, d_boys_grid, d_cgto_normalization_factors,
+                                   num_atoms, num_basis, verbose);
+
+    // CPU側へ結果コピー
+    cudaMemcpy(grad_total, d_grad_total, gradients_bytes, cudaMemcpyDeviceToHost);
+    std::vector<double> gradient(grad_total, grad_total + n);
+
+    // GPUメモリの解放
+    cudaFree(d_W_a);
+    cudaFree(d_W_b);
+    cudaFree(d_W_total);
+    cudaFree(d_D_total);
+    cudaFree(d_grad_N);
+    cudaFree(d_grad_S);
+    cudaFree(d_grad_K);
+    cudaFree(d_grad_V);
+    cudaFree(d_grad_G);
+    cudaFree(d_grad_total);
+    cudaFreeHost(grad_total);
+
+    return gradient;
+}
 
 
 

@@ -62,7 +62,8 @@ public:
     void compute_coefficient_matrix_impl() override;
     void compute_energy() override;
     void update_fock_matrix() override;
-    void compute_Energy_Gradient() override;
+    void reset_convergence() override;
+    std::vector<double> compute_Energy_Gradient() override;
 
     real_t get_energy() const override { return energy_; }
     real_t get_total_spin() override { return 0.0; } // always 0 for RHF
@@ -186,6 +187,8 @@ public:
      */
     virtual std::string get_algorithm_name() const = 0;
 
+    virtual void reset() {} ///< Reset internal state (e.g., DIIS history) for a new SCF cycle
+
 protected:
     RHF& hf_; ///< RHF
     const bool verbose; ///< Verbose mode
@@ -270,6 +273,8 @@ public:
         }
         return name;
     }
+
+    void reset() override { first_iteration_ = true; }
 
 private:
     real_t damping_factor_; ///< Damping factor
@@ -357,6 +362,8 @@ public:
         name += ")";
         return name;
     }
+
+    void reset() override { iteration_ = 0; }
 
 private:
     int iteration_; ///< count of iterations
@@ -502,8 +509,10 @@ public:
             return {density_matrix_alpha.data(), density_matrix_beta.data()};
         }
 
-        std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
-       
+        if(hf_.get_run_type() != "optimize"){
+            std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+        }
+
         ParameterManager parameters;
         parameters.set_default_values_to_unspecified_parameters();
         parameters["gbsfilename"] = hf_.get_gbsfilename();
@@ -543,7 +552,9 @@ public:
         for(int i=0; i<hf_.get_atoms().size(); i++){
             const std::string element_name = atomic_number_to_element_name(hf_.get_atoms()[i].atomic_number);
 
-            std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            if(hf_.get_run_type() != "optimize"){
+                std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            }
 
             int atom_num_basis;
             auto [atom_density_matrix_alpha, atom_density_matrix_beta] = read_density_from_sad(element_name, hf_.get_gbsfilename(), atom_num_basis);
@@ -582,7 +593,7 @@ private:
  */
 class ERI_Stored_RHF : public ERI_Stored{
 public:
-    ERI_Stored_RHF(RHF& rhf): 
+    ERI_Stored_RHF(RHF& rhf):
         ERI_Stored(rhf),
         rhf_(rhf){} ///< Constructor
 
@@ -594,6 +605,10 @@ public:
     real_t compute_mp4_energy() override;
     real_t compute_ccsd_energy() override;
     real_t compute_ccsd_t_energy() override;
+    real_t compute_fci_energy() override;
+
+    /// Set CCSD algorithm: 0=spatial-optimized (default), 1=spatial-naive, 2=spin-orbital
+    void set_ccsd_algorithm(int algo) { ccsd_algorithm_ = algo; }
 
 
     void compute_fock_matrix() override {
@@ -625,6 +640,7 @@ public:
 
 protected:
     RHF& rhf_; ///< RHF
+    int ccsd_algorithm_ = 0; ///< 0=spatial-optimized, 1=spatial-naive, 2=spin-orbital
 };
 
 
@@ -643,23 +659,44 @@ public:
 
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
+        const DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
         DeviceHostMatrix<real_t>& fock_matrix = rhf_.get_fock_matrix();
         const int verbose = rhf_.get_verbose();
 
-        gpu::computeFockMatrix_RI_RHF(
-            density_matrix.device_ptr(),
-            core_hamiltonian_matrix.device_ptr(),
-            intermediate_matrix_B_.device_ptr(),
-            fock_matrix.device_ptr(),
-            num_basis_,
-            num_auxiliary_basis_, 
-            d_J_.device_ptr(),
-            d_K_.device_ptr(),
-            d_W_tmp_.device_ptr(),
-            d_T_tmp_.device_ptr(),
-            d_V_tmp_.device_ptr()
-        );
+        //if (false) {
+        if (rhf_.get_hasMatrixC()) {
+            gpu::computeFockMatrix_RI_RHF_with_coefficient_matrix(
+                coefficient_matrix.device_ptr(),
+                density_matrix.device_ptr(),
+                core_hamiltonian_matrix.device_ptr(),
+                intermediate_matrix_B_.device_ptr(),
+                fock_matrix.device_ptr(),
+                num_basis_,
+                num_auxiliary_basis_, 
+                num_occ_,
+                d_J_.device_ptr(),
+                d_K_.device_ptr(),
+                d_W_tmp_.device_ptr(),
+                d_tmp1_.device_ptr(),
+                d_tmp2_.device_ptr()
+            );
+        } else {
+            gpu::computeFockMatrix_RI_RHF_with_density_matrix(
+                density_matrix.device_ptr(),
+                core_hamiltonian_matrix.device_ptr(),
+                intermediate_matrix_B_.device_ptr(),
+                fock_matrix.device_ptr(),
+                num_basis_,
+                num_auxiliary_basis_, 
+                d_J_.device_ptr(),
+                d_K_.device_ptr(),
+                d_W_tmp_.device_ptr(),
+                d_tmp1_.device_ptr(),
+                d_tmp2_.device_ptr()
+            );
+        }
+
 
         if(verbose){
             // copy the fock matrix to the host memory
@@ -705,8 +742,29 @@ public:
         const real_t schwarz_screening_threshold = rhf_.get_schwarz_screening_threshold();
         const int verbose = rhf_.get_verbose();
 
+        //gpu::computeFockMatrix_Direct_RHF(
+        //    density_matrix.device_ptr(),
+        //    core_hamiltonian_matrix.device_ptr(),
+        //    shell_type_infos, 
+        //    shell_pair_type_infos,
+        //    primitive_shells.device_ptr(), 
+        //    primitive_shell_pair_indices.device_ptr(),
+        //    cgto_normalization_factors.device_ptr(), 
+        //    boys_grid.device_ptr(), 
+        //    schwarz_upper_bound_factors.device_ptr(),
+        //    schwarz_screening_threshold,
+        //    fock_matrix.device_ptr(),
+        //    num_basis_,
+        //    global_counters_,
+        //    min_skipped_columns_,
+        //    fock_matrix_replicas_,
+        //    num_fock_replicas_,
+        //    verbose
+        //);
         gpu::computeFockMatrix_Direct_RHF(
             density_matrix.device_ptr(),
+            density_matrix_diff_.device_ptr(),
+            density_matrix_diff_shell_.device_ptr(),
             core_hamiltonian_matrix.device_ptr(),
             shell_type_infos, 
             shell_pair_type_infos,
@@ -717,12 +775,14 @@ public:
             schwarz_upper_bound_factors.device_ptr(),
             schwarz_screening_threshold,
             fock_matrix.device_ptr(),
+            fock_matrix_prev_.device_ptr(),
             num_basis_,
             global_counters_,
             min_skipped_columns_,
             fock_matrix_replicas_,
             num_fock_replicas_,
-            verbose
+            verbose,
+            is_first_call_
         );
 
         if(verbose){
@@ -908,5 +968,7 @@ protected:
     real_t* h_Z_tensor;
 };
 
+
+inline void RHF::reset_convergence() { if(convergence_method_) convergence_method_->reset(); }
 
 } // namespace gansu

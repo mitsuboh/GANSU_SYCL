@@ -120,6 +120,14 @@ public:
         THROW_EXCEPTION("CCSD(T) energy computation is not supported for the selected ERI method.");
     }
 
+    /**
+     * @brief Compute FCI energy
+        * @return FCI energy
+        * @details This function computes the FCI energy.
+        */
+    virtual real_t compute_fci_energy(){
+        THROW_EXCEPTION("FCI energy computation is not supported for the selected ERI method.");
+    }
 
 };
 
@@ -148,6 +156,7 @@ public:
 
     bool supports_post_hf_method(PostHFMethod method) const override {
         if( method == PostHFMethod::None // always supported
+            || method == PostHFMethod::FCI  // The stored ERI method supports FCI
             || method == PostHFMethod::MP2  // The stored ERI method supports MP2
             || method == PostHFMethod::MP3  // The stored ERI method supports MP3
             || method == PostHFMethod::MP4  // The stored ERI method supports MP4
@@ -202,6 +211,7 @@ protected:
     const HF& hf_; ///< HF. This excludes MOs.
     const int num_basis_;
     const int num_auxiliary_basis_;
+    const int num_occ_;
 
     const std::vector<ShellTypeInfo> auxiliary_shell_type_infos_; ///< Shell type info in the primitive shell list
     DeviceHostMemory<PrimitiveShell> auxiliary_primitive_shells_; ///< Primitive shells
@@ -218,8 +228,13 @@ protected:
     DeviceHostMatrix<real_t> d_J_;
     DeviceHostMatrix<real_t> d_K_;
     DeviceHostMemory<real_t> d_W_tmp_;
-    DeviceHostMatrix<real_t> d_T_tmp_;
-    DeviceHostMatrix<real_t> d_V_tmp_;
+    //DeviceHostMatrix<real_t> d_T_tmp_;
+    //DeviceHostMatrix<real_t> d_V_tmp_;
+
+    // d_tmp1_ and d_tmp2_ will be intermediate matrices T and V (density-matrix based).
+    // d_tmp1_ and d_tmp2_ will be intermediate matrices X and X_packed (coefficient-matrix based).
+    DeviceHostMatrix<real_t> d_tmp1_;
+    DeviceHostMatrix<real_t> d_tmp2_;
 };
 
 
@@ -259,6 +274,10 @@ protected:
     std::vector<int*> min_skipped_columns_;
     real_t* fock_matrix_replicas_;
     const int num_fock_replicas_;
+    DeviceHostMatrix<real_t> density_matrix_diff_;
+    DeviceHostMatrix<real_t> density_matrix_diff_shell_;
+    DeviceHostMatrix<real_t> fock_matrix_prev_;
+    bool is_first_call_ = true; ///< Reset per SCF solve for density difference tracking
 };
 
 

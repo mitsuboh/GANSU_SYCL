@@ -10,7 +10,7 @@
 | parameter_file | Parameter recipe file (command line only) | string | |
 | xyzfilename | XYZ file | string | |
 | gbsfilename | Gaussian basis set file | string | |
-| auxiliary_gbsfilename | Path to auxiliary Gaussian basis set file for RI approximation| string | |
+| auxiliary_gbsfilename | Path to auxiliary Gaussian basis set file for RI approximation (auto-generated if omitted) | string | |
 | verbose | Verbose mode | bool | false |
 | method | Method to use (RHF, UHF, ROHF) | string | RHF |
 | charge | Charge of the molecule | int | 0 |
@@ -19,7 +19,7 @@
 | convergence_energy_threshold | Energy convergence threshold | double | 1.0e-6 |
 | int1e_method | Method to use for one-electron integrals | string | hybrid |
 | eri_method | Method to use for two-electron repulsion integrals | string | stored |
-| post_hf_method | Post-Hartree-Fock method to use (MP2, CCSD, CCSD(T)) | string | none |
+| post_hf_method | Post-Hartree-Fock method to use (FCI, MP2, CCSD, CCSD(T)) | string | none |
 | schwarz_screening_threshold | Schwarz screening threshold | double | 1.0e-12 |
 | initial_guess | Method to use for initial guess | string | core |
 | convergence_method | Method to use for convergence | string | DIIS |
@@ -27,6 +27,8 @@
 | diis_size | Number of previous Fock matrices to store | int | 8 |
 | diis_include_transform | Include the transformation matrix in DIIS | bool | false |
 | rohf_parameter_name | ROHF parameter set name | string | Roothaan |
+| run_type | Type of calculation to perform | string | energy |
+| optimizer | Optimization algorithm for geometry optimization | string | bfgs |
 | mulliken | Perform Mulliken population analysis | bool | false |
 | mayer | Perform Mayer bond order analysis | bool | false |
 | wiberg | Perform Wiberg bond order analysis | bool | false |
@@ -166,9 +168,21 @@ If any of the following conditions are met, an exception is thrown:
 * Direct - Direct calculation of the two-electron repulsion integrals (ERIs) without any approximation (Direct-SCF)
 * Direct_RI - Resolution of the Identity (RI) approximation, but three-center ERIs are directly computed without storing
 
-#### post_hf_method - Post-Hartree-Fock method to use (MP2, CCSD, CCSD(T))
+#### auxiliary_gbsfilename - Auxiliary basis set file for RI approximation
+* default: (empty)
+* When `eri_method` is `RI` or `Direct_RI`, an auxiliary basis set is required.
+* If a file path is specified (e.g., `-ag ../auxiliary_basis/cc-pvdz-rifit.gbs`), the auxiliary basis is loaded from the file.
+* If omitted, the auxiliary basis is **automatically generated** from the primary basis using the product basis approach:
+  1. Collect all primitive Gaussian exponents $\{\alpha_i\}$ from the primary basis for each element
+  2. Generate pairwise sums $\alpha_i + \alpha_j$ ($i \le j$)
+  3. Remove near-duplicate exponents (keep only if consecutive exponents differ by a factor of $\ge 2$)
+  4. Create uncontracted auxiliary functions (coefficient = 1.0) for angular momenta $L = 0, 1, \ldots, 2L_{\max}$, where $L_{\max}$ is the maximum angular momentum in the primary basis
+* The auto-generated auxiliary basis provides a quick approximation but is less accurate than purpose-built auxiliary basis sets (e.g., cc-pVDZ-RIFIT). Use explicit auxiliary basis files for production calculations.
+
+#### post_hf_method - Post-Hartree-Fock method to use (FCI, MP2, CCSD, CCSD(T))
 * default: none
 * none - No post-Hartree-Fock method is applied
+* FCI - Full Configuration Interaction method (FCI)
 * MP2 - Møller-Plesset perturbation theory of second order (MP2)
 * MP3 - Møller-Plesset perturbation theory of third order (MP3)
 * CCSD - Coupled Cluster with Single and Double excitations (CCSD)
@@ -257,3 +271,135 @@ Otherwise, the two-electron repulsion integrals (ERIs) are set to zero.
 * default:  false
 * true - Export Molden file after the SCF calculation (output filename: output.molden)
 * false - Do not output Molden file
+
+
+## Geometry optimization parameters
+
+| Parameter | Short | Description | Type | Default |
+| --- | --- | --- | --- | --- |
+| run_type | -r | Type of calculation | string | energy |
+| optimizer | | Optimization algorithm | string | bfgs |
+
+#### run_type - Type of calculation to perform
+
+* default: energy
+* energy - Single-point energy calculation only
+* gradient - Single-point energy calculation followed by energy gradient evaluation
+* optimize - Geometry optimization using analytical energy gradients
+
+```bash
+# Single-point energy (default)
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs
+
+# Energy gradient
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -r gradient
+
+# Geometry optimization
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -r optimize
+```
+
+#### optimizer - Optimization algorithm for geometry optimization
+
+* default: bfgs
+
+This parameter is used only when `run_type` is set to `optimize`.
+
+##### Quasi-Newton methods
+
+Quasi-Newton methods build and update an approximate inverse Hessian matrix $H^{-1}$ to determine the search direction $\mathbf{p} = -H^{-1} \mathbf{g}$.
+All quasi-Newton methods use Armijo backtracking line search with a trust radius.
+
+| Value | Algorithm | Hessian update formula |
+| --- | --- | --- |
+| bfgs | Broyden-Fletcher-Goldfarb-Shanno | $H'^{-1} = H^{-1} + \frac{(\mathbf{s}^T \mathbf{y} + \mathbf{y}^T H^{-1} \mathbf{y})}{(\mathbf{s}^T \mathbf{y})^2} \mathbf{s}\mathbf{s}^T - \frac{H^{-1}\mathbf{y}\mathbf{s}^T + \mathbf{s}\mathbf{y}^T H^{-1}}{\mathbf{s}^T \mathbf{y}}$ |
+| dfp | Davidon-Fletcher-Powell | $H'^{-1} = H^{-1} + \frac{\mathbf{s}\mathbf{s}^T}{\mathbf{y}^T\mathbf{s}} - \frac{H^{-1}\mathbf{y}\mathbf{y}^T H^{-1}}{\mathbf{y}^T H^{-1}\mathbf{y}}$ |
+| sr1 | Symmetric Rank-1 | $H'^{-1} = H^{-1} + \frac{(\mathbf{s}-H^{-1}\mathbf{y})(\mathbf{s}-H^{-1}\mathbf{y})^T}{(\mathbf{s}-H^{-1}\mathbf{y})^T\mathbf{y}}$ |
+
+where $\mathbf{s} = \mathbf{x}_{k+1} - \mathbf{x}_k$ (position change) and $\mathbf{y} = \mathbf{g}_{k+1} - \mathbf{g}_k$ (gradient change).
+
+* **BFGS** is the most robust and widely used method. Maintains positive definiteness of the Hessian.
+* **DFP** is the dual of BFGS. Updates the Hessian directly rather than the inverse. Generally less robust than BFGS.
+* **SR1** can capture negative curvature in the Hessian, which may be useful for transition state searches. Does not guarantee positive definiteness.
+
+The Hessian update is skipped when the curvature condition is not met ($\mathbf{s}^T\mathbf{y} \le 10^{-10}$ for BFGS/DFP, or $|(\mathbf{s}-H^{-1}\mathbf{y})^T\mathbf{y}| < 10^{-8} \|\mathbf{y}\| \|\mathbf{s}-H^{-1}\mathbf{y}\|$ for SR1).
+
+##### Conjugate gradient methods
+
+Conjugate gradient methods determine the search direction as $\mathbf{d}_k = -\mathbf{g}_k + \beta_k \mathbf{d}_{k-1}$, where $\beta_k$ is the conjugate gradient coefficient.
+These methods do not require storage of an $N \times N$ Hessian matrix, making them memory-efficient for large systems.
+All CG methods use Armijo backtracking line search with a trust radius.
+
+| Value | Algorithm | $\beta_k$ |
+| --- | --- | --- |
+| cg-fr | Fletcher-Reeves | $\beta_k = \frac{\|\mathbf{g}_{k+1}\|^2}{\|\mathbf{g}_k\|^2}$ |
+| cg-pr | Polak-Ribière | $\beta_k = \frac{\mathbf{g}_{k+1}^T(\mathbf{g}_{k+1} - \mathbf{g}_k)}{\|\mathbf{g}_k\|^2}$ |
+| cg-hs | Hestenes-Stiefel | $\beta_k = \frac{\mathbf{g}_{k+1}^T(\mathbf{g}_{k+1} - \mathbf{g}_k)}{\mathbf{d}_k^T(\mathbf{g}_{k+1} - \mathbf{g}_k)}$ |
+| cg-dy | Dai-Yuan | $\beta_k = \frac{\|\mathbf{g}_{k+1}\|^2}{\mathbf{d}_k^T(\mathbf{g}_{k+1} - \mathbf{g}_k)}$ |
+
+Automatic restart: When $\beta_k < 0$, the method restarts with steepest descent ($\beta_k = 0$).
+Descent check: If $\mathbf{g}_k^T \mathbf{d}_k \ge 0$ (not a descent direction), the search direction is reset to $-\mathbf{g}_k$.
+
+##### GDIIS (Geometry Direct Inversion in the Iterative Subspace)
+
+| Value | Algorithm |
+| --- | --- |
+| gdiis | GDIIS |
+
+GDIIS combines quasi-Newton steps with DIIS extrapolation. It maintains an internal BFGS inverse Hessian and a subspace of recent geometries and error vectors.
+At each step, the error vector $\mathbf{e}_i = -H^{-1}\mathbf{g}_i$ is computed and the DIIS equation
+
+```math
+\min_{\mathbf{c}} \sum_{ij} c_i B_{ij} c_j \quad \text{subject to} \quad \sum_i c_i = 1
+```
+
+is solved, where $B_{ij} = \mathbf{e}_i \cdot \mathbf{e}_j$. The new geometry is obtained as $\mathbf{x}_{\mathrm{new}} = \sum_i c_i (\mathbf{x}_i + \mathbf{e}_i)$.
+
+GDIIS does not use line search (the step is directly accepted). The maximum subspace size is 6.
+
+##### Steepest descent
+
+| Value | Algorithm |
+| --- | --- |
+| sd | Steepest Descent |
+
+The search direction is simply $\mathbf{p} = -\mathbf{g}$. Uses Armijo backtracking line search with a trust radius. Convergence is slow due to zigzag behavior, but it is useful for debugging.
+
+### Convergence criteria
+
+The geometry optimization uses four convergence criteria:
+
+| Criterion | Threshold | Description |
+| --- | --- | --- |
+| Max gradient | $3.0 \times 10^{-4}$ Hartree/Bohr | Maximum gradient component |
+| RMS gradient | $2.0 \times 10^{-4}$ Hartree/Bohr | Root mean square of gradient |
+| Energy change | $1.0 \times 10^{-6}$ Hartree | Absolute energy change between steps |
+| Max displacement | $3.0 \times 10^{-4}$ Bohr | Maximum atomic displacement |
+
+Convergence is declared when **both** gradient criteria (max and RMS) are satisfied, **or** when both energy change and max displacement criteria are satisfied.
+The maximum number of optimization steps is 200 and the trust radius is 0.3 Bohr.
+
+### Translational and rotational invariance
+
+At each optimization step, the translational and rotational components are projected out from the gradient and the search direction using Gram-Schmidt orthogonalization against the 6 (or 5 for linear molecules) basis vectors spanning the translational and rotational degrees of freedom.
+
+### Output control
+
+| run_type | SCF iterations | Profiler | SAD log | Gradient |
+| --- | --- | --- | --- | --- |
+| energy | displayed | displayed | displayed | - |
+| gradient | displayed | displayed | displayed | displayed |
+| optimize | suppressed | suppressed | suppressed | used internally |
+
+```bash
+# Geometry optimization with BFGS (default)
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -r optimize
+
+# Geometry optimization with Polak-Ribière conjugate gradient
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -r optimize --optimizer cg-pr
+
+# Geometry optimization with GDIIS
+./HF_main -x ../xyz/H2O.xyz -g ../basis/sto-3g.gbs -r optimize --optimizer gdiis
+
+# UHF geometry optimization with SAD initial guess
+./HF_main -x ../xyz/O2.xyz -g ../basis/sto-3g.gbs -m UHF --initial_guess sad -r optimize
+```
