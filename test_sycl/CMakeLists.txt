@@ -15,35 +15,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-include_directories(../include_sycl)
-
-add_library(int1e STATIC ../src_sycl/int1e.dp.cpp)
-add_library(int2e STATIC ../src_sycl/int2e.dp.cpp)
-add_library(int2e_direct STATIC ../src_sycl/int2e_direct.dp.cpp)
-
-set(SOURCES
-    ../src_sycl/basis_set.cpp
-    ../src_sycl/parseXYZ.cpp
-    ../src_sycl/hf.dp.cpp
-    ../src_sycl/rhf.dp.cpp
-    ../src_sycl/uhf.dp.cpp
-    ../src_sycl/rohf.dp.cpp
-    ../src_sycl/gpu_manager.dp.cpp
-    ../src_sycl/gpu_kernels.dp.cpp
-    ../src_sycl/profiler.dp.cpp
-    ../src_sycl/parameter_manager.cpp
-    ../src_sycl/eri.dp.cpp
-)
+link_directories(${CMAKE_SOURCE_DIR}/../build_sycl)
 
 find_package(MKL CONFIG REQUIRED)
-
-add_library(gansu STATIC ${SOURCES})
-target_link_libraries(gansu
-    int1e
-    int2e
-    int2e_direct
-    MKL::MKL_SYCL
-)
 
 set(TEST_SOURCES
     test_gpu_manager.dp.cpp
@@ -51,8 +25,21 @@ set(TEST_SOURCES
 )
 
 add_executable(test_runner ${TEST_SOURCES})
+target_include_directories(test_runner PRIVATE ${CMAKE_SOURCE_DIR}/../include_sycl)
+
 target_link_libraries(test_runner
     gansu
+    int1e
+    int2e
+    int2c2e
+    int3c2e
+    int2e_direct
+    grad_w
+    grad_s
+    grad_k
+    grad_v
+    grad_g
+    MKL::MKL_SYCL
     gtest
     gtest_main
 )
