@@ -1,4 +1,5 @@
 /*
+e>>>>>> upstream/main
  * GANSU: GPU Accelerated Numerical Simulation Utility
  *
  * Copyright (c) 2025-2026, Mitsuru Ikei
@@ -395,6 +396,27 @@ void RHF::report() {
         // restore the format flags and precision
         std::cout.flags(old_flags);
         std::cout.precision(old_precision);
+    }
+
+    // Orbital energies
+    {
+        std::cout << std::endl;
+        std::cout << "[Orbital Energies]" << std::endl;
+        const int N = num_basis;
+        const int num_occ = num_electrons / 2;
+        std::vector<real_t> eps(N);
+//        cudaMemcpy(eps.data(), orbital_energies.device_ptr(), N * sizeof(real_t), cudaMemcpyDeviceToHost);
+sycl::queue& workq = gpu::GPUHandle::syclqueue();
+workq.memcpy(eps.data(), orbital_energies.device_ptr(), N * sizeof(real_t)).wait();
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::streamsize old_prec = std::cout.precision();
+        for (int i = 0; i < N; ++i) {
+            std::cout << "  MO " << std::setw(4) << (i + 1)
+                      << (i < num_occ ? " (occ) " : " (vir) ")
+                      << std::fixed << std::setprecision(6) << eps[i] << " hartree" << std::endl;
+        }
+        std::cout.flags(old_flags);
+        std::cout.precision(old_prec);
     }
 
     std::cout << std::endl;

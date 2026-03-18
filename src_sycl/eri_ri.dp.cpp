@@ -37,21 +37,21 @@ namespace gansu{
 
 // // #threads = M * Mvir * Maux
 
-void nu2a_(sycl::nd_item<1> item, short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a)
+void nu2a_(sycl::nd_item<1> item, int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a)
 {
     long long seq = item.get_global_id(0);
     if (seq >= (long long)norbs * nvir * naux) {
         return;
     }
 
-    const short p = seq / (norbs * nvir);
+    const int p = seq / (norbs * nvir);
     seq %= (norbs * nvir);
 
     const int a = seq % nvir;
     const int mu = seq / nvir;
 
     double tmp = 0.0;
-    for (short nu = 0; nu < norbs; ++nu) {
+    for (int nu = 0; nu < norbs; ++nu) {
         tmp += d_C[norbs * nu + (a + nocc)] * d_B_p_mu_nu[p*(norbs*norbs) + mu*norbs + nu];
     }
     d_B_p_mu_a[p*(norbs*nvir) + mu*nvir + a] = tmp;
@@ -60,21 +60,21 @@ void nu2a_(sycl::nd_item<1> item, short norbs, short nocc, short nvir, short nau
 
 // #threads = Mocc * Mvir * Maux
 
-void mu2i_(sycl::nd_item<1> item, short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a)
+void mu2i_(sycl::nd_item<1> item, int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a)
 {
     long long seq = item.get_global_id(0);
     if (seq >= (long long)nocc * nvir * naux) {
         return;
     }
 
-    const short p = seq / (nocc * nvir);
+    const int p = seq / (nocc * nvir);
     seq %= (nocc * nvir);
 
     const int a = seq % nvir;
     const int i = seq / nvir;
 
     double tmp = 0.0;
-    for (short mu = 0; mu < norbs; ++mu) {
+    for (int mu = 0; mu < norbs; ++mu) {
         tmp += d_C[norbs * mu + i] * d_B_p_mu_a[p*(norbs*nvir) + mu*nvir + a];
     }
     d_B_p_i_a[p*(nocc*nvir) + i*nvir + a] = tmp;
@@ -83,7 +83,7 @@ void mu2i_(sycl::nd_item<1> item, short norbs, short nocc, short nvir, short nau
 // void nu2a_dgemm(short norbs, short nocc, short nvir, short naux, double *d_C,
 //                 double *d_B_p_mu_nu, double *d_B_p_mu_a,
 //                 dpct::blas::descriptor_ptr &handle) {
-void nu2a_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a) {
+void nu2a_dgemm(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a) {
 //    sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
     // if(col_A != row_B) throw exception("行数と列数が不一致\n");
@@ -92,7 +92,7 @@ void nu2a_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
     const double beta = 0.0;
 
 //    workq.memset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double)).wait();
-    workq.memset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double)).wait();
+    workq.memset(d_B_p_mu_a, 0, norbs * (size_t)nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::gemm(
         workq,
@@ -120,7 +120,7 @@ void nu2a_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
     // cublasDestroy(handle);
 }
 
-void mu2i_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a) {
+void mu2i_dgemm(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a) {
     const double alpha = 1.0;
     const double beta  = 0.0;
 
@@ -139,7 +139,7 @@ void mu2i_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
 
     // GEMM
 //    workq.memset(d_B_p_mu_a, 0, norbs * norbs * naux * sizeof(double)).wait();
-    workq.memset(d_B_p_mu_a, 0, norbs * nvir * naux * sizeof(double)).wait();
+    workq.memset(d_B_p_mu_a, 0, norbs * (size_t)nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::gemm(
         workq,
@@ -164,12 +164,7 @@ void mu2i_dgemm(sycl::queue& workq, short norbs, short nocc, short nvir, short n
 }
 
     
-void transform_intermediate_matrix(
-                                   sycl::queue& workq,
-                                   short norbs, short nocc, short nvir,
-                                   short naux, double *d_C, double *d_B,
-                                   double *d_tmp
-                                   ) {
+void transform_intermediate_matrix(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double *d_C, double *d_B, double *d_tmp) {
     nu2a_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_B, d_tmp);
     mu2i_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_tmp, d_B);
 }
@@ -178,7 +173,7 @@ void transform_intermediate_matrix(
 
 
 
-void nu2a_dgemm( short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a){
+void nu2a_dgemm( int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a){
 
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
@@ -186,7 +181,7 @@ void nu2a_dgemm( short norbs, short nocc, short nvir, short naux, double* d_C, d
     const double beta  = 0.0;
 
     workq.memset( d_B_p_mu_a, 0,
-        norbs * nvir * naux * sizeof(double)
+        norbs * (size_t)nvir * naux * sizeof(double)
 //        norbs * norbs * naux * sizeof(double) // bug?
     ).wait();
 
@@ -207,15 +202,15 @@ void nu2a_dgemm( short norbs, short nocc, short nvir, short naux, double* d_C, d
     ).wait();
 }
 
-void mu2i_dgemm(short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a){
+void mu2i_dgemm(int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a){
 
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
     const double alpha = 1.0;
     const double beta  = 0.0;
 
-    double* d_B_mu_pa = sycl::malloc_device<double>(norbs * naux * nvir, workq);
-    workq.memset( d_B_mu_pa, 0, norbs * nvir * naux * sizeof(double)).wait();
+    double* d_B_mu_pa = sycl::malloc_device<double>(norbs * naux * (size_t)nvir, workq);
+    workq.memset( d_B_mu_pa, 0, norbs * (size_t)nvir * naux * sizeof(double)).wait();
 
     oneapi::mkl::blas::column_major::omatcopy(
         workq,
@@ -246,7 +241,7 @@ void mu2i_dgemm(short norbs, short nocc, short nvir, short naux, double* d_C, do
 
 
 
-void transform_intermediate_matrix(short norbs, short nocc, short nvir, short naux, double* d_C, double* d_B, double* d_tmp){
+void transform_intermediate_matrix(int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B, double* d_tmp){
     nu2a_dgemm(norbs, nocc, nvir, naux, d_C, d_B, d_tmp);
     mu2i_dgemm(norbs, nocc, nvir, naux, d_C, d_tmp, d_B);
 }
@@ -269,7 +264,7 @@ inline size_t2 index1to2_upper_wo_trace(const uint64_t index, const int n){
 
 
 
-
+/*
 inline uint64_t calc_i(uint64_t id, int s, int k) {   // s:nocc_stride, k: nocc_block
     return ((uint64_t)1.0 + sycl::sqrt(1.0 + 4.0 * (2.0 * id + s * (s - 1)))) /
            2.0;
@@ -285,6 +280,21 @@ inline uint64_t calc_exclusive_prefix_num_j(int i, int s){
 inline uint64_t calc_j(uint64_t id, int i, int s){
     return id - calc_exclusive_prefix_num_j(i,s);
 }
+/**/
+
+inline uint64_t calc_i(uint64_t id, int s, int k) {   // s:nocc_stride, k: nocc_block
+    return ((uint64_t)1.0 + sqrt(1.0 + 4.0*(2.0*id + (size_t)s*(s-1)))) / 2.0;
+}
+
+
+inline uint64_t calc_exclusive_prefix_num_j(int i, int s){
+    return ((size_t)i*(i-1) - (size_t)s*(s-1)) / 2.0;
+}
+ 
+inline uint64_t calc_j(uint64_t id, int i, int s){
+    return id - calc_exclusive_prefix_num_j(i,s);
+}
+
 
 
 struct energy_kernel1 {};
@@ -336,8 +346,8 @@ void ri_rmp2_kernel_body<energy_kernel1>(sycl::nd_item<1> item, int nocc, int no
         const size_t j = calc_j(id, i, nocc_stride);
 
         if(i < nocc){
-            double iajb = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + ab.x*nocc*nvir + j*nvir + ab.y];
-            double ibja = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + ab.y*nocc*nvir + j*nvir + ab.x];        
+            double iajb = d_iajb[(i-nocc_stride)*(size_t)nvir*nocc*nvir + (size_t)ab.x*nocc*nvir + j*nvir + ab.y];
+            double ibja = d_iajb[(i-nocc_stride)*(size_t)nvir*nocc*nvir + (size_t)ab.y*nocc*nvir + j*nvir + ab.x];        
             val = 4.0 * ((iajb-ibja)*(iajb-ibja) + iajb*ibja) / (d_eps[i] + d_eps[j] - d_eps[ab.x+nocc] - d_eps[ab.y+nocc]);
         }
     }
@@ -386,7 +396,7 @@ void ri_rmp2_kernel_body<energy_kernel2>(sycl::nd_item<1> item, int nocc, int no
         const size_t j = calc_j(id, i, nocc_stride);
 
         if(i < nocc){
-            double iaja = d_iajb[(i-nocc_stride)*nvir*nocc*nvir + a*nocc*nvir + j*nvir + a];     
+            double iaja = d_iajb[(i-nocc_stride)*(size_t)nvir*nocc*nvir + a*(size_t)nocc*nvir + j*nvir + a];     
             val = 2.0*iaja*iaja / (d_eps[i] + d_eps[j] - 2.0*d_eps[a+nocc]);
         }
     }
@@ -435,7 +445,7 @@ void ri_rmp2_kernel_body<energy_kernel3>(sycl::nd_item<1> item, int nocc, int no
         const size_t i = id / (nvir * (nvir-1) / 2);  // このiは0~k-1
 
         if((i + nocc_stride) < nocc){
-            double iaib = d_iajb[i*nvir*nocc*nvir + a*nocc*nvir + (i+nocc_stride)*nvir + b];     
+            double iaib = d_iajb[i*(size_t)nvir*nocc*nvir + a*(size_t)nocc*nvir + (i+nocc_stride)*nvir + b];     
             val = 2.0*iaib*iaib / (2.0*d_eps[i+nocc_stride] - d_eps[a+nocc] - d_eps[b+nocc]);
         }
     }
@@ -480,7 +490,7 @@ void ri_rmp2_kernel_body<energy_kernel4>(sycl::nd_item<1> item, int nocc, int no
         const size_t i = id / nvir;  // このiは0~k-1
 
         if((i + nocc_stride) < nocc){
-            double iaia = d_iajb[i*nvir*nocc*nvir + a*nocc*nvir + (i+nocc_stride)*nvir + a];     
+            double iaia = d_iajb[i*nvir*nocc*(size_t)nvir + a*(size_t)nocc*nvir + (i+nocc_stride)*nvir + a];     
             val = 0.5*iaia*iaia / (d_eps[i+nocc_stride] - d_eps[a+nocc]);
         }
     }
@@ -530,7 +540,7 @@ int search_maximum_k(sycl::queue& workq, int mocc, int mvir) {
     return static_cast<int>(max_k);
 }
 
-
+/*
 void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
     k = search_maximum_k(workq, mocc, mvir);
 
@@ -547,6 +557,29 @@ void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &
                 std::exit(1);
             }
         }
+    }
+}
+*/
+
+void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
+    k = std::max(1, (int)(search_maximum_k(workq, mocc, mvir) * 0.7));
+    int iter = 0;
+    const int max_iter = 50;
+
+    while (k > 0 && iter++ < max_iter) {
+        try {
+            size_t nelems = (size_t)k * (size_t)mvir * (size_t)mocc * (size_t)mvir;
+            *d_iajb = tracked_syclMalloc<double>(nelems, workq);
+            break;
+        } catch (sycl::exception const &exc) {
+            std::cerr << "malloc failed for k=" << k << ": " << exc.what() << "\n";
+            int new_k = (int)(k * 0.9);
+            if (new_k == k) new_k--;  // 必ず減らす
+            k = new_k;
+        }
+    }
+    if (k <= 0) {
+        throw std::runtime_error("Allocation failed completely.");
     }
 }
 
@@ -576,12 +609,12 @@ template <typename Term>
 struct ri_rmp2;
 
 template <typename Term>
-void launch_ri_rmp2_kernel(sycl::queue &workq, size_t num_blocks, int num_threads, int nocc, int nocc_block, int nvir,
+sycl::event launch_ri_rmp2_kernel(sycl::queue &workq, size_t num_blocks, int num_threads, int nocc, int nocc_block, int nvir,
                               int i, int naux, double* d_iajb, double* d_eps, double* d_energy)
 {
     size_t global_size = num_blocks * num_threads;
 
-    workq.submit([&](sycl::handler &h){
+    return workq.submit([&](sycl::handler &h){
         sycl::local_accessor<double, 1> sh_tmp(num_threads, h);
 
         h.parallel_for<ri_rmp2<Term>>(sycl::nd_range<1>(global_size, num_threads),
@@ -589,7 +622,7 @@ void launch_ri_rmp2_kernel(sycl::queue &workq, size_t num_blocks, int num_thread
                ri_rmp2_kernel_body<Term>(item, nocc, nocc_block, nvir, i,
                naux, d_iajb, d_eps, d_energy, sh_tmp);
             });
-    }).wait();
+    });
 }
 
 
@@ -601,7 +634,8 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
     DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
 
-    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+//    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+    sycl::queue workq{sycl::property::queue::enable_profiling{}};
 
     real_t *d_C = coefficient_matrix.device_ptr();
     real_t *d_eps = orbital_energies.device_ptr();
@@ -611,7 +645,7 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     // 中間バッファ
 //    real_t* d_tmp = sycl::malloc_device<real_t>(num_auxiliary_basis * num_basis_ * num_basis_, workq);
 //    real_t* d_tmp = sycl::malloc_device<real_t>(num_basis_ * nvir * num_auxiliary_basis, workq);
-    real_t* d_tmp = tracked_syclMalloc<real_t>(num_basis_ * nvir * num_auxiliary_basis, workq);
+    real_t* d_tmp = tracked_syclMalloc<real_t>(num_basis_ * (size_t)nvir * num_auxiliary_basis, workq);
 
     // エネルギー用スカラー
     real_t* d_energy = tracked_syclMalloc<real_t>(1, workq);
@@ -628,12 +662,18 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     transform_intermediate_matrix(workq, num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
     tracked_syclFree(d_tmp);
 
-    const int num_threads = 1024;
+//    const int num_threads = 1024;
+    size_t max_wg = workq.get_device().get_info<sycl::info::device::max_work_group_size>();
+    size_t num_threads  = std::min<size_t>(1024, max_wg);   
     size_t num_blocks_1 = 0;
     size_t num_blocks_2 = 0;
-    size_t num_blocks_3 = ((size_t)(nocc_block * nvir * (nvir - 1.0) / 2) + num_threads - 1) / num_threads;
-    size_t num_blocks_4 = ((size_t)(nocc_block * nvir) + num_threads - 1) / num_threads;
+    size_t num_blocks_3 = ((size_t)(nocc_block * (size_t)nvir * (nvir - 1.0) / 2) + num_threads - 1) / num_threads;
+    size_t num_blocks_4 = ((size_t)(nocc_block * (size_t)nvir) + num_threads - 1) / num_threads;
 
+    sycl::event last_event;
+    auto start_event = workq.submit([&](sycl::handler& h) {
+        h.single_task([=]() {});
+    });
     // niter: ブロックごとのループ回数
     int niter = (nocc + nocc_block - 1) / nocc_block;
 
@@ -650,34 +690,42 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
             &d_intermediate_matrix_B[i * nvir], nocc * nvir,
             0.0,                     // beta
             d_iajb, nocc * nvir
-        ).wait();
+        );
 
         // RI-RMP2 カーネル呼び出し相当
-        launch_ri_rmp2_kernel<energy_kernel1>(
+        auto e1 = launch_ri_rmp2_kernel<energy_kernel1>(
             workq, num_blocks_1, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
-        launch_ri_rmp2_kernel<energy_kernel2>(
+        auto e2 = launch_ri_rmp2_kernel<energy_kernel2>(
             workq, num_blocks_2, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
-        launch_ri_rmp2_kernel<energy_kernel3>(
+        auto e3 = launch_ri_rmp2_kernel<energy_kernel3>(
             workq, num_blocks_3, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
-        launch_ri_rmp2_kernel<energy_kernel4>(
+        auto e4 = launch_ri_rmp2_kernel<energy_kernel4>(
             workq, num_blocks_4, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
             d_iajb, d_eps, d_energy
         );
 
-        }
+        last_event = e4;
+    }
+
+    auto end_event = workq.submit([&](sycl::handler& h) {
+        h.depends_on(last_event);
+        h.single_task([=]() {});
+    });
+
+    end_event.wait();
 
     // ホストにコピーして取得
     real_t energy;
@@ -691,6 +739,10 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     printf("RMP2_total_energy: %.10f\n", rhf_.get_total_energy() + energy);
     printf("(nocc, nvir, naux) = (%d, %d, %d)\n", nocc, nvir, num_auxiliary_basis);
 
+    auto start = start_event.get_profiling_info< sycl::info::event_profiling::command_start>();
+    auto end = end_event.get_profiling_info< sycl::info::event_profiling::command_end>();
+    double time_sec = (end - start) * 1e-9;
+    std::cout << "Execution time: " << std::setprecision(15) << time_sec << " [s]" << std::endl;
     return energy;
 }
 
