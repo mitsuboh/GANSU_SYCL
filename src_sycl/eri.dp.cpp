@@ -61,13 +61,25 @@ void generatePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1, size_t2
     d_indices_array[id].y += start_index_b;
 }
 
-void initializePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1, sycl::int2* d_indices_array, int num_threads,
-        bool is_symmetric, int num_basis) {
+//void initializePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1, sycl::int2* d_indices_array, int num_threads,
+//        bool is_symmetric, int num_basis) {
+//    const size_t id = item_ct1.get_global_linear_id();
+//    if (id >= num_threads) return;
+//    size_t2 index_pair = index1to2(id, is_symmetric, num_basis);
+//    d_indices_array[id] = sycl::int2(static_cast<int>(index_pair.x), static_cast<int>(index_pair.y));
+//
+//}
+void initializePrimitiveShellPairIndices(const sycl::nd_item<1>& item_ct1,
+    sycl::int2* d_indices_array, int num_threads, bool is_symmetric,
+    //int num_shells)
+    int num_shells, const size_t start_index_a, const size_t start_index_b)
+    {
     const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_threads) return;
-    size_t2 index_pair = index1to2(id, is_symmetric, num_basis);
-    d_indices_array[id] = sycl::int2(static_cast<int>(index_pair.x), static_cast<int>(index_pair.y));
-
+    size_t2 index_pair = index1to2(id, is_symmetric, num_shells);
+    //d_indices_array[id] = make_int2(static_cast<int>(index_pair.x), static_cast<int>(index_pair.y));
+    //d_indices_array[id] = make_int2(static_cast<int>(index_pair.x + start_index_a), static_cast<int>(index_pair.y + start_index_b));
+    d_indices_array[id] = sycl::int2(static_cast<int>(index_pair.x) + start_index_a, static_cast<int>(index_pair.y + start_index_b));
 }
 
 
@@ -90,6 +102,8 @@ void ERI_Stored::precomputation() {
     const DeviceHostMemory<real_t>& cgto_normalization_factors = hf_.get_cgto_normalization_factors();
     const real_t schwarz_screening_threshold = hf_.get_schwarz_screening_threshold();
     const int verbose = hf_.get_verbose();
+//Ikei DEBUG
+    eri_matrix_.zero();
 
     // Compute Schwarz Upper Bounds
     gpu::computeSchwarzUpperBounds(
@@ -143,6 +157,7 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
         hf_(hf),
         num_basis_(hf.get_num_basis()),
         num_auxiliary_basis_(auxiliary_molecular.get_num_basis()),
+        num_occ_(hf.get_num_electrons() / 2),
         auxiliary_shell_type_infos_(auxiliary_molecular.get_shell_type_infos()),
         auxiliary_primitive_shells_(auxiliary_molecular.get_primitive_shells()),
         auxiliary_cgto_normalization_factors_(auxiliary_molecular.get_cgto_normalization_factors()),
@@ -150,14 +165,27 @@ ERI_RI::ERI_RI(const HF& hf, const Molecular& auxiliary_molecular):
         d_J_(num_basis_, num_basis_),
         d_K_(num_basis_, num_basis_),
         d_W_tmp_(num_auxiliary_basis_),
-        d_T_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
-        d_V_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
+        //d_T_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
+        //d_V_tmp_(num_auxiliary_basis_, num_basis_*num_basis_),
+        d_tmp1_(
+            num_auxiliary_basis_,
+            hf_.get_hasMatrixC()
+                ? num_basis_ * num_occ_
+                : num_basis_ * num_basis_
+        ),
+        d_tmp2_(
+            hf_.get_hasMatrixC() ? num_basis_ : num_auxiliary_basis_,
+            hf_.get_hasMatrixC()
+                ? num_auxiliary_basis_ * num_occ_
+                : num_basis_ * num_basis_
+        ),
         schwarz_upper_bound_factors(hf.get_num_primitive_shell_pairs()),
         auxiliary_schwarz_upper_bound_factors(auxiliary_molecular.get_primitive_shells().size())
 {
     // to device memory
     auxiliary_primitive_shells_.toDevice();
     auxiliary_cgto_normalization_factors_.toDevice();
+    std::cout << "get_hasMatrixC: " << hf_.get_hasMatrixC() << std::endl;
 }
 
 void ERI_RI::precomputation() {
@@ -328,7 +356,10 @@ ERI_Direct::ERI_Direct(const HF& hf):
     num_basis_(hf.get_num_basis()),
     schwarz_upper_bound_factors(hf.get_num_primitive_shell_pairs()),
     primitive_shell_pair_indices(hf.get_num_primitive_shell_pairs()),
-    num_fock_replicas_(8)
+    num_fock_replicas_(8),
+    density_matrix_diff_(num_basis_, num_basis_),
+    density_matrix_diff_shell_(hf.get_num_primitive_shells(), hf.get_num_primitive_shells()),
+    fock_matrix_prev_(num_basis_, num_basis_)
 {
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     // for distributed atomicAdd operations
@@ -433,13 +464,20 @@ void ERI_Direct::precomputation() {
                     shell_pair_type_infos[pair_idx].count;
                 auto s0_s1_ct2 = s0 == s1;
                 auto shell_type_infos_s1_count_ct3 = shell_type_infos[s1].count;
+                auto shell_t_i_s0_start = shell_type_infos[s0].start_index;
+                auto shell_t_i_s1_start = shell_type_infos[s1].start_index;
 
                 cgh.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
                     [=](sycl::nd_item<1> item_ct1) {
-                        initializePrimitiveShellPairIndices( item_ct1,
+//                        initializePrimitiveShellPairIndices( item_ct1,
+//                            d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0,
+//                            shell_pair_type_infos_pair_idx_count_ct1, s0_s1_ct2,
+//                            shell_type_infos_s1_count_ct3);
+                        initializePrimitiveShellPairIndices(item_ct1,
                             d_primitive_shell_pair_indices_shell_pair_type_infos_pair_idx_start_index_ct0,
                             shell_pair_type_infos_pair_idx_count_ct1, s0_s1_ct2,
-                            shell_type_infos_s1_count_ct3);
+                            shell_type_infos_s1_count_ct3, shell_t_i_s0_start,
+                            shell_t_i_s1_start);
                     });
             });
 

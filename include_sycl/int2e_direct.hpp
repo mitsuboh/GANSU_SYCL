@@ -25,8 +25,10 @@
 namespace gansu::gpu{
 
 
+//SYCL_EXTERNAL void composeFockMatrix(sycl::nd_item<1> item,
+//    real_t* g_fock_matrix, real_t* g_fock_matrix_replicas, const real_t* g_int1e, const int num_basis, const int num_fock_replicas);
 SYCL_EXTERNAL void composeFockMatrix(sycl::nd_item<1> item,
-    real_t* g_fock_matrix, real_t* g_fock_matrix_replicas, const real_t* g_int1e, const int num_basis, const int num_fock_replicas);
+    real_t* g_fock_matrix, real_t* g_fock_matrix_replicas, const real_t* g_int1e, const int num_basis, const int num_fock_replicas, bool is_first_call);
 
 void ssss2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
@@ -119,11 +121,14 @@ SYCL_EXTERNAL void ssss2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void sssp2e_dynamic(const sycl::nd_item<1>& item, 
@@ -133,11 +138,14 @@ SYCL_EXTERNAL void sssp2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void sspp2e_dynamic(const sycl::nd_item<1>& item, 
@@ -147,11 +155,14 @@ SYCL_EXTERNAL void sspp2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void spsp2e_dynamic(const sycl::nd_item<1>& item, 
@@ -161,11 +172,14 @@ SYCL_EXTERNAL void spsp2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void sppp2e_dynamic(const sycl::nd_item<1>& item, 
@@ -175,11 +189,14 @@ SYCL_EXTERNAL void sppp2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void pppp2e_dynamic(const sycl::nd_item<1>& item, 
@@ -189,11 +206,14 @@ SYCL_EXTERNAL void pppp2e_dynamic(const sycl::nd_item<1>& item,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag);
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 
 SYCL_EXTERNAL void launch_MD_direct_SCF_1T1SP(
@@ -219,9 +239,12 @@ using eri_kernel_dynamic_t = void (*)(real_t *, const PrimitiveShell *,
                                       const ShellTypeInfo, const ShellTypeInfo,
                                       const ShellTypeInfo, const ShellTypeInfo,
                                       const real_t, const real_t *, const int,
-                                      const real_t *, const real_t *, int *,
+//                                      const real_t *, const real_t *, int *,
+const int, const real_t*, const real_t*,
+const real_t*, int*,
                                       int *, const size_t, const size_t,
                                       const size_t, const size_t, const int);
+
 
 enum class eri_kernel_kind {
     ssss,
@@ -356,14 +379,17 @@ inline void launch_eri_kernel_dynamic(
      const real_t schwarz_screening_threshold, 
      const real_t* g_schwarz_upper_bound_factors, 
      const int num_basis, 
+     const int num_primitive_shells,
      const real_t* g_boys_grid, 
      const real_t* g_density_matrix, 
+     const real_t* g_density_matrix_diff_shell,
      int* g_counter, int* g_min_skipped_column,
      const size_t head_bra, const size_t head_ket, 
      const size_t num_bra, const size_t num_ket, 
      const int num_fock_replicas,
      const sycl::local_accessor<int, 1>& s_ket_group_idx,
-     const sycl::local_accessor<bool, 1>& s_significant_flag)
+     const sycl::local_accessor<bool, 1>& s_significant_flag,
+     const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound)
 {
     if (a > b) std::swap(a, b);
     if (c > d) std::swap(c, d);
@@ -376,44 +402,51 @@ inline void launch_eri_kernel_dynamic(
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 0 && c == 0 && d == 1) sssp2e_dynamic(item,
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 0 && c == 1 && d == 1) sspp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 1 && c == 0 && d == 1) spsp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 1 && c == 1 && d == 1) sppp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 1 && b == 1 && c == 1 && d == 1) pppp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
+
 }
 
 

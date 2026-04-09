@@ -274,6 +274,7 @@ public:
             if (!this->host_ptr_) {
                 THROW_EXCEPTION("sycl::malloc_host returned nullptr");
             }
+            memset(this->host_ptr_, 0, this->host_bytes_);
         } catch (sycl::exception const &exc) {
             this->host_ptr_ = nullptr;
             this->owning_queue_ = nullptr;
@@ -293,6 +294,10 @@ public:
             this->owning_queue_ = nullptr;
             THROW_EXCEPTION("sycl::malloc_device returned nullptr");
         }
+
+        // Zero-initialize device memory (required by kernels that use atomicAdd)
+        workq.memset(this->device_ptr_, 0, this->device_bytes_).wait();
+
     } catch (sycl::exception const &exc) {
         // free host memory if allocated
         if (this->host_ptr_) {
@@ -481,6 +486,19 @@ public:
      */
     void toHost() {
         memory_manager_.toHost();
+    }
+
+//Ikei DEBUG
+    void zero() {
+        T* h_ptr = memory_manager_.host_ptr();
+        T* d_ptr = memory_manager_.device_ptr();
+        if (h_ptr) {
+            std::fill(h_ptr, h_ptr + rows_ * cols_, T(0));
+        }
+        if (d_ptr) {
+            sycl::queue& q = gpu::GPUHandle::syclqueue();
+            q.memset(d_ptr, 0, sizeof(T) * rows_ * cols_).wait();
+        }
     }
 
     /**
@@ -815,6 +833,8 @@ inline auto tracked_syclMalloc(size_t n, sycl::queue& q) {
             raw = sycl::malloc_device<T>(n, q);
         }
         if (!raw) throw std::bad_alloc();
+        // Zero-initialize device memory to prevent stale data contamination
+        q.memset(raw, 0, size).wait();
 
         {
             std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
@@ -839,32 +859,7 @@ inline auto tracked_syclMalloc(size_t n, sycl::queue& q) {
     else
         return static_cast<T*>(raw); // returns T*
 }
-/*
-template<typename T>
-inline cudaError_t tracked_cudaMalloc(T** ptr, size_t size) {
-    cudaError_t err = cudaMalloc(reinterpret_cast<void**>(ptr), size);
 
-    if (err == cudaSuccess) {
-        // Track allocation in map
-        {
-            std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-            g_allocated_memory_map[*ptr] = size;
-        }
-
-        // Update memory statistics
-        SyclMemoryManager<T>::track_allocation(size);
-    } else {
-        // Print detailed error message with current memory statistics
-        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
-        std::cerr << "tracked_cudaMalloc failed: " << cudaGetErrorString(err) << "\n"
-                  << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
-    }
-
-    return err;
-}
-*/
 /**
  * @brief Wrapper for cudaFree with memory statistics tracking.
  *
@@ -903,119 +898,13 @@ inline void tracked_syclFree(T* ptr) {
 
         // Update statistics if free was successful and size was tracked
         if (size > 0) {
-            SyclMemoryManager<T>::track_deallocation(size);
+            SyclMemoryManager<void>::track_deallocation(size);
         }
 
     } catch (sycl::exception const& exc) {
         std::cerr << "tracked_syclFree failed: " << exc.what() << "\n";
     }
 }
-/*
-template <typename T>
-inline cudaError_t tracked_cudaFree(void* ptr) {
-    if (ptr == nullptr) {
-        return cudaSuccess;
-    }
-
-    // Get the size of the allocation
-    size_t size = 0;
-    {
-        std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-        auto it = g_allocated_memory_map.find(ptr);
-        if (it != g_allocated_memory_map.end()) {
-            size = it->second;
-            g_allocated_memory_map.erase(it);
-        }
-    }
-
-    // Free the memory
-    cudaError_t err = cudaFree(ptr);
-
-    // Update statistics if free was successful and size was tracked
-    if (err == cudaSuccess && size > 0) {
-        SyclMemoryManager<double>::track_deallocation(size);
-    }
-
-    return err;
-}
-*/
-
-/**
- * @brief Wrapper for cudaMallocAsync with memory statistics tracking.
- *
- * This function allocates device memory asynchronously and automatically tracks
- * the allocation in the global memory statistics.
- *
- * @tparam T The type of the pointer
- * @param ptr Pointer to the device pointer
- * @param size Number of bytes to allocate
- * @param stream CUDA stream for asynchronous allocation
- * @return cudaError_t Error code from cudaMallocAsync
- */
-/*
-template<typename T>
-inline cudaError_t tracked_cudaMallocAsync(T** ptr, size_t size, cudaStream_t stream) {
-    cudaError_t err = cudaMallocAsync(reinterpret_cast<void**>(ptr), size, stream);
-
-    if (err == cudaSuccess) {
-        // Track allocation in map
-        {
-            std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-            g_allocated_memory_map[*ptr] = size;
-        }
-
-        // Update memory statistics
-        SyclMemoryManager<T>::track_allocation(size);
-    } else {
-        // Print detailed error message with current memory statistics
-        size_t current_mem = SyclMemoryManager<T>::get_current_allocated_bytes();
-        std::cerr << "tracked_cudaMallocAsync failed: " << cudaGetErrorString(err) << "\n"
-                  << "  Attempted to allocate: " << SyclMemoryManager<T>::format_bytes(size) << "\n"
-                  << "  Current allocated:     " << SyclMemoryManager<T>::format_bytes(current_mem) << "\n"
-                  << "  Total would be:        " << SyclMemoryManager<T>::format_bytes(current_mem + size) << std::endl;
-    }
-
-    return err;
-}
-*/
-/**
- * @brief Wrapper for cudaFreeAsync with memory statistics tracking.
- *
- * This function frees device memory asynchronously and automatically updates
- * the global memory statistics.
- *
- * @param ptr Pointer to the device memory to free
- * @param stream CUDA stream for asynchronous deallocation
- * @return cudaError_t Error code from cudaFreeAsync
- */
-/*
-inline cudaError_t tracked_cudaFreeAsync(void* ptr, cudaStream_t stream) {
-    if (ptr == nullptr) {
-        return cudaSuccess;
-    }
-
-    // Get the size of the allocation
-    size_t size = 0;
-    {
-        std::lock_guard<std::mutex> lock(g_allocated_memory_map_mutex);
-        auto it = g_allocated_memory_map.find(ptr);
-        if (it != g_allocated_memory_map.end()) {
-            size = it->second;
-            g_allocated_memory_map.erase(it);
-        }
-    }
-
-    // Free the memory asynchronously
-    cudaError_t err = cudaFreeAsync(ptr, stream);
-
-    // Update statistics if free was successful and size was tracked
-    if (err == cudaSuccess && size > 0) {
-        SyclMemoryManager<double>::track_deallocation(size);
-    }
-
-    return err;
-} 
-*/
 
 
 } // namespace gansu::gpu

@@ -465,10 +465,6 @@ class InitialGuess_UHF {
 public:
     InitialGuess_UHF(UHF& hf) : hf_(hf) {}
     InitialGuess_UHF(const InitialGuess_UHF&) = delete;
-    /*
-    DPCT1109:53: Virtual functions cannot be called in SYCL device code. You
-    need to adjust the code.
-    */
     virtual ~InitialGuess_UHF() = default;
 
     virtual void guess() = 0;
@@ -480,54 +476,99 @@ public:
      */
     void break_symmetry(){ 
 
-        hf_.get_coefficient_matrix_b().toHost();
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_basis()-1) * hf_.get_num_basis() + i] = 0;
-            hf_.get_coefficient_matrix_b().host_ptr()[i * hf_.get_num_basis() + hf_.get_num_basis()-1] = 0;
-        }
-        hf_.get_coefficient_matrix_b().toDevice();
-
-/*
         hf_.get_coefficient_matrix_a().toHost();
         hf_.get_coefficient_matrix_b().toHost();
 
-        std::unique_ptr<real_t[]> homo(new real_t[hf_.get_num_basis()]);
-        std::unique_ptr<real_t[]> lumo(new real_t[hf_.get_num_basis()]);
+        const int N = hf_.get_num_basis();
+        std::unique_ptr<real_t[]> homo(new real_t[N]);
+        std::unique_ptr<real_t[]> lumo(new real_t[N]);
 
-        // alpha-spin
-        const double alpha = 0.25;
-        const double cos_alpha = std::cos(alpha);
-        const double sin_alpha = std::cos(alpha);
+        // alpha-spin: rotate HOMO and LUMO by +theta
+        const double theta = 0.25;
+        const double c = std::cos(theta);
+        const double s = std::sin(theta);
 
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            homo[i] = hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * hf_.get_num_basis() + i];
-            lumo[i] = hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * hf_.get_num_basis() + i];
+        if(hf_.get_num_alpha_spins() < N) {
+            for(int i=0; i<N; i++){
+                homo[i] = hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i];
+                lumo[i] = hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i];
+            }
+            for(int i=0; i<N; i++){
+                hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i] =  c * homo[i]     + s * lumo[i];
+                hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i]     = -s * homo[i]     + c * lumo[i];
+            }
         }
-        
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * hf_.get_num_basis() + i] = cos_alpha * homo[i] + sin_alpha * lumo[i];
-            hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * hf_.get_num_basis() +  i] = sin_alpha * homo[i] + cos_alpha * lumo[i];
-        }
 
-        // beta-spin
-        const double beta = -alpha;
-        const double cos_beta = std::cos(beta);
-        const double sin_beta = std::cos(beta);
-
-
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            homo[i] = hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * hf_.get_num_basis() + i];
-            lumo[i] = hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * hf_.get_num_basis() + i];
-        }
-        for(int i=0; i<hf_.get_num_basis(); i++){
-            hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * hf_.get_num_basis() + i] = cos_beta * homo[i] + sin_beta * lumo[i];
-            hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * hf_.get_num_basis() + i] = sin_beta * homo[i] + cos_beta * lumo[i];
+        // beta-spin: rotate HOMO and LUMO by -theta
+        if(hf_.get_num_beta_spins() > 0 && hf_.get_num_beta_spins() < N) {
+            for(int i=0; i<N; i++){
+                homo[i] = hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i];
+                lumo[i] = hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i];
+            }
+            for(int i=0; i<N; i++){
+                hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i] =  c * homo[i] -     s * lumo[i];
+                hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i]     =  s * homo[i] +     c * lumo[i];
+            }
         }
 
         hf_.get_coefficient_matrix_a().toDevice();
         hf_.get_coefficient_matrix_b().toDevice();
-*/
     }
+
+
+    ///**
+    // * @brief Break the symmetry of the density matrix
+    // * @details A small opposite HOMO-LUMO rotation is applied to alpha/beta coefficients.
+    // *          This preserves orthonormality and is more stable than zeroing rows/columns.
+    // */
+    //void break_symmetry(){
+    //    const int num_basis = hf_.get_num_basis();
+    //    const int num_alpha = hf_.get_num_alpha_spins();
+    //    const int num_beta  = hf_.get_num_beta_spins();
+
+    //    // Need at least one occupied and one virtual orbital for each spin.
+    //    if (num_basis < 2 || num_alpha <= 0 || num_beta <= 0 || num_alpha >= num_basis || num_beta >=
+    //num_basis){
+    //        return;
+    //    }
+
+    //    hf_.get_coefficient_matrix_a().toHost();
+    //    hf_.get_coefficient_matrix_b().toHost();
+
+    //    // Small angle avoids over-perturbing the initial guess while breaking spin symmetry.
+    //    constexpr real_t theta = static_cast<real_t>(0.03);
+    //    const real_t c = std::cos(theta);
+    //    const real_t s = std::sin(theta);
+
+    //    auto rotate_homo_lumo = [&](real_t* coeff, const int occ, const real_t sign) {
+    //        const int homo = occ - 1;
+    //        const int lumo = occ;
+
+    //        std::vector<real_t> homo_vec(num_basis);
+    //        std::vector<real_t> lumo_vec(num_basis);
+
+    //        for (int i = 0; i < num_basis; ++i) {
+    //            homo_vec[i] = coeff[homo * num_basis + i];
+    //            lumo_vec[i] = coeff[lumo * num_basis + i];
+    //        }
+
+    //        for (int i = 0; i < num_basis; ++i) {
+    //            coeff[homo * num_basis + i] = c * homo_vec[i] + sign * s * lumo_vec[i];
+    //            coeff[lumo * num_basis + i] = -sign * s * homo_vec[i] + c * lumo_vec[i];
+    //        }
+    //    };
+
+    //    // Apply opposite rotations to alpha and beta channels.
+    //    rotate_homo_lumo(hf_.get_coefficient_matrix_a().host_ptr(), num_alpha,
+    //static_cast<real_t>(+1.0));
+    //    rotate_homo_lumo(hf_.get_coefficient_matrix_b().host_ptr(), num_beta,
+    //static_cast<real_t>(-1.0));
+
+    //    hf_.get_coefficient_matrix_a().toDevice();
+    //    hf_.get_coefficient_matrix_b().toDevice();
+    //}
+
+
 
 protected:
     UHF& hf_;

@@ -23,6 +23,12 @@
 #include "rhf.hpp"
 #include "diis.hpp"
 #include "eri_stored.hpp"
+#include "device_host_memory.hpp"
+
+#include "ao2mo.cuh"
+
+#define FULLMASK 0xffffffff
+
 #include <cmath>
 
 namespace gansu {
@@ -201,6 +207,415 @@ void transform_ao_eri_to_mo_eri_full(const double *d_eri_ao, const double *d_C,
 }
 
 
+/**
+ * @brief GPU kernel: extract a sub-block of MO integrals from the full N⁴ tensor.
+ *
+ * Maps physicist's notation v(p,q,r,s) = eri_mo[p*N³ + r*N² + q*N + s]
+ * to a contiguous output array out[i0*sz1*sz2*sz3 + i1*sz2*sz3 + i2*sz3 + i3]
+ * = v(off0+i0, off1+i1, off2+i2, off3+i3).
+ */
+void extract_subblock_4d(const sycl::nd_item<1> item,
+                                     const double* __restrict__ eri_mo,
+                                     double* __restrict__ out,
+                                     int N, int off0, int sz0,
+                                     int off1, int sz1,
+                                     int off2, int sz2,
+                                     int off3, int sz3) {
+    size_t gid = item.get_global_linear_id();
+    size_t total = (size_t)sz0 * sz1 * sz2 * sz3;
+    if (gid >= total) return;
+
+    int i3 = gid % sz3; size_t rem = gid / sz3;
+    int i2 = rem % sz2; rem /= sz2;
+    int i1 = rem % sz1;
+    int i0 = (int)(rem / sz1);
+
+    int p = off0 + i0, q = off1 + i1, r = off2 + i2, s = off3 + i3;
+    size_t N3 = (size_t)N * N * N;
+    out[gid] = eri_mo[(size_t)p * N3 + (size_t)r * N * N + (size_t)q * N + s];
+}
+
+/**
+ * @brief GPU kernel: extract w_oovv = 2*v(k,l,c,d) - v(k,l,d,c) directly from MO integrals.
+ */
+void extract_w_oovv_kernel(const sycl::nd_item<1> item,
+                                       const double* __restrict__ eri_mo,
+                                       double* __restrict__ w_oovv,
+                                       int N, int nocc, int nvir) {
+    size_t gid = item.get_global_linear_id();
+    size_t total = (size_t)nocc * nocc * nvir * nvir;
+    if (gid >= total) return;
+
+    int d = gid % nvir; size_t rem = gid / nvir;
+    int c = rem % nvir; rem /= nvir;
+    int l = rem % nocc;
+    int k = (int)(rem / nocc);
+
+    size_t N3 = (size_t)N * N * N;
+    size_t N2 = (size_t)N * N;
+    int oc = nocc + c, od = nocc + d;
+    double v_cd = eri_mo[(size_t)k * N3 + (size_t)oc * N2 + (size_t)l * N + od];
+    double v_dc = eri_mo[(size_t)k * N3 + (size_t)od * N2 + (size_t)l * N + oc];
+    w_oovv[gid] = 2.0 * v_cd - v_dc;
+}
+
+/**
+ * @brief GPU kernel: compute (T) perturbative triples energy on GPU.
+ *
+ * Each thread block processes one (a,b,c) triple (a >= b >= c).
+ * Shared memory layout: wt[6*o3] + zt[6*o3] + r3buf[o3] + red[blockDim.x]
+ * where o3 = nocc^3.
+ */
+void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
+    sycl::local_accessor<double, 1> wt,
+    sycl::local_accessor<double, 1> zt,
+    sycl::local_accessor<double, 1> r3buf,
+                          const double *__restrict__ F_sum, int F_cols_int,
+                          const double *__restrict__ M_sum, int M_cols_int,
+                          const double *__restrict__ v_oovv,
+                          const double *__restrict__ t1,
+                          const double *__restrict__ eps, int nocc, int nvir,
+                          const int *__restrict__ abc_triples, int num_triples,
+                          double *__restrict__ block_E_T)
+{
+    int triple_id = item.get_group_linear_id();
+    if (triple_id >= num_triples) return;
+
+    int lid   = item.get_local_linear_id();
+    int lsize = item.get_local_range(0);
+
+    const int a = abc_triples[triple_id * 3];
+    const int b = abc_triples[triple_id * 3 + 1];
+    const int c = abc_triples[triple_id * 3 + 2];
+
+    const int oo = nocc * nocc;
+    const int o3 = oo * nocc;
+    const int vv = nvir * nvir;
+    const size_t F_cols = (size_t)F_cols_int;
+    const size_t M_cols = (size_t)M_cols_int;
+
+    double d3_scale = 1.0;
+    if (a == c) d3_scale = 6.0;
+    else if (a == b || b == c) d3_scale = 2.0;
+
+    int perms[6][3] = {{a,b,c},{a,c,b},{b,a,c},{b,c,a},{c,a,b},{c,b,a}};
+
+    // Phase 1 & 2: for each permutation, compute wt[p] and zt[p]
+    for (int p = 0; p < 6; p++) {
+        int aa = perms[p][0], bb = perms[p][1], cc = perms[p][2];
+
+        // Phase 1: compute wt[p] and store wpv in zt[p] temporarily
+        for (int ijk = lid; ijk < o3; ijk += lsize) {
+            int k = ijk % nocc;
+            int j = (ijk / nocc) % nocc;
+            int i = ijk / oo;
+
+            // F_sum lookup: F_sum[(i*vv + aa*nvir+bb), (k*nocc+j)*nvir + cc]
+            size_t f_row = (size_t)i * vv + (size_t)aa * nvir + bb;
+            size_t f_col = ((size_t)k * nocc + j) * nvir + cc;
+            double wval = F_sum[f_row * F_cols + f_col];
+
+            // M_sum lookup: M_sum[(aa*oo + j*nocc+i), (k*vv + bb*nvir+cc)]
+            size_t m_row = (size_t)aa * oo + (size_t)j * nocc + i;
+            size_t m_col = (size_t)k * vv + (size_t)bb * nvir + cc;
+            wval += M_sum[m_row * M_cols + m_col];
+
+            // v-term: v_oovv[(i*nocc+j)*vv + aa*nvir+bb] * t1[k*nvir+cc]
+            double vval = v_oovv[((size_t)i * nocc + j) * vv + (size_t)aa * nvir + bb]
+                        * t1[k * nvir + cc];
+
+            wt[p * o3 + ijk] = wval;
+            zt[p * o3 + ijk] = wval + 0.5 * vval; // temporarily store wpv
+        }
+
+        item.barrier();
+
+        // Phase 2a: compute r3out from wpv (stored in zt[p]) into temporary buffer
+        // Must not overwrite zt[p] yet — other threads may still read wpv at permuted indices
+        for (int ijk = lid; ijk < o3; ijk += lsize) {
+            double wpv_self = zt[p * o3 + ijk];
+            int k = ijk % nocc;
+            int j = (ijk / nocc) % nocc;
+            int i = ijk / oo;
+            int idx1 = (i*nocc+k)*nocc+j;  // ikj
+            int idx2 = (j*nocc+i)*nocc+k;  // jik
+            int idx3 = (j*nocc+k)*nocc+i;  // jki
+            int idx4 = (k*nocc+i)*nocc+j;  // kij
+            int idx5 = (k*nocc+j)*nocc+i;  // kji
+
+            r3buf[ijk] = 4.0*wpv_self + zt[p*o3+idx3] + zt[p*o3+idx4]
+                       - 2.0*zt[p*o3+idx5] - 2.0*zt[p*o3+idx1] - 2.0*zt[p*o3+idx2];
+        }
+
+        item.barrier();
+
+        // Phase 2b: write zt[p] = r3out / D (now safe to overwrite)
+        for (int ijk = lid; ijk < o3; ijk += lsize) {
+            int k = ijk % nocc;
+            int j = (ijk / nocc) % nocc;
+            int i = ijk / oo;
+            double D = (eps[i] + eps[j] + eps[k]
+                      - eps[nocc+perms[p][0]] - eps[nocc+perms[p][1]] - eps[nocc+perms[p][2]]) * d3_scale;
+            zt[p * o3 + ijk] = r3buf[ijk] / D;
+        }
+
+        item.barrier();
+    }
+
+    // Phase 3: compute 36 dot products for energy
+    // E_T += sum_{q,p} sum_r wt[p][idx[comp[q][p]][r]] * zt[q][r]
+    const int comp[6][6] = {
+        {0,1,2,3,4,5}, {1,0,4,5,2,3}, {2,3,0,1,5,4},
+        {4,5,1,0,3,2}, {3,2,5,4,0,1}, {5,4,3,2,1,0}
+    };
+
+    double thread_E = 0.0;
+    for (int q = 0; q < 6; q++) {
+        for (int pp = 0; pp < 6; pp++) {
+            int s = comp[q][pp];
+            for (int r = lid; r < o3; r += lsize) {
+                int kr = r % nocc;
+                int jr = (r / nocc) % nocc;
+                int ir = r / oo;
+                int sr;
+                switch(s) {
+                    case 0: sr = r; break;
+                    case 1: sr = (ir*nocc+kr)*nocc+jr; break;
+                    case 2: sr = (jr*nocc+ir)*nocc+kr; break;
+                    case 3: sr = (jr*nocc+kr)*nocc+ir; break;
+                    case 4: sr = (kr*nocc+ir)*nocc+jr; break;
+                    default: sr = (kr*nocc+jr)*nocc+ir; break;
+                }
+                thread_E += wt[pp*o3+sr] * zt[q*o3+r];
+            }
+        }
+    }
+
+    // Block reduction
+    auto g = item.get_group();
+    double block_sum = reduce_over_group(g, thread_E, sycl::plus<>());
+
+    if (lid == 0)
+    block_E_T[triple_id] = block_sum;
+
+}
+
+/**
+ * @brief GPU kernel: permute indices of a 4D tensor of size N×N×N×N.
+ *
+ * For input tensor in[i0][i1][i2][i3], produces output such that
+ * out[j0][j1][j2][j3] = in[i0][i1][i2][i3] where j_{p_k} = i_k.
+ * E.g., (p0,p1,p2,p3) = (1,0,2,3) swaps the first two indices.
+ */
+void tensor4d_permute_kernel(const sycl::nd_item<1> item,
+                                        const double* __restrict__ in,
+                                        double* __restrict__ out,
+                                        int N, int p0, int p1, int p2, int p3) {
+    size_t gid = item.get_global_linear_id();
+    size_t N4 = (size_t)N * N * N * N;
+    if (gid >= N4) return;
+
+    int i3 = gid % N; size_t rem = gid / N;
+    int i2 = rem % N; rem /= N;
+    int i1 = rem % N;
+    int i0 = (int)(rem / N);
+
+    int out_i[4];
+    out_i[p0] = i0;
+    out_i[p1] = i1;
+    out_i[p2] = i2;
+    out_i[p3] = i3;
+
+    size_t out_gid = ((size_t)out_i[0]*N + out_i[1])*(size_t)N*N + (size_t)out_i[2]*N + out_i[3];
+    out[out_gid] = in[gid];
+}
+
+/**
+ * @brief GPU kernel: build Wabcd from v_vvvv and ovvv_t1 (DGEMM output).
+ *
+ * Wabcd[a,b,c,d] = v_vvvv[a,b,c,d] - ovvv_t1[(a*vv+d*nvir+c), b] - ovvv_t1[(b*vv+c*nvir+d), a]
+ * Eliminates ovvv_t1 download + Wabcd upload per CCSD iteration.
+ */
+/**
+ * @brief GPU kernel: build tau = t2 + t1⊗t1 directly on GPU.
+ * tau[((i*nocc+j)*nvir+a)*nvir+b] = t2v[same] + t1[i*nvir+a] * t1[j*nvir+b]
+ */
+void build_tau_kernel(const sycl::nd_item<1> item,
+                                  const double* __restrict__ t2v,
+                                  const double* __restrict__ t1,
+                                  double* __restrict__ tau,
+                                  int nocc, int nvir) {
+    size_t gid = item.get_global_linear_id();
+    const int vv = nvir * nvir;
+    const size_t total = (size_t)nocc * nocc * vv;
+    if (gid >= total) return;
+
+    int b = gid % nvir; size_t rem = gid / nvir;
+    int a = rem % nvir; rem /= nvir;
+    int j = rem % nocc;
+    int i = (int)(rem / nocc);
+
+    tau[gid] = t2v[gid] + t1[i * nvir + a] * t1[j * nvir + b];
+}
+
+void build_Wabcd_kernel(const sycl::nd_item<1> item,
+                                    const double* __restrict__ v_vvvv,
+                                    const double* __restrict__ ovvv_t1,
+                                    double* __restrict__ Wabcd,
+                                    int nvir) {
+    size_t gid = item.get_global_linear_id();
+    size_t vv = (size_t)nvir * nvir;
+    size_t vvv = vv * nvir;
+    size_t vv2 = vv * vv;
+    if (gid >= vv2) return;
+
+    int d = gid % nvir; size_t rem = gid / nvir;
+    int c = rem % nvir; rem /= nvir;
+    int b = rem % nvir;
+    int a = (int)(rem / nvir);
+
+    // ovvv_t1[(x*vv + y*nvir + z), w] = sum_k v_ovvv[k, x, y, z] * t1[k, w]
+    Wabcd[gid] = v_vvvv[gid]
+                 - ovvv_t1[((size_t)a*vv + (size_t)d*nvir + c)*nvir + b]
+                 - ovvv_t1[((size_t)b*vv + (size_t)c*nvir + d)*nvir + a];
+}
+
+/**
+ * @brief GPU kernel: compute Fac = -sum_{kl,d} w_oovv[(kl),(cd)] * tau[T2(k,l,a,d)]
+ *
+ * Both w_oovv and tau are already on GPU — no data transfer needed.
+ */
+void compute_Fac_kernel(const sycl::nd_item<2> item,
+                                    const double* __restrict__ w_oovv,
+                                    const double* __restrict__ tau,
+                                    double* __restrict__ Fac,
+                                    int nocc, int nvir) {
+    int a = item.get_global_id(1);   // y 次元
+    int c = item.get_global_id(0);   // x 次元
+    if (a >= nvir || c >= nvir) return;
+
+    int oo = nocc * nocc;
+    int vv = nvir * nvir;
+    double val = 0.0;
+    for (int kl = 0; kl < oo; kl++)
+        for (int d = 0; d < nvir; d++)
+            val -= w_oovv[kl*vv + c*nvir + d] * tau[kl*vv + a*nvir + d];
+    Fac[a*nvir + c] = val;
+}
+
+/**
+ * @brief GPU kernel: compute Fkc = sum_{l,d} w_oovv[(k*nocc+l)*vv + c*nvir+d] * t1[l*nvir+d]
+ *
+ * Both w_oovv and t1 are already on GPU — no data transfer needed.
+ */
+void compute_Fkc_kernel(const sycl::nd_item<2> item,
+                                    const double* __restrict__ w_oovv,
+                                    const double* __restrict__ t1,
+                                    double* __restrict__ Fkc,
+                                    int nocc, int nvir) {
+//    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+//    int k = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//            item_ct1.get_local_id(2);
+    int k = item.get_global_id(1);   // y 次元
+    int c = item.get_global_id(0);   // x 次元
+    if (k >= nocc || c >= nvir) return;
+
+    int vv = nvir * nvir;
+    double val = 0.0;
+    for (int l = 0; l < nocc; l++)
+        for (int d = 0; d < nvir; d++)
+            val += w_oovv[(k*nocc + l)*vv + c*nvir + d] * t1[l*nvir + d];
+    Fkc[k*nvir + c] = val;
+}
+
+/**
+ * @brief 4-stage AO->MO ERI transformation using half-transforms.
+ *
+ * Contracts each AO index with C one at a time via DGEMM:
+ *   Stage 1: (μνλσ) → (pνλσ)  via C^T × ERI
+ *   Stage 2: (pνλσ) → (pqλσ)  via C^T × permuted
+ *   Stage 3: (pqλσ) → (pqrσ)  via C^T × permuted
+ *   Stage 4: (pqrσ) → (pqrs)  via permuted × C
+ *
+ * Cost: O(N^5) vs O(N^6) for the Kronecker product method.
+ * Memory: 2 × N^4 (ping-pong buffers) vs 3 × N^4 (Kronecker: D + T + G).
+ */
+/**
+ * @brief Extract a sub-block of MO integrals from d_eri_mo on GPU.
+ *
+ * Extracts v(off0..off0+sz0-1, off1..off1+sz1-1, off2..off2+sz2-1, off3..off3+sz3-1)
+ * in physicist's notation, stored contiguously in d_out.
+ */
+static void gpu_extract_subblock(const double* d_eri_mo, double* d_out, int N,
+                                  int off0, int sz0, int off1, int sz1,
+                                  int off2, int sz2, int off3, int sz3) {
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();   
+    size_t total = (size_t)sz0 * sz1 * sz2 * sz3;
+    int threads = 256;
+    int blocks = (int)((total + threads - 1) / threads);
+    workq.parallel_for(
+        sycl::nd_range<1>(sycl::range<1>(blocks * threads), sycl::range<1>(threads)),
+        [=](sycl::nd_item<1> item) {
+            extract_subblock_4d(item, d_eri_mo, d_out, N, off0, sz0, off1, sz1,
+                                 off2, sz2, off3, sz3);
+    });
+}
+
+void transform_ao_eri_to_mo_eri_4stage(
+    const double* d_eri_ao,
+    const double* d_C,
+    int nao,
+    double* d_eri_mo
+){
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();   
+    const int N = nao;
+    const size_t N3 = (size_t)N * N * N;
+    const size_t N4 = N3 * N;
+
+    double* d_tmp = tracked_syclMalloc<double>(N4, workq);
+
+    auto permute4d = [&](const double* in, double* out, int p0, int p1, int p2, int p3) {
+        int threads = 256;
+        int blocks = (int)((N4 + threads - 1) / threads);
+
+        workq.parallel_for(
+            sycl::nd_range<1>(blocks * threads, threads),
+            [=](sycl::nd_item<1> item) {
+                tensor4d_permute_kernel(item, in, out, N, p0, p1, p2, p3);
+        });
+    };
+
+    // Stage 1: half1[p,ν,λ,σ] = sum_μ C^T[p,μ] × eri_ao[μ, ν*N²+λ*N+σ]
+    gpu::matrixMatrixProductRect(d_C, d_eri_ao, d_eri_mo,
+                                N, (int)N3, N,
+                                true, false, false, 1.0);
+
+    // Transpose: [p,ν,λ,σ] → [ν,p,λ,σ]  (swap indices 0,1)
+    permute4d(d_eri_mo, d_tmp, 1, 0, 2, 3);
+
+    // Stage 2: half2[q,p,λ,σ] = sum_ν C^T[q,ν] × tmp[ν, p*N²+λ*N+σ]
+    gpu::matrixMatrixProductRect(d_C, d_tmp, d_eri_mo,
+                                N, (int)N3, N,
+                                true, false, false, 1.0);
+
+    // Transpose: [q,p,λ,σ] → [λ,p,q,σ]  (swap indices 0,2)
+    permute4d(d_eri_mo, d_tmp, 2, 1, 0, 3);
+
+    // Stage 3: half3[r,p,q,σ] = sum_λ C^T[r,λ] × tmp[λ, p*N²+q*N+σ]
+    gpu::matrixMatrixProductRect(d_C, d_tmp, d_eri_mo,
+                                N, (int)N3, N,
+                                true, false, false, 1.0);
+
+    // Transpose: [r,p,q,σ] → [p,q,r,σ]  (cyclic rotate first 3: perm={2,0,1,3})
+    permute4d(d_eri_mo, d_tmp, 2, 0, 1, 3);
+
+    // Stage 4: eri_mo[p*N²+q*N+r, s] = sum_σ tmp[p*N²+q*N+r, σ] × C[σ,s]
+    gpu::matrixMatrixProductRect(d_tmp, d_C, d_eri_mo,
+                                (int)N3, N, N,
+                                false, false, false, 1.0);
+
+    tracked_syclFree(d_tmp);
+}
 
 
 //// debug for MO ERI
@@ -568,6 +983,274 @@ void mp2_moeri_kernel(
   }
 }
 
+
+
+
+
+
+void mp2_stored_kernel_ovov(
+    sycl::nd_item<1> item,
+    double* d_energy_second,
+    const double* d_eri_mo, const double* d_eps,
+    int num_occupied, int num_virtual)
+{
+    size_t gid = item.get_global_id(0);
+    const size_t total = (size_t)num_occupied * num_virtual * num_occupied * num_virtual;
+    size_t stride = item.get_global_range(0);
+
+    double contrib = 0.0;
+
+    if (gid < total){
+    //  grid-stride loop (important!)
+        for (size_t seq = gid; seq < total; seq += stride) {
+
+            int ov = num_occupied * num_virtual;
+
+            int ia = seq / ov;
+            int jb = seq % ov;
+
+            int i = ia / num_virtual;
+            int a = ia % num_virtual;
+            int j = jb / num_virtual;
+            int b = jb % num_virtual;
+
+            double iajb = d_eri_mo[ovov2seq(i, a, j, b, num_occupied, num_virtual)];
+            double jaib = d_eri_mo[ovov2seq(j, a, i, b, num_occupied, num_virtual)];
+            double denom = d_eps[i] + d_eps[j] - d_eps[num_occupied + a] - d_eps[num_occupied + b];
+
+            if (sycl::fabs(denom) > 1e-12) {
+                contrib += iajb * (2.0 * iajb - jaib) / denom;
+            }
+        }
+    }
+
+    //  group reduction (replaces warp + shared memory)
+    auto g = item.get_group();
+    double group_sum = reduce_over_group(g, contrib, sycl::plus<>());
+
+    //  single atomic per work-group
+    if (item.get_local_id(0) == 0) {
+        sycl::atomic_ref< double, sycl::memory_order::relaxed, sycl::memory_scope::device,
+        sycl::access::address_space::global_space > atomic_energy(*d_energy_second);
+
+        atomic_energy.fetch_add(group_sum);
+    }
+}
+
+
+/*
+void mp2_stored_kernel_ovov(
+    double* g_energy_second, 
+    const double* g_eri_mo, const double* g_eps, 
+    const int num_occupied, const int num_virtual, double &s_tmp)
+{
+    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+
+    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
+        s_tmp = 0;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
+    double tmp = 0.0;
+    //const int num_orbitals = num_occupied + num_virtual;
+    const size_t seq =
+        (((size_t)item_ct1.get_local_range(2) * item_ct1.get_local_range(1)) *
+         item_ct1.get_group(2)) +
+        item_ct1.get_local_range(2) * item_ct1.get_local_id(1) +
+        item_ct1.get_local_id(2);
+    if (seq < (size_t)num_occupied * num_virtual * (size_t)num_occupied * num_virtual) {
+        const int ia = seq / (num_occupied * num_virtual);
+        const int jb = seq % (num_occupied * num_virtual);
+        const int i = ia / num_virtual;
+        const int a = ia % num_virtual;
+        const int j = jb / num_virtual;
+        const int b = jb % num_virtual;
+
+        const double iajb = g_eri_mo[ovov2seq(i, a, j, b, num_occupied, num_virtual)];
+        const double jaib = g_eri_mo[ovov2seq(j, a, i, b, num_occupied, num_virtual)];
+        tmp = iajb * (2 * iajb - jaib) / (g_eps[i] + g_eps[j] - g_eps[num_occupied + a] - g_eps[num_occupied + b]);
+    }
+
+    for (int offset = 16; offset > 0; offset /= 2) {
+        tmp += dpct::shift_sub_group_left(
+            sycl::ext::oneapi::this_work_item::get_sub_group(), tmp, offset);
+    }
+    if (item_ct1.get_local_id(2) == 0) {
+        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
+            &s_tmp, tmp);
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
+        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
+            g_energy_second, s_tmp);
+    }
+}
+*/
+
+
+double mp2_from_aoeri_via_required_moeri(
+    double* d_eri_ao,
+    const double* d_coefficient_matrix,
+    const double* d_orbital_energies,
+    int num_orbitals, int num_occupied)
+{
+    sycl::queue& workq = gpu::GPUHandle::syclqueue(); 
+    double* d_eri_tmp = sycl::malloc_device<double>(
+        (size_t)num_occupied * num_orbitals * num_orbitals * num_orbitals, workq);
+    if (!d_eri_tmp) throw std::runtime_error("SYCL malloc failed for d_eri_tmp");
+    const int num_virtual = num_orbitals - num_occupied;
+
+    {
+        std::string str = "Computing AO -> MO (ia|jb) integral transformation... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        transform_eri_ao2mo_dgemm_ovov(workq, d_eri_ao, d_eri_tmp, d_coefficient_matrix,
+                                       num_occupied, num_virtual);
+    }
+    double* d_eri_mo_ovov = d_eri_ao;
+    sycl::free(d_eri_tmp, workq);
+
+    size_t total = (size_t)num_occupied * num_virtual * num_occupied * num_virtual;
+
+    double* d_E = sycl::malloc_device<double>(1, workq);
+    workq.memset(d_E, 0, sizeof(double)).wait();
+
+    // --- Launch MP2 kernel using SYCL reduction ---
+    {
+        std::string str = "Computing MP2 energy from (ia|jb) MO ERI... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        // Define threads and blocks
+        const int threads_per_block = 256;
+        const size_t num_blocks = (total + threads_per_block - 1) / threads_per_block;
+
+        require_fp64(workq);
+
+        workq.submit([&](sycl::handler& h) {
+            h.parallel_for(sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    mp2_stored_kernel_ovov(item,
+                                           d_E, d_eri_mo_ovov,
+                                           d_orbital_energies, num_occupied,
+                                           num_virtual);
+                    });
+/*
+            // Reduction object for MP2 energy
+            auto energy_reduction = sycl::reduction(d_E, h, sycl::plus<>());
+
+            h.parallel_for(
+                sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+                energy_reduction,
+                [=](sycl::nd_item<1> item, auto& energy_acc) {
+                    size_t idx = item.get_global_linear_id();
+                    if (idx >= total) return;
+
+                    // Map linear index to (i,a,j,b)
+                    size_t ia = idx / (num_occupied * num_virtual);
+                    size_t jb = idx % (num_occupied * num_virtual);
+                    int i = ia / num_virtual;
+                    int a = ia % num_virtual;
+                    int j = jb / num_virtual;
+                    int b = jb % num_virtual;
+
+                    // Compute MP2 contribution
+                    double iajb = d_eri_mo_ovov[ovov2seq(i,a,j,b,num_occupied,num_virtual)];
+                    double jaib = d_eri_mo_ovov[ovov2seq(j,a,i,b,num_occupied,num_virtual)];
+                    double tmp = iajb * (2.0*iajb - jaib) /
+                                 (d_orbital_energies[i] + d_orbital_energies[j] -
+                                  d_orbital_energies[num_occupied + a] -
+                                  d_orbital_energies[num_occupied + b]);
+
+                    // Add contribution via reduction
+                    energy_acc += tmp;
+                });
+*/
+        }).wait();
+    }
+
+    // --- Copy energy back to host ---
+    double h_E = 0.0;
+    workq.memcpy(&h_E, d_E, sizeof(double)).wait();
+    std::cout << "h_E: " << std::setprecision(12) << h_E << std::endl;
+
+    sycl::free(d_E, workq);
+
+    return h_E;
+}
+
+
+/*
+double mp2_from_aoeri_via_required_moeri(
+    double* d_eri_ao,
+    const double* d_coefficient_matrix,
+    const double* d_orbital_energies,
+    int num_orbitals, int num_occupied)
+{
+  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    double* d_eri_tmp;
+    tracked_cudaMalloc(&d_eri_tmp, sizeof(double) * num_occupied * (size_t)num_orbitals * num_orbitals * num_orbitals);
+    if(!d_eri_tmp){ THROW_EXCEPTION("cudaMalloc failed for d_eri_tmp."); }
+    const int num_virtual = num_orbitals - num_occupied;
+
+    {
+        std::string str = "Computing AO -> MO (ia|jb) integral transformation... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        // AO ERIs (d_eri_ao) will be overwritten with (ia|jb) MO ERIs (d_eri_mo_ovov)
+        transform_eri_ao2mo_dgemm_ovov(d_eri_ao, d_eri_tmp, d_coefficient_matrix, num_occupied, num_virtual);
+        dev_ct1.queues_wait_and_throw();
+    }
+    double* d_eri_mo_ovov = d_eri_ao;
+    tracked_cudaFree(d_eri_tmp);
+
+    size_t total = (size_t)num_occupied * num_virtual * num_occupied * num_virtual;
+
+    double* d_E = nullptr;
+    tracked_cudaMalloc((void**)&d_E, sizeof(double));
+    q_ct1.memset(d_E, 0, sizeof(double)).wait();
+
+    const int num_threads_per_warp = 32;
+    const int num_warps_per_block = 32;
+    const int num_threads_per_block = num_threads_per_warp * num_warps_per_block;
+//    dpct::dim3 blocks(num_blocks);
+//    dpct::dim3 threads(num_threads_per_warp, num_warps_per_block);
+
+    {
+        std::string str = "Computing MP2 energy from (ia|jb) MO ERI... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        {
+            dpct::has_capability_or_fail(q_ct1.get_device(),
+                                         {sycl::aspect::fp64});
+
+            q_ct1.submit([&](sycl::handler &cgh) {
+//                sycl::local_accessor<double, 0> s_tmp_acc_ct1(cgh);
+
+                cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
+                                 [=](sycl::nd_item<1> item_ct1)
+//                                     [[sycl::reqd_sub_group_size(32)]] {
+                                         mp2_stored_kernel_ovov(
+                                             d_E, d_eri_mo_ovov,
+                                             d_orbital_energies, num_occupied,
+                                             num_virtual, s_tmp_acc_ct1);
+                                     });
+            });
+        }
+        dev_ct1.queues_wait_and_throw();
+    }
+
+    double h_E = 0.0;
+    q_ct1.memcpy(&h_E, d_E, sizeof(double)).wait();
+    std::cout << "h_E: " << std::setprecision(12) << h_E << std::endl;
+
+    tracked_cudaFree(d_E);
+
+    return h_E;
+}
+*/
+
+
 /////////////////////////// MP2 energy calculation 
 
 
@@ -583,13 +1266,16 @@ real_t ERI_Stored_RHF::compute_mp2_energy() {
     DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
     const real_t* d_C = coefficient_matrix.device_ptr();
     const real_t* d_eps = orbital_energies.device_ptr();
-    const real_t* d_eri = eri_matrix_.device_ptr();
+    //const real_t* d_eri = eri_matrix_.device_ptr();
+    real_t* d_eri = eri_matrix_.device_ptr();
 
 
 
 
 //    real_t E_MP2 = mp2_naive(d_eri, d_C, d_eps, num_basis, num_occ);
-    real_t E_MP2 = mp2_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ);
+    //real_t E_MP2 = mp2_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ);
+    real_t E_MP2 = mp2_from_aoeri_via_required_moeri(d_eri, d_C, d_eps, num_basis, num_occ);
+
 
 //    if(fabs(E_MP2_naive - E_MP2_stored) > 1e-8){
 //        std::cerr << "Warning: MP2 energy mismatch between naive and stored MOERI methods." << std::endl;
@@ -1280,6 +1966,669 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
     return h_mp2_energy + h_mp3_energy[0] + h_mp3_energy[1] + h_mp3_energy[2];
 }
 
+
+
+
+
+
+
+
+
+
+
+double mp2_from_full_moeri(
+    const double* d_eri_mo,   // device, size nao^4, row-major (mu nu | la si)
+    const double* d_C,        // device, size nao*nao, row-major (mu,p)
+    const double* d_eps,      // device, size nao
+    int nao,
+    int occ)
+{
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& workq = gpu::GPUHandle::syclqueue(); 
+    int vir = nao - occ;
+    size_t total = (size_t)occ * (size_t)occ * (size_t)vir * (size_t)vir;
+
+    double* d_E = tracked_syclMalloc<double>(1, workq);
+    workq.memset(d_E, 0, sizeof(double)).wait();
+
+    int threads = 1024;
+    size_t blocks  = (size_t)((total + threads - 1) / threads);
+    /*
+    DPCT1083:31: The size of local memory in the migrated code may be different
+    from the original code. Check that the allocated memory size in the migrated
+    code is correct.
+    */
+    size_t shmem = (size_t)threads * sizeof(double);
+
+    {
+        std::string str = "Computing MP2 energy from full MO ERI... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        /*
+        DPCT1049:30: The work-group size passed to the SYCL kernel may exceed
+        the limit. To get the device limit, query
+        info::device::max_work_group_size. Adjust the work-group size if needed.
+        */
+        {
+            require_fp64(workq);
+
+            workq.parallel_for(
+                sycl::nd_range<1>(blocks * threads, threads),
+                [=](sycl::nd_item<1> item) {
+                    mp2_from_moeri_kernel(item, d_eri_mo, d_eps, nao, occ, d_E);
+                });
+        }
+        workq.wait_and_throw();
+    }
+
+    double h_E = 0.0;
+    workq.memcpy(&h_E, d_E, sizeof(double)).wait();
+    std::cout << "h_E: " << std::setprecision(12) << h_E << std::endl;
+
+    tracked_syclFree(d_E);
+
+    return h_E;
+}
+
+
+
+
+size_t q2s(int mu, int nu, int la, int si, int num_orbitals)
+{
+    return ((size_t)num_orbitals * num_orbitals * num_orbitals) * mu + \
+           (num_orbitals * num_orbitals) * nu + \
+           (num_orbitals) * la + si;
+}
+
+
+size_t ovov2s(int i, int a, int j, int b, int num_occ, int num_vir)
+{
+    return ((size_t)num_occ * num_vir * num_vir) * i + \
+           (num_occ * num_vir) * (a - num_occ) + \
+           (num_vir) * j + (b - num_occ);
+}
+
+
+size_t oovv2s(int i, int j, int a, int b, int num_occ, int num_vir)
+{
+    return ((size_t)num_vir * num_vir * num_occ) * i + \
+           (num_vir * num_vir) * j + \
+           (num_vir) * (a - num_occ) + \
+           (b - num_occ);
+}
+
+
+size_t vvoo2s(int c, int d, int i, int j, int num_occ, int num_vir)
+{
+    return ((size_t)num_occ * num_occ * num_vir) * (c - num_occ) + \
+           (num_occ * num_occ) * (d - num_occ) + \
+           (num_occ) * i + j;
+}
+
+
+size_t oooo2s(int i, int j, int k, int l, int num_occ)
+{
+    return ((size_t)num_occ * num_occ * num_occ) * i + \
+           (num_occ * num_occ) * j + \
+           (num_occ) * k + l;
+}
+
+
+size_t vvvv2s(int a, int b, int c, int d, int num_occ, int num_vir)
+{
+    return ((size_t)num_vir * num_vir * num_vir) * (a - num_occ) + \
+           (num_vir * num_vir) * (b - num_occ) + \
+           (num_vir) * (c - num_occ) + (d - num_occ);
+}
+
+
+
+
+void tensorize_oooo(const sycl::nd_item<1> item_ct1,
+    double* g_int2e, double* g_oooo, const int num_occ, const int num_vir)
+{
+    const long long ijkl = item_ct1.get_global_linear_id();
+    const long long num_oooo = (long long)num_occ * num_occ * num_occ * num_occ;
+    if (ijkl >= num_oooo) {
+        return;
+    }
+
+    const int ij = ijkl / (num_occ * num_occ);
+    const int kl = ijkl % (num_occ * num_occ);
+    const int i = ij / num_occ;
+    const int j = ij % num_occ;
+    const int k = kl / num_occ;
+    const int l = kl % num_occ;
+
+    const int num_orbitals = num_occ + num_vir;
+
+    g_oooo[oooo2s(i, j, k, l, num_occ)] = g_int2e[q2s(i, k, j, l, num_orbitals)];
+}
+
+
+
+void tensorize_vvvv(const sycl::nd_item<1> item_ct1,
+    double* g_int2e, double* g_vvvv, const int num_occ, const int num_vir)
+{
+    const long long abcd = item_ct1.get_global_linear_id();
+    const long long num_vvvv = (long long)num_vir * num_vir * num_vir * num_vir;
+    if (abcd >= num_vvvv) {
+        return;
+    }
+
+    const int ab = abcd / (num_vir * num_vir);
+    const int cd = abcd % (num_vir * num_vir);
+    const int a = ab / num_vir + num_occ;
+    const int b = ab % num_vir + num_occ;
+    const int c = cd / num_vir + num_occ;
+    const int d = cd % num_vir + num_occ;
+
+    const int num_orbitals = num_occ + num_vir;
+
+    g_vvvv[vvvv2s(a, b, c, d, num_occ, num_vir)] = g_int2e[q2s(a, c, b, d, num_orbitals)];
+}
+
+
+
+void tensorize_ovov(const sycl::nd_item<1> item_ct1,
+    double* g_int2e, const double* g_eps, double* g_s_ovov, double* g_t_ovov, 
+    const int num_occ, const int num_vir)
+{
+    const long long iajb = item_ct1.get_global_linear_id();
+    const long long num_unique_elements = (long long)num_occ * num_vir * num_occ * num_vir;
+    if (iajb >= num_unique_elements) {
+        return;
+    }
+
+    const int ia = iajb / (num_occ * num_vir);
+    const int jb = iajb % (num_occ * num_vir);
+    const int i = ia / num_vir;
+    const int a = ia % num_vir + num_occ;
+    const int j = jb / num_vir;
+    const int b = jb % num_vir + num_occ;
+
+    const int num_orbitals = num_occ + num_vir;
+    const double int2e_iajb = g_int2e[q2s(i, a, j, b, num_orbitals)];
+    const double int2e_ibja = g_int2e[q2s(i, b, j, a, num_orbitals)];
+    const double eps_ijab = g_eps[i] + g_eps[j] - g_eps[a] - g_eps[b];
+
+    g_s_ovov[ovov2s(i, a, j, b, num_occ, num_vir)] = int2e_iajb / eps_ijab;
+    g_t_ovov[ovov2s(i, a, j, b, num_occ, num_vir)] = (2 * int2e_iajb - int2e_ibja) / eps_ijab;
+}
+
+
+
+void kalb2klab(const sycl::nd_item<1> item_ct1,
+double* d_ovov, double* d_oovv, const int num_occ, const int num_vir)
+{
+    const long long kalb = item_ct1.get_global_linear_id();
+    const long long num_ovov = (long long)num_occ * num_vir * num_occ * num_vir;
+    if (kalb >= num_ovov) {
+        return;
+    }
+
+    const int ka = kalb / (num_occ * num_vir);
+    const int lb = kalb % (num_occ * num_vir);
+    const int k = ka / num_vir;
+    const int a = ka % num_vir + num_occ;
+    const int l = lb / num_vir;
+    const int b = lb % num_vir + num_occ;
+
+    d_oovv[oovv2s(k, l, a, b, num_occ, num_vir)] = d_ovov[ovov2s(k, a, l, b, num_occ, num_vir)];
+}
+
+
+void icjd2cdij(const sycl::nd_item<1> item_ct1,
+double* d_ovov, double* d_vvoo, const int num_occ, const int num_vir)
+{
+    const long long icjd = item_ct1.get_global_linear_id();
+    const long long num_ovov = (long long)num_occ * num_vir * num_occ * num_vir;
+    if (icjd >= num_ovov) {
+        return;
+    }
+
+    const int ic = icjd / (num_occ * num_vir);
+    const int jd = icjd % (num_occ * num_vir);
+    const int i = ic / num_vir;
+    const int c = ic % num_vir + num_occ;
+    const int j = jd / num_vir;
+    const int d = jd % num_vir + num_occ;
+
+    d_vvoo[vvoo2s(c, d, i, j, num_occ, num_vir)] = d_ovov[ovov2s(i, c, j, d, num_occ, num_vir)];
+}
+
+
+void kaic2iakc(const sycl::nd_item<1> item_ct1,
+double* d_ovov_in, double* d_ovov_out, const int num_occ, const int num_vir)
+{
+    const long long kaic = item_ct1.get_global_linear_id();
+    const long long num_ovov = (long long)num_occ * num_vir * num_occ * num_vir;
+    if (kaic >= num_ovov) {
+        return;
+    }
+
+    const int ka = kaic / (num_occ * num_vir);
+    const int ic = kaic % (num_occ * num_vir);
+    const int k = ka / num_vir;
+    const int a = ka % num_vir + num_occ;
+    const int i = ic / num_vir;
+    const int c = ic % num_vir + num_occ;
+
+    d_ovov_out[ovov2s(i, a, k, c, num_occ, num_vir)] = d_ovov_in[ovov2s(k, a, i, c, num_occ, num_vir)];
+}
+
+
+
+
+void kbjc2kcjb(const sycl::nd_item<1> item_ct1,
+double* d_ovov_in, double* d_ovov_out, const int num_occ, const int num_vir)
+{
+    const long long kbjc = item_ct1.get_global_linear_id();
+    const long long num_ovov = (long long)num_occ * num_vir * num_occ * num_vir;
+    if (kbjc >= num_ovov) {
+        return;
+    }
+
+    const int kb = kbjc / (num_occ * num_vir);
+    const int jc = kbjc % (num_occ * num_vir);
+    const int k = kb / num_vir;
+    const int b = kb % num_vir + num_occ;
+    const int j = jc / num_vir;
+    const int c = jc % num_vir + num_occ;
+
+    d_ovov_out[ovov2s(k, c, j, b, num_occ, num_vir)] = d_ovov_in[ovov2s(k, b, j, c, num_occ, num_vir)];
+}
+
+
+
+
+template <class ReductionAcc>
+void contract_iajb_tensors(const sycl::nd_item<1> &item, ReductionAcc &sum,  // 4h2p, 2h4p, 3h3p
+    const int num_orbitals, const int num_occ, const int num_vir, double* g_int2e, 
+    double* g_s_ovov, double* g_mm1, double* g_mm2, double* g_mm3, double* g_mm4 )
+{
+    const size_t ijab  = item.get_global_linear_id();
+
+    const size_t num_oovv = (size_t)num_occ * num_occ * num_vir * num_vir;
+    if (ijab >= num_oovv) {
+        return;
+    }
+
+    const int ij = ijab / (num_vir * num_vir);
+    const int ab = ijab % (num_vir * num_vir);
+    const int i = ij / num_occ;
+    const int j = ij % num_occ;
+    const int a = ab / num_vir + num_occ;
+    const int b = ab % num_vir + num_occ;
+
+    const double s_iajb = g_s_ovov[ovov2s(i, a, j, b, num_occ, num_vir)];
+    const double e_ijab = g_int2e[q2s(i, j, a, b, num_orbitals)];
+    const double e_iajb = g_int2e[q2s(i, a, j, b, num_orbitals)];
+
+    double energy = 0.0;
+
+    energy += s_iajb * (g_mm1[oovv2s(i, j, a, b, num_occ, num_vir)] + g_mm2[vvoo2s(a, b, i, j, num_occ, num_vir)]);
+    energy += (2 * e_iajb - e_ijab) * g_mm3[ovov2s(i, a, j, b, num_occ, num_vir)];
+    energy += (-3) * e_ijab * g_mm4[ovov2s(i, a, j, b, num_occ, num_vir)];
+
+
+                // work-group 内リダクション
+    sum += energy;
+}
+
+
+
+
+//*
+real_t mp3_from_aoeri_via_full_moeri_dgemm(
+    real_t* d_eri_ao, const real_t* d_coefficient_matrix, 
+    const real_t* d_orbital_energies, const int num_basis, const int num_occ)
+{
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue(); 
+//    dpct::device_info prop;
+//Ikei ignoring maximum check for a while. May need to add other restriction like local size.
+    int device = 0;
+//    dpct::get_device(device).get_device_info(prop);
+
+    double* d_groundE_3rd = tracked_syclMalloc<double>(1, q_ct1);
+    double* h_groundE_3rd = sycl::malloc_host<double>(1, q_ct1);
+    q_ct1.memset(d_groundE_3rd, 0, sizeof(double)).wait();
+
+    const int num_vir = num_basis - num_occ;
+    printf("#orbitals_occ: %d, #orbitals_vir: %d\n", num_occ, num_vir);
+
+    // Full MO ERI transformation
+    double* d_eri_mo = nullptr;
+    const size_t num_basis_2 = num_basis * num_basis;
+    d_eri_mo = tracked_syclMalloc<double>(num_basis_2 * num_basis_2, q_ct1);
+    if (!d_eri_mo) {
+        THROW_EXCEPTION("syclMalloc failed for d_eri_mo.");
+    }
+    transform_eri_ao2mo_dgemm_full(q_ct1, d_eri_ao, d_eri_mo, d_coefficient_matrix, num_basis);
+    q_ct1.wait_and_throw();
+
+    // MP2 energy from full MO ERI
+    real_t E_MP2 = mp2_from_full_moeri(d_eri_mo, d_coefficient_matrix, d_orbital_energies, num_basis, num_occ);
+    printf("MP2 energy from full MO ERI: %.12f\n", E_MP2);
+    //return E_MP2;
+
+
+    const long long num_oooo = (long long)num_occ * num_occ * num_occ * num_occ;
+    const long long num_vvvv = (long long)num_vir * num_vir * num_vir * num_vir;
+    const long long num_ovov = (long long)num_occ * num_vir * num_occ * num_vir;
+    const long long num_oovv = (long long)num_occ * num_occ * num_vir * num_vir;
+    //printf("num_oooo: %lld\n", num_oooo);
+    //printf("num_vvvv: %lld\n", num_vvvv);
+    //printf("num_ovov: %lld\n", num_ovov);
+    //printf("num_oovv: %lld\n", num_oovv);
+
+    double* d_oooo;
+    double* d_vvvv;
+    double* d_s_ovov;
+    double* d_t_ovov;
+    double* d_t_tmp;
+    double* d_mm1;
+    double* d_mm2;
+    double* d_mm3;
+    double* d_mm4;
+    d_oooo = tracked_syclMalloc<double>(num_oooo, q_ct1);
+    d_vvvv = tracked_syclMalloc<double>(num_vvvv, q_ct1);
+    d_s_ovov = tracked_syclMalloc<double>(num_ovov, q_ct1);
+    d_t_ovov = tracked_syclMalloc<double>(num_ovov, q_ct1);
+    d_t_tmp = tracked_syclMalloc<double>(num_ovov, q_ct1);
+    d_mm1 = tracked_syclMalloc<double>(num_oovv, q_ct1);
+    d_mm2 = tracked_syclMalloc<double>(num_oovv, q_ct1);
+    d_mm3 = tracked_syclMalloc<double>(num_ovov, q_ct1);
+    d_mm4 = tracked_syclMalloc<double>(num_ovov, q_ct1);
+    double* d_s_tmp1 = d_t_ovov;
+    double* d_s_tmp2 = d_t_tmp;
+
+    constexpr int num_threads_per_warp = 32;
+    constexpr int num_warps_per_block = 32;
+    constexpr int num_threads_per_block = num_threads_per_warp * num_warps_per_block;
+
+    const long long num_blocks_oooo = (num_oooo + num_threads_per_block - 1) / num_threads_per_block;
+    const long long num_blocks_vvvv = (num_vvvv + num_threads_per_block - 1) / num_threads_per_block;
+    const long long num_blocks_ovov = (num_ovov + num_threads_per_block - 1) / num_threads_per_block;
+    const long long num_blocks_oovv = (num_oovv + num_threads_per_block - 1) / num_threads_per_block;
+
+    /*
+    DPCT1022:54: There is no exact match between the maxGridSize and the
+    max_nd_range size. Verify the correctness of the code.
+    */
+//    if (num_blocks_oooo > prop.get_max_nd_range_size<int *>()[0] ||
+        /*
+        DPCT1022:55: There is no exact match between the maxGridSize and the
+        max_nd_range size. Verify the correctness of the code.
+        */
+//        num_blocks_vvvv > prop.get_max_nd_range_size<int *>()[0] ||
+        /*
+        DPCT1022:56: There is no exact match between the maxGridSize and the
+        max_nd_range size. Verify the correctness of the code.
+        */
+//        num_blocks_ovov > prop.get_max_nd_range_size<int *>()[0] ||
+        /*
+        DPCT1022:57: There is no exact match between the maxGridSize and the
+        max_nd_range size. Verify the correctness of the code.
+        */
+//        num_blocks_oovv > prop.get_max_nd_range_size<int *>()[0]) {
+//        printf("Error: Too many blocks for the grid size.\n");
+//        return 0;
+//    }
+
+    sycl::range<1> blocks_oooo(num_blocks_oooo);
+    sycl::range<1> blocks_vvvv(num_blocks_vvvv);
+    sycl::range<1> blocks_ovov(num_blocks_ovov);
+    sycl::range<1> blocks_oovv(num_blocks_oovv);
+    sycl::range<1> threads(num_threads_per_warp * num_warps_per_block);
+
+    float time_tensor, time_dgemm, time_ijab;
+    sycl::event e1,e2,e3,e4;
+//    dpct::event_ptr begin, end;
+//    begin = new sycl::event();
+//    end = new sycl::event();
+
+//    dpct::sync_barrier(begin);
+    /*
+    DPCT1049:32: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e1 = q_ct1.submit([&](sycl::handler &h){
+                         h.parallel_for(sycl::nd_range<1>(blocks_oooo * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               tensorize_oooo(item_ct1, d_eri_mo, d_oooo, num_occ,
+                                              num_vir);
+                           });
+                           });
+    }
+    /*
+    DPCT1049:33: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e2 = q_ct1.submit([&](sycl::handler &h){
+                         h.depends_on(e1);
+                         h.parallel_for(sycl::nd_range<1>(blocks_vvvv * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               tensorize_vvvv(item_ct1, d_eri_mo, d_vvvv, num_occ,
+                                              num_vir);
+                           });
+                           });
+    }
+    /*
+    DPCT1049:34: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e3 = q_ct1.submit([&](sycl::handler &h){
+                         h.depends_on(std::vector<sycl::event>{e1, e2});
+                         h.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               tensorize_ovov(item_ct1, d_eri_mo, d_orbital_energies,
+                                              d_s_ovov, d_t_ovov, num_occ,
+                                              num_vir);
+                           });
+                           });
+    }
+//   dpct::sync_barrier(end);
+    e3.wait_and_throw();
+    time_tensor =
+        (e3.get_profiling_info<sycl::info::event_profiling::command_end>() -
+         e1.get_profiling_info<sycl::info::event_profiling::command_start>()) / 1000000.0f;
+    printf("tensorize: %.2f [msec]\n", time_tensor);
+
+    const double alpha = 1.0;
+    const double beta = 0.0;
+    const int num_oo = num_occ * num_occ;
+    const int num_vv = num_vir * num_vir;
+    const int num_ov = num_occ * num_vir;
+//    dpct::blas::descriptor_ptr cublasH = NULL;
+//    cublasCreate(&cublasH);
+
+//    dpct::sync_barrier(begin);
+
+    /*
+    DPCT1049:35: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e1 = q_ct1.submit([&](sycl::handler &h){
+                       h.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               kalb2klab(item_ct1, d_t_ovov, d_t_tmp, num_occ, num_vir);
+                           });
+                       });
+    }
+    e1.wait_and_throw();
+//    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, num_vv, num_oo, num_oo, 
+//                &alpha, d_t_tmp, num_vv, d_oooo, num_oo, &beta, d_mm1, num_vv);
+
+    sycl::event e_gemm1, e_gemm2, e_gemm3, e_gemm4;
+
+    e_gemm1 = oneapi::mkl::blas::row_major::gemm( q_ct1,
+        oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_vv, num_oo, num_oo,
+        alpha, d_t_tmp, num_vv, d_oooo, num_oo, beta, d_mm1, num_vv);
+
+    /*
+    DPCT1049:36: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e2 = q_ct1.submit([&](sycl::handler &h){
+                       h.depends_on(e_gemm1);
+
+                       h.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               icjd2cdij(item_ct1, d_t_ovov, d_t_tmp, num_occ, num_vir);
+                           });
+                       });
+    }
+//    dev_ct1.queues_wait_and_throw();
+//    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, num_oo, num_vv, num_vv, 
+//                &alpha, d_t_tmp, num_oo, d_vvvv, num_vv, &beta, d_mm2, num_oo);
+
+//    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_ov, num_ov, num_ov, 
+//                &alpha, d_t_ovov, num_ov, d_t_ovov, num_ov, &beta, d_mm3, num_ov);
+    e_gemm2 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+        oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_oo, num_vv, num_vv,
+        alpha, d_t_tmp, num_oo, d_vvvv, num_vv, beta, d_mm2, num_oo, {e1});
+    e_gemm3 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+        oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::trans, num_ov, num_ov, num_ov,
+        alpha, d_t_ovov, num_ov, d_t_ovov, num_ov, beta, d_mm3, num_ov, {e_gemm2});
+
+    /*
+    DPCT1049:37: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e3 = q_ct1.submit([&](sycl::handler &h){
+                    h.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               kaic2iakc(item_ct1, d_s_ovov, d_s_tmp1, num_occ, num_vir);
+                           });
+                    });
+    }
+    /*
+    DPCT1049:38: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e4 = q_ct1.submit([&](sycl::handler &h){
+                    h.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                           [=](sycl::nd_item<1> item_ct1) {
+                               kbjc2kcjb(item_ct1, d_s_ovov, d_s_tmp2, num_occ, num_vir);
+                           });
+                    });
+    }
+//    q_ct1.wait_and_throw();
+//    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, num_ov, num_ov, num_ov, 
+//                &alpha, d_s_tmp2, num_ov, d_s_tmp1, num_ov, &beta, d_mm4, num_ov);
+    e_gemm4 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+        oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_ov, num_ov, num_ov,
+        alpha, d_s_tmp2, num_ov, d_s_tmp1, num_ov, beta, d_mm4, num_ov, {e4});
+
+//    dpct::sync_barrier(end);
+//    end->wait_and_throw();
+    e_gemm4.wait_and_throw();
+    time_dgemm =
+        (e_gemm4.get_profiling_info<sycl::info::event_profiling::command_end>() -
+         e1.get_profiling_info< sycl::info::event_profiling::command_start>()) / 1000000.0f;
+    printf("dgemm: %.2f [msec]\n", time_dgemm);
+
+//    dpct::sync_barrier(begin);
+    /*
+    DPCT1049:39: The work-group size passed to the SYCL kernel may exceed the
+    limit. To get the device limit, query info::device::max_work_group_size.
+    Adjust the work-group size if needed.
+    */
+    {
+        require_fp64(q_ct1);
+
+        e1 = q_ct1.submit([&](sycl::handler &cgh) {
+            auto red = sycl::reduction(d_groundE_3rd, sycl::plus<double>());
+
+            cgh.parallel_for(sycl::nd_range<1>(blocks_ovov * threads, threads),
+                             red,
+                             [=](sycl::nd_item<1> item, auto &sum){
+                                 contract_iajb_tensors( item, sum,
+                                         num_basis, num_occ, num_vir, d_eri_mo,
+                                         d_s_ovov, d_mm1, d_mm2, d_mm3, d_mm4);
+                                 });
+        });
+    }
+//    dpct::sync_barrier(end);
+//    end->wait_and_throw();
+    time_ijab =
+        (e1.get_profiling_info<sycl::info::event_profiling::command_end>() -
+         e1.get_profiling_info< sycl::info::event_profiling::command_start>()) / 1000000.0f;
+
+    printf("three terms (2h2p): %.2f [msec]\n", time_ijab);
+    printf("mp3 total: %.2f [msec]\n", (time_tensor + time_dgemm + time_ijab));
+    printf("mp3 correlation energy: %.4f [sec]\n", (time_tensor + time_dgemm + time_ijab) * 1e-3);
+//    dpct::destroy_event(begin);
+//    dpct::destroy_event(end);
+
+    q_ct1.memcpy(h_groundE_3rd, d_groundE_3rd, sizeof(double)).wait();
+    const double correlationE_3rd = *h_groundE_3rd;
+    printf("3rd perturbation energy: %.12f [hartree]\n", correlationE_3rd);
+
+    tracked_syclFree(d_groundE_3rd);
+    sycl::free(h_groundE_3rd, q_ct1);
+
+    tracked_syclFree(d_oooo);
+    tracked_syclFree(d_vvvv);
+    tracked_syclFree(d_s_ovov);
+    tracked_syclFree(d_t_ovov);
+    tracked_syclFree(d_t_tmp);
+    tracked_syclFree(d_mm1);
+    tracked_syclFree(d_mm2);
+    tracked_syclFree(d_mm3);
+    tracked_syclFree(d_mm4);
+
+    tracked_syclFree(d_eri_mo);
+
+    return E_MP2 + correlationE_3rd;
+}
+/**/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //////////////////////////////////////////////////////////////////////////////////////// MP3 energy calculation
 
 real_t ERI_Stored_RHF::compute_mp3_energy() {
@@ -1295,10 +2644,14 @@ real_t ERI_Stored_RHF::compute_mp3_energy() {
     DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
     const real_t* d_C = coefficient_matrix.device_ptr();
     const real_t* d_eps = orbital_energies.device_ptr();
-    const real_t* d_eri = eri_matrix_.device_ptr();
+    //const real_t* d_eri = eri_matrix_.device_ptr();
+    real_t* d_eri = eri_matrix_.device_ptr();
+
 
     //real_t E_MP3_naive = mp3_naive(d_eri, d_C, d_eps, num_basis, num_occ);
-    real_t E_MP3 = mp3_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ);
+    //real_t E_MP3 = mp3_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ);
+    real_t E_MP3 = mp3_from_aoeri_via_full_moeri_dgemm(d_eri, d_C, d_eps, num_basis, num_occ);
+
 
 //    if(fabs(E_MP3 - E_MP3_stored) > 1e-8){
 //        std::cerr << "Warning: MP3 energy mismatch between naive and stored MOERI methods." << std::endl;
@@ -2682,7 +4035,7 @@ void allocate_ccsd_amplitudes(const int num_spin_occ, const int num_spin_vir,
     t1t2_new_buffer = tracked_syclMalloc<real_t>((num_t1 + num_t2), q_ct1);
     t1t2_old_buffer = tracked_syclMalloc<real_t>((num_t1 + num_t2), q_ct1);
     if(!t1t2_new_buffer || !t1t2_old_buffer){
-        THROW_EXCEPTION("cudaMalloc failed for CCSD amplitudes buffer.");
+        THROW_EXCEPTION("syclMalloc failed for CCSD amplitudes buffer.");
     }
     *t_ia_new = t1t2_new_buffer;
     *t_ijab_new = t1t2_new_buffer + num_t1;
@@ -3602,6 +4955,1441 @@ real_t compute_ccsd_t_energy(const real_t* __restrict__ d_eri_mo,
     return h_E_CCSD_T;
 }
 
+
+
+
+
+// ============================================================
+//  Spatial-orbital closed-shell CCSD implementation
+// ============================================================
+//
+// MO integrals: (pq|rs) in chemist's notation, stored as d_eri_mo[p*N*N*N + q*N*N + r*N + s]
+// where N = num_basis (spatial orbitals).
+//
+// T1 amplitudes: t1[i*nvir + a]  (nocc × nvir)
+// T2 amplitudes: t2[i*nvir*nocc*nvir + a*nocc*nvir + j*nvir + b]  i.e. (ia,jb) ordering
+//   This stores T2(αβ). T2(αα) = t2(ia,jb) - t2(ib,ja).
+//
+// For canonical HF: f_ia = 0, f_ab = eps_a * delta_ab, f_ij = eps_i * delta_ij.
+//
+// References: Stanton, Gauss, Watts, Bartlett, JCP 94, 4334 (1991)
+//             Scuseria, Janssen, Schaefer, JCP 89, 7382 (1988)
+// ============================================================
+
+// Device helper: access MO integral (pq|rs) in chemist's notation
+static __inline__ real_t mo_eri(const real_t *__restrict__ eri, int N,
+                                     int p, int q, int r, int s)
+{
+    return eri[((size_t)p*N + q)*N*N + (size_t)r*N + s];
+}
+
+
+// ============================================================
+//  Naive spatial-orbital CCSD (no GPU DGEMM, no pre-built sub-blocks)
+//  Kept for benchmarking against the optimized version.
+// ============================================================
+real_t ccsd_spatial_orbital_naive(const real_t* __restrict__ d_eri_ao,
+                            const real_t* __restrict__ d_coefficient_matrix,
+                            const real_t* __restrict__ d_orbital_energies,
+                            const int num_basis, const int num_occ,
+                            const bool computing_ccsd_t, real_t* ccsd_t_energy)
+{
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    const int N = num_basis;
+    const int nocc = num_occ;
+    const int nvir = N - nocc;
+    const size_t NN = (size_t)N * N;
+    const size_t NNN = NN * N;
+    const size_t N4 = NN * NN;
+
+    std::cout << "CCSD spatial-orbital (naive, no GPU optimization): N=" << N
+              << " nocc=" << nocc << " nvir=" << nvir << std::endl;
+
+    // AO->MO transform on GPU, download to host
+    real_t* d_eri_mo = tracked_syclMalloc<real_t>(N4 ,q_ct1);
+    {
+        std::string str = "Computing AO -> MO full integral transformation... ";
+        PROFILE_ELAPSED_TIME(str);
+        transform_ao_eri_to_mo_eri_full(d_eri_ao, d_coefficient_matrix, N, d_eri_mo);
+        q_ct1.wait_and_throw();
+    }
+    std::vector<real_t> eri(N4);
+    q_ct1.memcpy(eri.data(), d_eri_mo, N4 * sizeof(real_t)).wait();
+    tracked_syclFree(d_eri_mo);
+
+    std::vector<real_t> eps(N);
+    q_ct1.memcpy(eps.data(), d_orbital_energies, N * sizeof(real_t)).wait();
+
+    auto v = [&](int p, int q, int r, int s) -> real_t {
+        return eri[(size_t)p * NNN + (size_t)r * NN + (size_t)q * N + s];
+    };
+    auto w = [&](int p, int q, int r, int s) -> real_t {
+        return 2.0 * v(p,q,r,s) - v(p,q,s,r);
+    };
+    auto T2 = [&](int i, int j, int a, int b) -> size_t {
+        return ((size_t)i * nocc + j) * nvir * nvir + (size_t)a * nvir + b;
+    };
+
+    const size_t t1Size = (size_t)nocc * nvir;
+    const size_t t2Size = (size_t)nocc * nocc * nvir * nvir;
+
+    std::vector<real_t> Dia(t1Size);
+    for (int i = 0; i < nocc; i++)
+        for (int a = 0; a < nvir; a++)
+            Dia[i*nvir+a] = eps[i] - eps[nocc+a];
+
+    std::vector<real_t> Dijab(t2Size);
+    for (int i = 0; i < nocc; i++)
+        for (int j = 0; j < nocc; j++)
+            for (int a = 0; a < nvir; a++)
+                for (int b = 0; b < nvir; b++)
+                    Dijab[T2(i,j,a,b)] = eps[i] + eps[j] - eps[nocc+a] - eps[nocc+b];
+
+    // MP2 initial guess
+    std::vector<real_t> t1(t1Size, 0.0);
+    std::vector<real_t> t2v(t2Size);
+    for (int i = 0; i < nocc; i++)
+        for (int j = 0; j < nocc; j++)
+            for (int a = 0; a < nvir; a++)
+                for (int b = 0; b < nvir; b++)
+                    t2v[T2(i,j,a,b)] = v(i,j,nocc+a,nocc+b) / Dijab[T2(i,j,a,b)];
+
+    auto energy = [&]() -> real_t {
+        real_t E = 0.0;
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int a = 0; a < nvir; a++)
+                    for (int b = 0; b < nvir; b++)
+                        E += w(i,j,nocc+a,nocc+b) * (t2v[T2(i,j,a,b)] + t1[i*nvir+a]*t1[j*nvir+b]);
+        return E;
+    };
+
+    real_t Ecc = energy();
+    std::cout << "CCSD iter  0: E = " << std::fixed << std::setprecision(12)
+              << Ecc << " (MP2 initial guess)" << std::endl;
+
+    DIIS diis(8, 2);
+    size_t num_amps = t1Size + t2Size;
+    const int MAX_ITER = 100;
+    const real_t CONV = 1e-10;
+
+    for (int iter = 1; iter <= MAX_ITER; iter++) {
+
+        // ---- F intermediates ----
+        std::vector<real_t> Fkc(nocc * nvir, 0.0);
+        for (int k = 0; k < nocc; k++)
+            for (int c = 0; c < nvir; c++) {
+                real_t val = 0.0;
+                for (int l = 0; l < nocc; l++)
+                    for (int d = 0; d < nvir; d++)
+                        val += w(k,l,nocc+c,nocc+d) * t1[l*nvir+d];
+                Fkc[k*nvir+c] = val;
+            }
+
+        std::vector<real_t> Fki(nocc * nocc, 0.0);
+        for (int k = 0; k < nocc; k++)
+            for (int i = 0; i < nocc; i++) {
+                real_t val = 0.0;
+                for (int l = 0; l < nocc; l++)
+                    for (int c = 0; c < nvir; c++)
+                        for (int d = 0; d < nvir; d++) {
+                            real_t ww = w(k,l,nocc+c,nocc+d);
+                            val += ww * (t2v[T2(i,l,c,d)] + t1[i*nvir+c]*t1[l*nvir+d]);
+                        }
+                Fki[k*nocc+i] = val;
+            }
+
+        std::vector<real_t> Fac(nvir * nvir, 0.0);
+        for (int a = 0; a < nvir; a++)
+            for (int c = 0; c < nvir; c++) {
+                real_t val = 0.0;
+                for (int k = 0; k < nocc; k++)
+                    for (int l = 0; l < nocc; l++)
+                        for (int d = 0; d < nvir; d++) {
+                            real_t ww = w(k,l,nocc+c,nocc+d);
+                            val -= ww * (t2v[T2(k,l,a,d)] + t1[k*nvir+a]*t1[l*nvir+d]);
+                        }
+                Fac[a*nvir+c] = val;
+            }
+
+        // ---- L intermediates ----
+        std::vector<real_t> Lki(nocc * nocc, 0.0);
+        for (int k = 0; k < nocc; k++)
+            for (int i = 0; i < nocc; i++) {
+                real_t val = Fki[k*nocc+i];
+                for (int l = 0; l < nocc; l++)
+                    for (int c = 0; c < nvir; c++)
+                        val += w(l,k,nocc+c,i) * t1[l*nvir+c];
+                Lki[k*nocc+i] = val;
+            }
+
+        std::vector<real_t> Lac(nvir * nvir, 0.0);
+        for (int a = 0; a < nvir; a++)
+            for (int c = 0; c < nvir; c++) {
+                real_t val = Fac[a*nvir+c];
+                for (int k = 0; k < nocc; k++)
+                    for (int d = 0; d < nvir; d++)
+                        val += w(k,nocc+a,nocc+d,nocc+c) * t1[k*nvir+d];
+                Lac[a*nvir+c] = val;
+            }
+
+        // ---- W^{kl}_{ij} ----
+        std::vector<real_t> Wklij((size_t)nocc*nocc*nocc*nocc);
+        for (int k = 0; k < nocc; k++)
+            for (int l = 0; l < nocc; l++)
+                for (int i = 0; i < nocc; i++)
+                    for (int j = 0; j < nocc; j++) {
+                        real_t val = v(k,l,i,j);
+                        for (int c = 0; c < nvir; c++) {
+                            int C = nocc+c;
+                            val += v(l,k,C,i) * t1[j*nvir+c];
+                            val += v(k,l,C,j) * t1[i*nvir+c];
+                        }
+                        for (int c = 0; c < nvir; c++)
+                            for (int d = 0; d < nvir; d++)
+                                val += v(k,l,nocc+c,nocc+d) * (t2v[T2(i,j,c,d)] + t1[i*nvir+c]*t1[j*nvir+d]);
+                        Wklij[((size_t)k*nocc+l)*nocc*nocc + (size_t)i*nocc+j] = val;
+                    }
+
+        // ---- W^{ab}_{cd} ----
+        std::vector<real_t> Wabcd((size_t)nvir*nvir*nvir*nvir);
+        for (int a = 0; a < nvir; a++)
+            for (int b = 0; b < nvir; b++) {
+                int A=nocc+a, B=nocc+b;
+                for (int c = 0; c < nvir; c++)
+                    for (int d = 0; d < nvir; d++) {
+                        int C=nocc+c, D=nocc+d;
+                        real_t val = v(A,B,C,D);
+                        for (int k = 0; k < nocc; k++) {
+                            val -= v(k,A,D,C) * t1[k*nvir+b];
+                            val -= v(k,B,C,D) * t1[k*nvir+a];
+                        }
+                        Wabcd[((size_t)a*nvir+b)*nvir*nvir + (size_t)c*nvir+d] = val;
+                    }
+            }
+
+        // ---- W^{ak}_{ic} ----
+        std::vector<real_t> Wakic((size_t)nvir*nocc*nocc*nvir);
+        for (int a = 0; a < nvir; a++)
+            for (int k = 0; k < nocc; k++)
+                for (int i = 0; i < nocc; i++)
+                    for (int c = 0; c < nvir; c++) {
+                        int A=nocc+a, C=nocc+c;
+                        real_t val = v(A,k,i,C);
+                        for (int l = 0; l < nocc; l++)
+                            val -= v(k,l,C,i) * t1[l*nvir+a];
+                        for (int d = 0; d < nvir; d++)
+                            val += v(k,A,C,nocc+d) * t1[i*nvir+d];
+                        for (int l = 0; l < nocc; l++)
+                            for (int d = 0; d < nvir; d++) {
+                                real_t vlk = v(l,k,nocc+d,C);
+                                val -= 0.5 * vlk * t2v[T2(i,l,d,a)];
+                                val -= vlk * t1[i*nvir+d] * t1[l*nvir+a];
+                                val += 0.5 * w(l,k,nocc+d,C) * t2v[T2(i,l,a,d)];
+                            }
+                        Wakic[((size_t)a*nocc+k)*nocc*nvir + (size_t)i*nvir+c] = val;
+                    }
+
+        // ---- W^{ak}_{ci} ----
+        std::vector<real_t> Wakci((size_t)nvir*nocc*nvir*nocc);
+        for (int a = 0; a < nvir; a++)
+            for (int k = 0; k < nocc; k++)
+                for (int c = 0; c < nvir; c++)
+                    for (int i = 0; i < nocc; i++) {
+                        int A=nocc+a, C=nocc+c;
+                        real_t val = v(A,k,C,i);
+                        for (int l = 0; l < nocc; l++)
+                            val -= v(l,k,C,i) * t1[l*nvir+a];
+                        for (int d = 0; d < nvir; d++)
+                            val += v(k,A,nocc+d,C) * t1[i*nvir+d];
+                        for (int l = 0; l < nocc; l++)
+                            for (int d = 0; d < nvir; d++) {
+                                real_t vlk = v(l,k,C,nocc+d);
+                                val -= 0.5 * vlk * t2v[T2(i,l,d,a)];
+                                val -= vlk * t1[i*nvir+d] * t1[l*nvir+a];
+                            }
+                        Wakci[((size_t)a*nocc+k)*nvir*nocc + (size_t)c*nocc+i] = val;
+                    }
+
+        // ---- T1 update ----
+        std::vector<real_t> newT1(t1Size, 0.0);
+        for (int i = 0; i < nocc; i++)
+            for (int a = 0; a < nvir; a++) {
+                int A = nocc+a;
+                real_t val = 0.0;
+                for (int c = 0; c < nvir; c++)
+                    val += Fac[a*nvir+c] * t1[i*nvir+c];
+                for (int k = 0; k < nocc; k++)
+                    val -= Fki[k*nocc+i] * t1[k*nvir+a];
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++) {
+                        real_t fc = Fkc[k*nvir+c];
+                        val += fc * (2.0*t2v[T2(k,i,c,a)] - t2v[T2(i,k,c,a)] + t1[i*nvir+c]*t1[k*nvir+a]);
+                    }
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++)
+                        val += w(A,k,i,nocc+c) * t1[k*nvir+c];
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++)
+                        for (int d = 0; d < nvir; d++)
+                            val += w(A,k,nocc+c,nocc+d) * (t2v[T2(i,k,c,d)] + t1[i*nvir+c]*t1[k*nvir+d]);
+                for (int k = 0; k < nocc; k++)
+                    for (int l = 0; l < nocc; l++)
+                        for (int c = 0; c < nvir; c++)
+                            val -= w(k,l,i,nocc+c) * (t2v[T2(k,l,a,c)] + t1[k*nvir+a]*t1[l*nvir+c]);
+                newT1[i*nvir+a] = val / Dia[i*nvir+a];
+            }
+
+        // ---- T2 update ----
+        std::vector<real_t> raw(t2Size, 0.0);
+        for (int i = 0; i < nocc; i++)
+            for (int a = 0; a < nvir; a++) {
+                int A = nocc+a;
+                for (int j = 0; j < nocc; j++)
+                    for (int b = 0; b < nvir; b++) {
+                        int B = nocc+b;
+                        real_t val = 0.5 * v(i,j,A,B);
+                        // Wklij * tau
+                        for (int k = 0; k < nocc; k++)
+                            for (int l = 0; l < nocc; l++)
+                                val += 0.5 * Wklij[((size_t)k*nocc+l)*nocc*nocc+(size_t)i*nocc+j]
+                                     * (t2v[T2(k,l,a,b)] + t1[k*nvir+a]*t1[l*nvir+b]);
+                        // Wabcd * tau
+                        for (int c = 0; c < nvir; c++)
+                            for (int d = 0; d < nvir; d++)
+                                val += 0.5 * Wabcd[((size_t)a*nvir+b)*nvir*nvir+(size_t)c*nvir+d]
+                                     * (t2v[T2(i,j,c,d)] + t1[i*nvir+c]*t1[j*nvir+d]);
+                        for (int c = 0; c < nvir; c++)
+                            val += Lac[a*nvir+c] * t2v[T2(i,j,c,b)];
+                        for (int k = 0; k < nocc; k++)
+                            val -= Lki[k*nocc+i] * t2v[T2(k,j,a,b)];
+                        for (int c = 0; c < nvir; c++)
+                            val += v(A,B,i,nocc+c) * t1[j*nvir+c];
+                        for (int k = 0; k < nocc; k++)
+                            for (int c = 0; c < nvir; c++)
+                                val -= v(k,B,i,nocc+c) * t1[k*nvir+a] * t1[j*nvir+c];
+                        for (int k = 0; k < nocc; k++)
+                            val -= v(A,k,i,j) * t1[k*nvir+b];
+                        for (int k = 0; k < nocc; k++)
+                            for (int c = 0; c < nvir; c++)
+                                val -= v(A,k,i,nocc+c) * t1[j*nvir+c] * t1[k*nvir+b];
+                        for (int k = 0; k < nocc; k++)
+                            for (int c = 0; c < nvir; c++) {
+                                real_t w1 = Wakic[((size_t)a*nocc+k)*nocc*nvir + (size_t)i*nvir+c];
+                                real_t w2 = Wakci[((size_t)a*nocc+k)*nvir*nocc + (size_t)c*nocc+i];
+                                real_t w3 = Wakci[((size_t)b*nocc+k)*nvir*nocc + (size_t)c*nocc+i];
+                                val += 2.0 * w1 * t2v[T2(k,j,c,b)];
+                                val -= w2 * t2v[T2(k,j,c,b)];
+                                val -= w1 * t2v[T2(k,j,b,c)];
+                                val -= w3 * t2v[T2(k,j,a,c)];
+                            }
+                        raw[T2(i,j,a,b)] = val;
+                    }
+            }
+
+        std::vector<real_t> newT2(t2Size);
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int a = 0; a < nvir; a++)
+                    for (int b = 0; b < nvir; b++) {
+                        size_t idx = T2(i,j,a,b);
+                        newT2[idx] = (raw[idx] + raw[T2(j,i,b,a)]) / Dijab[idx];
+                    }
+
+        // ---- DIIS ----
+        std::vector<real_t> ampVec(num_amps);
+        std::vector<real_t> errVec(num_amps);
+        for (size_t k = 0; k < t1Size; k++) { ampVec[k] = newT1[k]; errVec[k] = newT1[k] - t1[k]; }
+        for (size_t k = 0; k < t2Size; k++) { ampVec[t1Size+k] = newT2[k]; errVec[t1Size+k] = newT2[k] - t2v[k]; }
+        diis.push(ampVec, errVec);
+        if (diis.can_extrapolate()) {
+            auto extrap = diis.extrapolate();
+            for (size_t k = 0; k < t1Size; k++) newT1[k] = extrap[k];
+            for (size_t k = 0; k < t2Size; k++) newT2[k] = extrap[t1Size + k];
+        }
+
+        for (size_t k = 0; k < t1Size; k++) t1[k] = newT1[k];
+        for (size_t k = 0; k < t2Size; k++) t2v[k] = newT2[k];
+
+        real_t newEcc = energy();
+        real_t deltaE = newEcc - Ecc;
+        Ecc = newEcc;
+        std::cout << "CCSD iter " << std::setw(2) << iter
+                  << ": E = " << std::fixed << std::setprecision(12) << Ecc
+                  << ", dE = " << std::scientific << std::setprecision(4) << deltaE << std::endl;
+        if (std::abs(deltaE) < CONV) {
+            std::cout << "CCSD converged after " << iter << " iterations" << std::endl;
+            break;
+        }
+    }
+
+    // ---- (T) correction ----
+    if (computing_ccsd_t && ccsd_t_energy) {
+        std::cout << "---- Computing (T) correction (naive spatial orbital) ----" << std::endl;
+        std::string str = "Computing (T) correction energy... ";
+        PROFILE_ELAPSED_TIME(str);
+        const size_t o3 = (size_t)nocc * nocc * nocc;
+        real_t E_T = 0.0;
+        std::vector<std::vector<size_t>> idx(6, std::vector<size_t>(o3));
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int k = 0; k < nocc; k++) {
+                    size_t ijk = ((size_t)i*nocc+j)*nocc+k;
+                    idx[0][ijk] = ijk;
+                    idx[1][ijk] = ((size_t)i*nocc+k)*nocc+j;
+                    idx[2][ijk] = ((size_t)j*nocc+i)*nocc+k;
+                    idx[3][ijk] = ((size_t)j*nocc+k)*nocc+i;
+                    idx[4][ijk] = ((size_t)k*nocc+i)*nocc+j;
+                    idx[5][ijk] = ((size_t)k*nocc+j)*nocc+i;
+                }
+        int comp[6][6] = {
+            {0,1,2,3,4,5},{1,0,4,5,2,3},{2,3,0,1,5,4},
+            {4,5,1,0,3,2},{3,2,5,4,0,1},{5,4,3,2,1,0}
+        };
+        std::vector<std::vector<real_t>> wt(6, std::vector<real_t>(o3));
+        std::vector<std::vector<real_t>> zt(6, std::vector<real_t>(o3));
+        std::vector<real_t> wpv(o3), r3out(o3);
+        for (int a = 0; a < nvir; a++)
+            for (int b = 0; b <= a; b++)
+                for (int c = 0; c <= b; c++) {
+                    real_t d3_scale = 1.0;
+                    if (a == c) d3_scale = 6.0;
+                    else if (a == b || b == c) d3_scale = 2.0;
+                    int perms[6][3] = {{a,b,c},{a,c,b},{b,a,c},{b,c,a},{c,a,b},{c,b,a}};
+                    for (int p = 0; p < 6; p++) {
+                        int aa=perms[p][0], bb=perms[p][1], cc=perms[p][2];
+                        int AA=nocc+aa, BB=nocc+bb;
+                        for (int i = 0; i < nocc; i++)
+                            for (int j = 0; j < nocc; j++)
+                                for (int k = 0; k < nocc; k++) {
+                                    size_t ijk = ((size_t)i*nocc+j)*nocc+k;
+                                    real_t wval = 0.0;
+                                    for (int f = 0; f < nvir; f++)
+                                        wval += v(i,nocc+f,AA,BB) * t2v[T2(k,j,cc,f)];
+                                    for (int m = 0; m < nocc; m++)
+                                        wval -= v(AA,j,i,m) * t2v[T2(m,k,bb,cc)];
+                                    real_t vval = v(AA,BB,i,j) * t1[k*nvir+cc];
+                                    wpv[ijk] = wval + 0.5 * vval;
+                                    wt[p][ijk] = wval;
+                                }
+                        for (size_t q = 0; q < o3; q++)
+                            r3out[q] = 4.0*wpv[q] + wpv[idx[3][q]] + wpv[idx[4][q]]
+                                     - 2.0*wpv[idx[5][q]] - 2.0*wpv[idx[1][q]] - 2.0*wpv[idx[2][q]];
+                        for (int i = 0; i < nocc; i++)
+                            for (int j = 0; j < nocc; j++)
+                                for (int k = 0; k < nocc; k++) {
+                                    real_t D = (eps[i]+eps[j]+eps[k]-eps[nocc+aa]-eps[nocc+bb]-eps[nocc+cc])*d3_scale;
+                                    zt[p][((size_t)i*nocc+j)*nocc+k] = r3out[((size_t)i*nocc+j)*nocc+k] / D;
+                                }
+                    }
+                    for (int q = 0; q < 6; q++)
+                        for (int p = 0; p < 6; p++) {
+                            int s = comp[q][p];
+                            real_t eterm = 0.0;
+                            for (size_t r = 0; r < o3; r++)
+                                eterm += wt[p][idx[s][r]] * zt[q][r];
+                            E_T += eterm;
+                        }
+                }
+        E_T *= 2.0;
+        *ccsd_t_energy = E_T;
+        std::cout << "(T) correction energy: " << std::fixed << std::setprecision(12) << E_T << std::endl;
+    }
+
+    return Ecc;
+}
+
+
+// ============================================================
+//  Optimized spatial-orbital CCSD (GPU DGEMM + pre-built integral sub-blocks)
+// ============================================================
+// v^{pq}_{rs} = (pr|qs),  w^{pq}_{rs} = 2*(pr|qs) - (ps|qr)
+// P(ia,jb) f = f(i,a,j,b) + f(j,b,i,a)
+
+real_t ccsd_spatial_orbital(const real_t* __restrict__ d_eri_ao,
+                            const real_t* __restrict__ d_coefficient_matrix,
+                            const real_t* __restrict__ d_orbital_energies,
+                            const int num_basis, const int num_occ,
+                            const bool computing_ccsd_t, real_t* ccsd_t_energy)
+{
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
+    const int N = num_basis;
+    const int nocc = num_occ;
+    const int nvir = N - nocc;
+    const size_t N4 = (size_t)N * N * N * N;
+
+    std::cout << "CCSD spatial-orbital: N=" << N << " nocc=" << nocc
+              << " nvir=" << nvir << std::endl;
+
+    // AO->MO transform on GPU (4-stage half-transform, O(N^5))
+    real_t* d_eri_mo = tracked_syclMalloc<real_t>(N4, q_ct1);
+    {
+        std::string str = "Computing AO -> MO 4-stage integral transformation... ";
+        PROFILE_ELAPSED_TIME(str);
+        transform_ao_eri_to_mo_eri_4stage(d_eri_ao, d_coefficient_matrix, N, d_eri_mo);
+        q_ct1.wait_and_throw();
+    }
+
+    std::vector<real_t> eps(N);
+    q_ct1.memcpy(eps.data(), d_orbital_energies, N * sizeof(real_t)).wait();
+
+    // t2[i,j,a,b] index
+    auto T2 = [&](int i, int j, int a, int b) -> size_t {
+        return ((size_t)i * nocc + j) * nvir * nvir + (size_t)a * nvir + b;
+    };
+
+    // Denominators
+    const size_t t1Size = (size_t)nocc * nvir;
+    const size_t t2Size = (size_t)nocc * nocc * nvir * nvir;
+
+    std::vector<real_t> Dia(t1Size);
+    for (int i = 0; i < nocc; i++)
+        for (int a = 0; a < nvir; a++)
+            Dia[i*nvir+a] = eps[i] - eps[nocc+a];
+
+    std::vector<real_t> Dijab(t2Size);
+    for (int i = 0; i < nocc; i++)
+        for (int j = 0; j < nocc; j++)
+            for (int a = 0; a < nvir; a++)
+                for (int b = 0; b < nvir; b++)
+                    Dijab[T2(i,j,a,b)] = eps[i] + eps[j] - eps[nocc+a] - eps[nocc+b];
+
+    DIIS diis(8, 2);
+    size_t num_amps = t1Size + t2Size;
+    const int MAX_ITER = 100;
+    const real_t CONV = 1e-10;
+
+    // Pre-build contiguous integral sub-blocks (constant, computed once)
+    const size_t oo = (size_t)nocc * nocc;
+    const size_t vv = (size_t)nvir * nvir;
+    const size_t vvv = vv * nvir;
+    const size_t vo = (size_t)nvir * nocc;
+    const size_t ov = (size_t)nocc * nvir;
+
+    // ---- GPU sub-block extraction from d_eri_mo (no full N⁴ download) ----
+    // Use a single temporary GPU buffer for CPU-bound sub-blocks
+    const size_t max_cpu_block = std::max({(size_t)nocc*vvv, vv*ov, ov*ov, vo*vo, vo*oo, oo*ov, oo*oo});
+    double* d_extract_tmp = tracked_syclMalloc<double>(max_cpu_block, q_ct1);
+
+    // Declare vectors outside profiling scope so they survive
+    std::vector<real_t> v_oovv(oo * vv);
+    std::vector<real_t> w_oovv(oo * vv);
+    std::vector<real_t> v_ovvv((size_t)nocc * vvv);
+    std::vector<real_t> v_voov((size_t)nvir * nocc * nocc * nvir);
+    std::vector<real_t> v_oovo((size_t)nocc * nocc * nvir * nocc);
+    const size_t oooo = oo * oo;
+    std::vector<real_t> v_oooo(oooo);
+    std::vector<real_t> v_vovo(vo * vo);
+    std::vector<real_t> v_vvov(vv * ov);
+    std::vector<real_t> v_ovov(ov * ov);
+    std::vector<real_t> v_vooo(vo * oo);
+    std::vector<real_t> v_ooov(oo * ov);
+    {
+        std::string str = "Extracting MO integral sub-blocks on GPU... ";
+        PROFILE_ELAPSED_TIME(str);
+
+    // --- GPU-extract CPU-needed sub-blocks → download ---
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, 0,nocc, nocc,nvir, nocc,nvir);
+    q_ct1.memcpy(v_oovv.data(), d_extract_tmp, oo * vv * sizeof(double));
+
+    {
+        int threads = 256;
+        int blocks = (int)((oo*vv + threads - 1) / threads);
+
+        q_ct1.parallel_for(
+            sycl::nd_range<1>(blocks * threads, threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                extract_w_oovv_kernel(item_ct1, d_eri_mo, d_extract_tmp, N, nocc, nvir);
+            });
+    }
+    q_ct1.memcpy(w_oovv.data(), d_extract_tmp, oo * vv * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, nocc,nvir, nocc,nvir, nocc,nvir);
+    q_ct1
+        .memcpy(v_ovvv.data(), d_extract_tmp,
+                (size_t)nocc * vvv * sizeof(double))
+        .wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, nocc,nvir, 0,nocc, 0,nocc, nocc,nvir);
+    q_ct1
+        .memcpy(v_voov.data(), d_extract_tmp,
+                (size_t)nvir * nocc * nocc * nvir * sizeof(double))
+        .wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, 0,nocc, nocc,nvir, 0,nocc);
+    q_ct1
+        .memcpy(v_oovo.data(), d_extract_tmp,
+                (size_t)nocc * nocc * nvir * nocc * sizeof(double))
+        .wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, 0,nocc, 0,nocc, 0,nocc);
+    q_ct1.memcpy(v_oooo.data(), d_extract_tmp, oooo * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, nocc,nvir, 0,nocc, nocc,nvir, 0,nocc);
+    q_ct1.memcpy(v_vovo.data(), d_extract_tmp, vo * vo * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, nocc,nvir, nocc,nvir, 0,nocc, nocc,nvir);
+    q_ct1.memcpy(v_vvov.data(), d_extract_tmp, vv * ov * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, nocc,nvir, 0,nocc, nocc,nvir);
+    q_ct1.memcpy(v_ovov.data(), d_extract_tmp, ov * ov * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, nocc,nvir, 0,nocc, 0,nocc, 0,nocc);
+    q_ct1.memcpy(v_vooo.data(), d_extract_tmp, vo * oo * sizeof(double)).wait();
+
+    gpu_extract_subblock(d_eri_mo, d_extract_tmp, N, 0,nocc, 0,nocc, 0,nocc, nocc,nvir);
+    q_ct1.memcpy(v_ooov.data(), d_extract_tmp, oo * ov * sizeof(double)).wait();
+
+    q_ct1.wait_and_throw();
+    } // end PROFILE_ELAPSED_TIME for sub-block extraction
+
+    tracked_syclFree(d_extract_tmp);
+
+    // MP2 initial guess: t2(i,j,a,b) = v_oovv[i,j,a,b] / Dijab
+    std::vector<real_t> t1(t1Size, 0.0);
+    std::vector<real_t> t2v(t2Size);
+    for (int i = 0; i < nocc; i++)
+        for (int j = 0; j < nocc; j++)
+            for (int a = 0; a < nvir; a++)
+                for (int b = 0; b < nvir; b++) {
+                    size_t idx = T2(i,j,a,b);
+                    t2v[idx] = v_oovv[((size_t)i*nocc+j)*vv + (size_t)a*nvir+b] / Dijab[idx];
+                }
+
+    // v_ovvv reshaped for Wabcd DGEMM: v_ovvv_T[nvir³, nocc]
+    std::vector<real_t> v_ovvv_T(vvv * nocc);
+    for (int a = 0; a < nvir; a++)
+        for (int c = 0; c < nvir; c++)
+            for (int d = 0; d < nvir; d++)
+                for (int k = 0; k < nocc; k++)
+                    v_ovvv_T[((size_t)a*vv + (size_t)c*nvir + d)*nocc + k] = v_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)c*nvir + d];
+
+    // Pre-built w-variants: w = 2*v - v_exchange
+    // w_voov[a,k,i,c] = 2*v_voov[a,k,i,c] - v_vovo[a,k,c,i]
+    std::vector<real_t> w_voov((size_t)nvir * nocc * nocc * nvir);
+    for (int a = 0; a < nvir; a++)
+        for (int k = 0; k < nocc; k++)
+            for (int i = 0; i < nocc; i++)
+                for (int c = 0; c < nvir; c++) {
+                    size_t idx_voov = ((size_t)a*nocc+k)*(size_t)nocc*nvir + (size_t)i*nvir+c;
+                    size_t idx_vovo = ((size_t)a*nocc+k)*vo + (size_t)c*nocc+i;
+                    w_voov[idx_voov] = 2.0 * v_voov[idx_voov] - v_vovo[idx_vovo];
+                }
+
+    // w_ooov[k,l,i,c] = 2*v_ooov[k,l,i,c] - v_oovo[k,l,c,i]
+    std::vector<real_t> w_ooov(oo * ov);
+    for (int k = 0; k < nocc; k++)
+        for (int l = 0; l < nocc; l++)
+            for (int i = 0; i < nocc; i++)
+                for (int c = 0; c < nvir; c++) {
+                    size_t idx_ooov = ((size_t)k*nocc+l)*ov + (size_t)i*nvir+c;
+                    size_t idx_oovo = ((size_t)k*nocc+l)*(size_t)nvir*nocc + (size_t)c*nocc+i;
+                    w_ooov[idx_ooov] = 2.0 * v_ooov[idx_ooov] - v_oovo[idx_oovo];
+                }
+
+    // w_ovvv[(k*nvir+a)*vv + c*nvir+d] = 2*v_ovvv[k,a,c,d] - v_ovvv[k,a,d,c]
+    std::vector<real_t> w_ovvv((size_t)nocc * vvv);
+    for (int k = 0; k < nocc; k++)
+        for (int a = 0; a < nvir; a++)
+            for (int c = 0; c < nvir; c++)
+                for (int d = 0; d < nvir; d++)
+                    w_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)c*nvir+d] =
+                        2.0 * v_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)c*nvir+d]
+                            - v_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)d*nvir+c];
+
+    // Pre-allocate all GPU buffers in a single allocation to reduce cudaMalloc overhead
+    const size_t OV2 = ov * ov;
+    const size_t sz_tau = t2Size, sz_Wabcd = vv*vv, sz_Wklij = oo*oo, sz_raw = t2Size;
+    const size_t sz_w_oovv = oo*vv, sz_v_oovv = oo*vv, sz_Fki = oo;
+    const size_t sz_v_ovvv_T = vvv*nocc, sz_t1 = t1Size, sz_ovvv_t1 = std::max(vvv*std::max((size_t)nvir,(size_t)nocc), t2Size);
+    const size_t sz_v_vvvv = vv*vv, sz_Fac = vv, sz_Fkc = ov;
+    const size_t sz_t2v = t2Size, sz_Lac = vv, sz_Z = vv*ov;
+    const size_t sz_Wex = OV2;  // each of A, B, C1, C2, V_R, W_R, V_R2
+    const size_t sz_v_ovvv = (size_t)nocc * vvv;       // persistent v_ovvv
+    const size_t sz_v_ovvv_perm = (size_t)nocc * vvv;   // persistent v_ovvv_perm
+    const size_t sz_w_ovvv_R = (size_t)nvir * nocc * vv; // persistent w_ovvv_R
+    const size_t total_gpu_doubles = sz_tau + sz_Wabcd + sz_Wklij + sz_raw
+        + sz_w_oovv + sz_v_oovv + sz_Fki + sz_v_ovvv_T + sz_t1 + sz_ovvv_t1
+        + sz_v_vvvv + sz_Fac + sz_Fkc + sz_t2v + sz_Lac + sz_Z
+        + 7 * sz_Wex  // Wex_A, Wex_B, Wex_C1, Wex_C2, V_R, W_R, V_R2
+        + sz_v_ovvv + sz_v_ovvv_perm + sz_w_ovvv_R;
+
+    double *d_gpu_pool = tracked_syclMalloc<double>(total_gpu_doubles, q_ct1);
+    double *d_ptr = d_gpu_pool;
+    auto carve = [&](size_t n) -> double* { double *p = d_ptr; d_ptr += n; return p; };
+
+    double *d_tau       = carve(sz_tau);
+    double *d_Wabcd     = carve(sz_Wabcd);
+    double *d_Wklij     = carve(sz_Wklij);
+    double *d_raw       = carve(sz_raw);
+    double *d_w_oovv    = carve(sz_w_oovv);
+    double *d_v_oovv    = carve(sz_v_oovv);
+    double *d_Fki       = carve(sz_Fki);
+    double *d_v_ovvv_T  = carve(sz_v_ovvv_T);
+    double *d_t1        = carve(sz_t1);
+    double *d_ovvv_t1   = carve(sz_ovvv_t1);
+    double *d_v_vvvv    = carve(sz_v_vvvv);
+    double *d_Fac       = carve(sz_Fac);
+    double *d_Fkc       = carve(sz_Fkc);
+    double *d_t2v       = carve(sz_t2v);
+    double *d_Lac       = carve(sz_Lac);
+    double *d_Z         = carve(sz_Z);
+    double *d_Wex_A     = carve(sz_Wex);
+    double *d_Wex_B     = carve(sz_Wex);
+    double *d_Wex_C1    = carve(sz_Wex);
+    double *d_Wex_C2    = carve(sz_Wex);
+    double *d_V_R       = carve(sz_Wex);
+    double *d_W_R       = carve(sz_Wex);
+    double *d_V_R2      = carve(sz_Wex);
+    double *d_v_ovvv    = carve(sz_v_ovvv);       // persistent v_ovvv
+    double *d_v_ovvv_perm = carve(sz_v_ovvv_perm); // persistent v_ovvv_perm
+    double *d_w_ovvv_R  = carve(sz_w_ovvv_R);     // persistent w_ovvv_R
+
+    // Constant reshaped integrals for Wakic/Wakci ld-sum DGEMM
+    // V_R[(l*nvir+d), (k*nvir+c)] = v_oovv[(l*nocc+k)*vv + d*nvir+c]
+    // W_R[(l*nvir+d), (k*nvir+c)] = w_oovv[(l*nocc+k)*vv + d*nvir+c]
+    // V_R2[(l*nvir+d), (k*nvir+c)] = v_oovv[(l*nocc+k)*vv + c*nvir+d]  (c,d swapped for Wakci)
+    {
+        std::vector<real_t> V_R(OV2), W_R(OV2), V_R2(OV2);
+        for (int l = 0; l < nocc; l++)
+            for (int d = 0; d < nvir; d++)
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++) {
+                        size_t row = l*nvir+d;
+                        size_t col = k*nvir+c;
+                        V_R[row*ov + col] = v_oovv[((size_t)l*nocc+k)*vv + (size_t)d*nvir+c];
+                        W_R[row*ov + col] = w_oovv[((size_t)l*nocc+k)*vv + (size_t)d*nvir+c];
+                        V_R2[row*ov + col] = v_oovv[((size_t)l*nocc+k)*vv + (size_t)c*nvir+d];
+                    }
+        q_ct1.memcpy(d_V_R, V_R.data(), OV2 * sizeof(double));
+        q_ct1.memcpy(d_W_R, W_R.data(), OV2 * sizeof(double));
+        q_ct1.memcpy(d_V_R2, V_R2.data(), OV2 * sizeof(double)).wait();
+    }
+
+    // GPU-direct extraction for GPU-resident sub-blocks (no CPU round-trip)
+    // v_vvvv: v(nocc+a, nocc+b, nocc+c, nocc+d) → d_v_vvvv (largest: nvir⁴)
+    gpu_extract_subblock(d_eri_mo, d_v_vvvv, N, nocc,nvir, nocc,nvir, nocc,nvir, nocc,nvir);
+    // v_oovv and w_oovv → d_v_oovv, d_w_oovv
+    gpu_extract_subblock(d_eri_mo, d_v_oovv, N, 0,nocc, 0,nocc, nocc,nvir, nocc,nvir);
+    {
+        int threads = 256;
+        int blocks_w = (int)((oo*vv + threads - 1) / threads);
+        {
+        q_ct1.parallel_for(
+        sycl::nd_range<1>(blocks_w * threads, threads),
+            [=](sycl::nd_item<1> item_ct1) {
+                extract_w_oovv_kernel(item_ct1, d_eri_mo, d_w_oovv, N, nocc, nvir);
+            });
+        }
+    }
+    q_ct1.wait_and_throw();
+    // Now d_eri_mo is no longer needed — free it
+    tracked_syclFree(d_eri_mo);
+    d_eri_mo = nullptr;
+
+    q_ct1.memcpy(d_v_ovvv_T, v_ovvv_T.data(), vvv * nocc * sizeof(double)).wait();
+
+    // Pre-compute v_ovvv_perm (constant — transpose d,c within each (k,a) block)
+    std::vector<real_t> v_ovvv_perm((size_t)nocc * vvv);
+    for (int k = 0; k < nocc; k++)
+        for (int a = 0; a < nvir; a++)
+            for (int c = 0; c < nvir; c++)
+                for (int d = 0; d < nvir; d++)
+                    v_ovvv_perm[(size_t)k*vvv + (size_t)a*vv + (size_t)c*nvir+d] =
+                        v_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)d*nvir+c];
+
+    // Pre-compute w_ovvv_perm reshaped as [nvir, nocc*vv] for T1 DGEMM
+    // w_ovvv_R[a, k*vv+c*nvir+d] = w_ovvv[k*vvv + a*vv + d*nvir+c]
+    // This transposes (c,d) in w_ovvv and reshapes for DGEMM: Result[a,i] = w_ovvv_R × tau^T
+    std::vector<real_t> w_ovvv_R((size_t)nvir * nocc * vv);
+    for (int a = 0; a < nvir; a++)
+        for (int k = 0; k < nocc; k++)
+            for (int c = 0; c < nvir; c++)
+                for (int d = 0; d < nvir; d++)
+                    w_ovvv_R[(size_t)a * nocc * vv + (size_t)k * vv + (size_t)c * nvir + d] =
+                        w_ovvv[(size_t)k * vvv + (size_t)a * vv + (size_t)d * nvir + c];
+
+    // Upload constant integral arrays to persistent GPU buffers (once, not per iteration)
+    q_ct1.memcpy(d_v_ovvv, v_ovvv.data(), sz_v_ovvv * sizeof(double));
+    q_ct1.memcpy(d_v_ovvv_perm, v_ovvv_perm.data(),
+                 sz_v_ovvv_perm * sizeof(double));
+    q_ct1.memcpy(d_w_ovvv_R, w_ovvv_R.data(), sz_w_ovvv_R * sizeof(double))
+        .wait();
+
+    // Energy: E = sum_{ijab} w_oovv[ij,ab] * (t2(i,j,a,b) + t1(i,a)*t1(j,b))
+    auto energy = [&]() -> real_t {
+        real_t E = 0.0;
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int a = 0; a < nvir; a++)
+                    for (int b = 0; b < nvir; b++) {
+                        E += w_oovv[((size_t)i*nocc+j)*vv + (size_t)a*nvir+b]
+                           * (t2v[T2(i,j,a,b)] + t1[i*nvir+a]*t1[j*nvir+b]);
+                    }
+        return E;
+    };
+
+    real_t Ecc = energy();
+    std::cout << "CCSD iter  0: E = " << std::fixed << std::setprecision(12)
+              << Ecc << " (MP2 initial guess)" << std::endl;
+
+    for (int iter = 1; iter <= MAX_ITER; iter++) {
+
+        // Upload t1 and t2v to GPU, build tau on GPU (avoids CPU tau computation + upload)
+        q_ct1.memcpy(d_t1, t1.data(), t1Size * sizeof(double));
+        q_ct1.memcpy(d_t2v, t2v.data(), t2Size * sizeof(double)).wait();
+        {
+            int threads = 256;
+            int blocks_tau = (int)((t2Size + threads - 1) / threads);
+            {
+            q_ct1.parallel_for(
+                sycl::nd_range<1>(blocks_tau * threads, threads),
+                [=](sycl::nd_item<1> item_ct1) {
+                    build_tau_kernel(item_ct1, d_t2v, d_t1, d_tau, nocc, nvir);
+                });
+            }
+        }
+
+        // ---- F intermediates (GPU kernels) ----
+        // F^k_c = sum_{ld} w_oovv[kl,cd] * t1(l,d) — GPU kernel, no transfer needed
+        std::vector<real_t> Fkc(nocc * nvir);
+        {
+            sycl::range<2> block_fkc(16, 16);
+            sycl::range<2> grid_fkc((nocc + 15) / 16, (nvir + 15) / 16);
+            {
+                q_ct1.parallel_for(
+                    sycl::nd_range<2>(grid_fkc * block_fkc, block_fkc),
+                    [=](sycl::nd_item<2> item_ct1) {
+                        compute_Fkc_kernel(item_ct1, d_w_oovv, d_t1, d_Fkc, nocc, nvir);
+                });
+            }
+            q_ct1.memcpy(Fkc.data(), d_Fkc, ov * sizeof(double)).wait();
+        }
+
+        // F^k_i = sum_{lcd} w_oovv[k,(l*vv+cd)] * tau[i,(l*vv+cd)]
+        // DGEMM: Fki(nocc×nocc) = w_oovv(nocc×nocc*vv) × tau^T(nocc*vv×nocc)
+        std::vector<real_t> Fki(nocc * nocc);
+        gpu::matrixMatrixProductRect(d_w_oovv, d_tau, d_Fki,
+                                nocc, nocc, (int)(nocc * vv),
+                                false, true, false, 1.0);
+        q_ct1.memcpy(Fki.data(), d_Fki, oo * sizeof(double)).wait();
+
+        // F^a_c = -sum_{kld} w_oovv[(kl),(cd)] * tau[T2(k,l,a,d)] — GPU kernel
+        std::vector<real_t> Fac(nvir * nvir);
+        {
+            sycl::range<2> block_fac(16, 16);
+            sycl::range<2> grid_fac((nvir + 15) / 16, (nvir + 15) / 16);
+            {
+                q_ct1.parallel_for(
+                    sycl::nd_range<2>(grid_fac * block_fac, block_fac),
+                    [=](sycl::nd_item<2> item_ct1) {
+                        compute_Fac_kernel(item_ct1, d_w_oovv, d_tau, d_Fac, nocc, nvir);
+                    });
+            }
+            q_ct1.memcpy(Fac.data(), d_Fac, vv * sizeof(double)).wait();
+        }
+
+        // ---- L intermediates ----
+        // L^k_i = F^k_i + sum_{lc} w(l,k,C,i) * t1(l,c)
+        // w(l,k,C,i) = 2*v(l,k,C,i) - v(l,k,i,C) = 2*v_oovo[(l*nocc+k)*nvir*nocc + c*nocc+i] - v_ooov[(l*nocc+k)*ov + i*nvir+c]
+        std::vector<real_t> Lki(nocc * nocc, 0.0);
+        for (int k = 0; k < nocc; k++)
+            for (int i = 0; i < nocc; i++) {
+                real_t val = Fki[k*nocc+i];
+                for (int l = 0; l < nocc; l++)
+                    for (int c = 0; c < nvir; c++) {
+                        real_t wval = 2.0 * v_oovo[((size_t)l*nocc+k)*(size_t)nvir*nocc + (size_t)c*nocc+i]
+                                         - v_ooov[((size_t)l*nocc+k)*ov + (size_t)i*nvir+c];
+                        val += wval * t1[l*nvir+c];
+                    }
+                Lki[k*nocc+i] = val;
+            }
+
+        // L^a_c = F^a_c + sum_{kd} w_ovvv[k,a,d,c] * t1(k,d)
+        std::vector<real_t> Lac(nvir * nvir, 0.0);
+        for (int a = 0; a < nvir; a++)
+            for (int c = 0; c < nvir; c++) {
+                real_t val = Fac[a*nvir+c];
+                for (int k = 0; k < nocc; k++)
+                    for (int d = 0; d < nvir; d++)
+                        val += w_ovvv[(size_t)k*vvv + (size_t)a*vv + (size_t)d*nvir+c] * t1[k*nvir+d];
+                Lac[a*nvir+c] = val;
+            }
+
+        // ---- W^{kl}_{ij} ----
+        // W^{kl}_{ij} = v^{kl}_{ij} + sum_c v^{lk}_{ci} * t1(j,c) + sum_c v^{kl}_{cj} * t1(i,c)
+        //             + sum_{cd} v_oovv[(kl),(cd)] * tau[(ij),(cd)]
+        // DGEMM for vv contraction: Wklij_base[kl,ij] = v_oovv[kl,cd] × tau^T[cd,ij]
+        std::vector<real_t> Wklij(oo * oo);
+        gpu::matrixMatrixProductRect(d_v_oovv, d_tau, d_Wklij,
+                                (int)oo, (int)oo, (int)vv,
+                                false, true, false, 1.0);
+        q_ct1.memcpy(Wklij.data(), d_Wklij, oo * oo * sizeof(double)).wait();
+        // Add remaining terms on CPU: v_oooo + t1 terms
+        for (int k = 0; k < nocc; k++)
+            for (int l = 0; l < nocc; l++)
+                for (int i = 0; i < nocc; i++)
+                    for (int j = 0; j < nocc; j++) {
+                        real_t val = v_oooo[((size_t)k*nocc+l)*oo + (size_t)i*nocc+j];
+                        for (int c = 0; c < nvir; c++) {
+                            val += v_oovo[((size_t)l*nocc+k)*(size_t)nvir*nocc + (size_t)c*nocc+i] * t1[j*nvir+c];
+                            val += v_oovo[((size_t)k*nocc+l)*(size_t)nvir*nocc + (size_t)c*nocc+j] * t1[i*nvir+c];
+                        }
+                        Wklij[((size_t)k*nocc+l)*oo + (size_t)i*nocc+j] += val;
+                    }
+
+        // ---- W^{ab}_{cd} ---- (fully on GPU: DGEMM + kernel, no host transfer)
+        // GPU DGEMM: d_ovvv_t1[nvir³, nvir] = v_ovvv_T[nvir³, nocc] × t1[nocc, nvir]
+        // d_t1 already uploaded at top of iteration
+        gpu::matrixMatrixProductRect(d_v_ovvv_T, d_t1, d_ovvv_t1,
+                                (int)vvv, nvir, nocc,
+                                false, false, false, 1.0);
+        // GPU kernel: Wabcd = v_vvvv - ovvv_t1 permutations (no download/upload)
+        {
+            size_t vv2 = vv * vv;
+            int threads = 256;
+            int blocks = (int)((vv2 + threads - 1) / threads);
+            {
+                q_ct1.parallel_for(
+                    sycl::nd_range<1>(blocks * threads, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        build_Wabcd_kernel(item_ct1, d_v_vvvv, d_ovvv_t1, d_Wabcd, nvir);
+                    });
+            }
+        }
+
+        // ---- W^{ak}_{ic} and W^{ak}_{ci} (two exchange intermediates) ----
+        // d-sum via DGEMM: ovvv_t1_ic[(k*vv + a*nvir+c), i] = sum_d v_ovvv[k,a,c,d] * t1[i,d]
+        // v_ovvv viewed as [nocc*vv, nvir], t1 as [nocc, nvir]
+        // DGEMM: [nocc*vv, nocc] = v_ovvv[nocc*vv, nvir] × t1^T[nvir, nocc]
+        // Use persistent d_v_ovvv buffer (uploaded once before the loop)
+        // Result stored in d_ovvv_t1 as scratch (size sz_ovvv_t1 ≥ nocc*vv*nocc = oo*vv) ✓
+        // This avoids overwriting d_t2v which holds t2v data
+        gpu::matrixMatrixProductRect(d_v_ovvv, d_t1, d_ovvv_t1,
+                                (int)(nocc * vv), nocc, nvir,
+                                false, true, false, 1.0);
+        // Download d-sum result: ovvv_t1_ic[k*vv*nocc + ac*nocc + i]
+        std::vector<real_t> ovvv_t1_ic((size_t)nocc * vv * nocc);
+        q_ct1
+            .memcpy(ovvv_t1_ic.data(), d_ovvv_t1,
+                    (size_t)nocc * vv * nocc * sizeof(double))
+            .wait();
+
+        // ovvv_t1_dc for Wakci: sum_d v_ovvv_perm[k,a,c,d] * t1[i,d]
+        // Use persistent d_v_ovvv_perm buffer (uploaded once before the loop)
+        gpu::matrixMatrixProductRect(d_v_ovvv_perm, d_t1, d_ovvv_t1,
+                                (int)(nocc * vv), nocc, nvir,
+                                false, true, false, 1.0);
+        std::vector<real_t> ovvv_t1_dc((size_t)nocc * vv * nocc);
+        q_ct1
+            .memcpy(ovvv_t1_dc.data(), d_ovvv_t1,
+                    (size_t)nocc * vv * nocc * sizeof(double))
+            .wait();
+
+        // ld-sum terms computed via DGEMM (below)
+        std::vector<real_t> Wakic((size_t)nvir*nocc*nocc*nvir, 0.0);
+        std::vector<real_t> Wakci((size_t)nvir*nocc*nvir*nocc, 0.0);
+
+        // CPU: single-index terms for Wakic and Wakci (d-sum replaced by DGEMM result lookup)
+        for (int a = 0; a < nvir; a++)
+            for (int k = 0; k < nocc; k++) {
+                for (int i = 0; i < nocc; i++)
+                    for (int c = 0; c < nvir; c++) {
+                        real_t val = v_voov[((size_t)a*nocc+k)*(size_t)nocc*nvir + (size_t)i*nvir+c];
+                        for (int l = 0; l < nocc; l++)
+                            val -= v_oovo[((size_t)k*nocc+l)*(size_t)nvir*nocc + (size_t)c*nocc+i] * t1[l*nvir+a];
+                        // d-sum from DGEMM: ovvv_t1_ic[(k*vv + a*nvir+c)*nocc + i]
+                        val += ovvv_t1_ic[((size_t)k*vv + (size_t)a*nvir+c)*nocc + i];
+                        Wakic[((size_t)a*nocc+k)*nocc*nvir + (size_t)i*nvir+c] = val;
+                    }
+                for (int c = 0; c < nvir; c++)
+                    for (int i = 0; i < nocc; i++) {
+                        real_t val = v_vovo[((size_t)a*nocc+k)*vo + (size_t)c*nocc+i];
+                        for (int l = 0; l < nocc; l++)
+                            val -= v_oovo[((size_t)l*nocc+k)*(size_t)nvir*nocc + (size_t)c*nocc+i] * t1[l*nvir+a];
+                        // d-sum from DGEMM: ovvv_t1_dc[(k*vv + a*nvir+c)*nocc + i]
+                        val += ovvv_t1_dc[((size_t)k*vv + (size_t)a*nvir+c)*nocc + i];
+                        Wakci[((size_t)a*nocc+k)*nvir*nocc + (size_t)c*nocc+i] = val;
+                    }
+            }
+
+        // DGEMM for Wakic/Wakci ld-sum terms
+        // eff_t2[T2(i,l,d,a)] = -0.5*t2[i,l,d,a] - t1[i,d]*t1[l,a]
+        // Reshape: eff_t2_R[(l*nvir+d), (i*nvir+a)] = eff_t2[T2(i,l,d,a)]
+        //          t2_C[(l*nvir+d), (i*nvir+a)] = t2[T2(i,l,a,d)]
+        {
+            std::vector<real_t> eff_t2_R(OV2);
+            std::vector<real_t> t2_C(OV2);
+            for (int l = 0; l < nocc; l++)
+                for (int d = 0; d < nvir; d++)
+                    for (int i = 0; i < nocc; i++)
+                        for (int a = 0; a < nvir; a++) {
+                            size_t row = l*nvir+d;
+                            size_t col = i*nvir+a;
+                            eff_t2_R[row*ov + col] = -0.5*t2v[T2(i,l,d,a)] - t1[i*nvir+d]*t1[l*nvir+a];
+                            t2_C[row*ov + col] = t2v[T2(i,l,a,d)];
+                        }
+
+            // Wakic ld-sum: R_AB[ia,kc] = eff_t2_R^T × V_R (terms A+B)
+            // Upload eff_t2_R to d_Wex_B (persists for reuse in Wakci DGEMM below)
+            q_ct1.memcpy(d_Wex_B, eff_t2_R.data(), OV2 * sizeof(double)).wait();
+            gpu::matrixMatrixProductRect(d_Wex_B, d_V_R, d_Wex_C1,
+                                    (int)ov, (int)ov, (int)ov, true, false, false, 1.0);
+            // Wakic ld-sum: R_C[ia,kc] += 0.5 * t2_C^T × W_R (term C)
+            q_ct1.memcpy(d_Wex_A, t2_C.data(), OV2 * sizeof(double)).wait();
+            gpu::matrixMatrixProductRect(d_Wex_A, d_W_R, d_Wex_C1,
+                                    (int)ov, (int)ov, (int)ov, true, false, true, 0.5);
+            // Wakci ld-sum: R_Wakci[ia,kc] = eff_t2_R^T × V_R2 (reuse d_Wex_B)
+            gpu::matrixMatrixProductRect(d_Wex_B, d_V_R2, d_Wex_C2,
+                                    (int)ov, (int)ov, (int)ov, true, false, false, 1.0);
+
+            // Download and scatter into Wakic/Wakci
+            std::vector<real_t> R_Wakic(OV2), R_Wakci(OV2);
+            q_ct1.memcpy(R_Wakic.data(), d_Wex_C1, OV2 * sizeof(double));
+            q_ct1.memcpy(R_Wakci.data(), d_Wex_C2, OV2 * sizeof(double)).wait();
+            for (int a = 0; a < nvir; a++)
+                for (int k = 0; k < nocc; k++)
+                    for (int i = 0; i < nocc; i++)
+                        for (int c = 0; c < nvir; c++) {
+                            Wakic[((size_t)a*nocc+k)*nocc*nvir + (size_t)i*nvir+c] +=
+                                R_Wakic[(size_t)(i*nvir+a)*ov + k*nvir+c];
+                            Wakci[((size_t)a*nocc+k)*nvir*nocc + (size_t)c*nocc+i] +=
+                                R_Wakci[(size_t)(i*nvir+a)*ov + k*nvir+c];
+                        }
+        }
+
+        // ---- T1 update ----
+        // t1(i,a)*D = Ltilde^a_c*t1(i,c) - Ltilde^k_i*t1(k,a)
+        //           + 2*F^k_c*t2(k,i,c,a) - F^k_c*t2(i,k,c,a) + F^k_c*t1(i,c)*t1(k,a)
+        //           + w^{ak}_{ic}*t1(k,c)
+        //           + w^{ak}_{cd}*t2(i,k,c,d) + w^{ak}_{cd}*t1(i,c)*t1(k,d)   -- wait: should be sum
+        //           - w^{kl}_{ic}*t2(k,l,a,c) - w^{kl}_{ic}*t1(k,a)*t1(l,c)
+        // where Ltilde = L - diagonal part (but for canonical HF, f_diag is removed, so Ltilde = L - 0? No...)
+        // Actually Ltilde^a_c = L^a_c for c!=a, Ltilde^a_a = L^a_a (no diagonal subtraction needed since
+        // we compute F without the diagonal Fock contribution, but actually the formula says
+        // "Ftilde^a_c = F^a_c - delta_{ac} * D_i^a" ... hmm.
+        // For canonical HF with the way we defined F (without diagonal Fock), Ltilde = L.
+        // The D_i^a denominator is applied at the end, so Ltilde = L.
+        // T1 w_ovvv DGEMM: Result[a,i] = w_ovvv_R[nvir, nocc*vv] × tau[nocc, nocc*vv]^T
+        // w_ovvv_R[a, k*vv+c*nvir+d] = w_ovvv[k*vvv+a*vv+d*nvir+c] (pre-computed)
+        // Use persistent d_w_ovvv_R buffer (uploaded once before the loop)
+        // d_Fkc reuse as result buffer (size ov = nvir*nocc, sufficient)
+        gpu::matrixMatrixProductRect(d_w_ovvv_R, d_tau, d_Fkc,
+                                nvir, nocc, (int)(nocc * vv),
+                                false, true, false, 1.0);
+        std::vector<real_t> t1_wovvv(ov);
+        q_ct1.memcpy(t1_wovvv.data(), d_Fkc, ov * sizeof(double)).wait();
+
+        std::vector<real_t> newT1(t1Size, 0.0);
+        for (int i = 0; i < nocc; i++)
+            for (int a = 0; a < nvir; a++) {
+                real_t val = 0.0;
+                // Fac * t1
+                for (int c = 0; c < nvir; c++)
+                    val += Fac[a*nvir+c] * t1[i*nvir+c];
+                // -Fki * t1
+                for (int k = 0; k < nocc; k++)
+                    val -= Fki[k*nocc+i] * t1[k*nvir+a];
+                // 2*F^k_c*t2(ki,ca) - F^k_c*t2(ik,ca) + F^k_c*t1(i,c)*t1(k,a)
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++) {
+                        real_t fc = Fkc[k*nvir+c];
+                        val += fc * (2.0*t2v[T2(k,i,c,a)] - t2v[T2(i,k,c,a)] + t1[i*nvir+c]*t1[k*nvir+a]);
+                    }
+                // w_voov[a,k,i,c] * t1(k,c)
+                for (int k = 0; k < nocc; k++)
+                    for (int c = 0; c < nvir; c++)
+                        val += w_voov[((size_t)a*nocc+k)*(size_t)nocc*nvir + (size_t)i*nvir+c] * t1[k*nvir+c];
+                // w_ovvv term via DGEMM (computed above)
+                val += t1_wovvv[a*nocc+i];
+                // -w_ooov[k,l,i,c] * (t2(kl,ac) + t1(k,a)*t1(l,c))
+                for (int k = 0; k < nocc; k++)
+                    for (int l = 0; l < nocc; l++)
+                        for (int c = 0; c < nvir; c++)
+                            val -= w_ooov[((size_t)k*nocc+l)*ov + (size_t)i*nvir+c] * (t2v[T2(k,l,a,c)] + t1[k*nvir+a]*t1[l*nvir+c]);
+                newT1[i*nvir+a] = val / Dia[i*nvir+a];
+            }
+
+        // ---- T2 update ----
+        // raw(i,a,j,b) computed, then t2_new(i,j,a,b) = [raw(i,a,j,b) + raw(j,b,i,a)] / D
+        // This is the P(ia,jb) symmetrization.
+        //
+        // raw(i,a,j,b) = 0.5*v^{ij}_{ab}
+        //   + 0.5*sum_{kl} W^{kl}_{ij} * (t2(k,l,a,b) + t1(k,a)*t1(l,b))
+        //   + 0.5*sum_{cd} W^{ab}_{cd} * (t2(i,j,c,d) + t1(i,c)*t1(j,d))
+        //   + Ltilde^a_c * t2(i,j,c,b)
+        //   - Ltilde^k_i * t2(k,j,a,b)
+        //   + v^{ab}_{ic} * t1(j,c)
+        //   - sum_k v^{kb}_{ic} * t1(k,a) * t1(j,c)  -- wait, this should be -v^{kb}_{ic}*t1(k,a)*t1(j,c)
+        //   - v^{ak}_{ij} * t1(k,b)
+        //   - v^{ak}_{ic} * t1(j,c) * t1(k,b)   -- from the formula
+        //   + sum_k 2*W^{ak}_{ic}*t2(k,j,c,b) - W^{ak}_{ci}*t2(k,j,c,b) - W^{ak}_{ic}*t2(k,j,b,c)
+        //   - sum_k W^{bk}_{ci}*t2(k,j,a,c)
+
+        // ---- GPU DGEMM for Wabcd×tau and Wklij×tau ----
+        // d_Wabcd already on GPU from build_Wabcd_kernel above
+        q_ct1.memcpy(d_Wklij, Wklij.data(), oo * oo * sizeof(double)).wait();
+        q_ct1.memset(d_raw, 0, t2Size * sizeof(double)).wait();
+
+        // raw[ij,ab] += 0.5 * tau[ij,cd] * Wabcd[ab,cd]^T
+        gpu::matrixMatrixProductRect(d_tau, d_Wabcd, d_raw,
+                                (int)oo, (int)vv, (int)vv,
+                                false, true, true, 0.5);
+
+        // raw[ij,ab] += 0.5 * Wklij^T[ij,kl] * tau[kl,ab]
+        gpu::matrixMatrixProductRect(d_Wklij, d_tau, d_raw,
+                                (int)oo, (int)vv, (int)oo,
+                                true, false, true, 0.5);
+
+        // ---- GPU batched DGEMM for Lac×t2 → d_raw (before download) ----
+        // For each ij: raw[ij,ab] += Lac[a,c] × t2v[ij,cb]
+        // d_t2v already contains t2v from upload at start of iteration
+        q_ct1.memcpy(d_Lac, Lac.data(), vv * sizeof(double)).wait();
+        gpu::matrixMatrixProductBatched(d_Lac, d_t2v, d_raw,
+                                    nvir, nvir, nvir,
+                                    0, (long long)vv, (long long)vv,
+                                    (int)oo,
+                                    false, false, true, 1.0);
+
+        // Download raw (now includes Wabcd×tau + Wklij×tau + Lac×t2)
+        std::vector<real_t> raw(t2Size);
+        q_ct1.memcpy(raw.data(), d_raw, t2Size * sizeof(double)).wait();
+
+        // ---- W exchange terms via DGEMM ----
+        // Term 1+2: sum_{kc} (2*Wakic[a,k,i,c] - Wakci[a,k,c,i]) * t2[k,j,c,b]
+        //   DGEMM: Weff[ai,kc] × t2_R1[kc,jb]  →  R12[ai,jb]
+        // Term 3: -sum_{kc} Wakic[a,k,i,c] * t2[k,j,b,c]
+        //   DGEMM: -Wakic_R[ai,kc] × t2_R3[kc,jb]  →  R12[ai,jb] (accumulate)
+        // Term 4: -sum_{kc} Wakci[b,k,c,i] * t2[k,j,a,c]
+        //   DGEMM: -Wakci_R[bi,kc] × t2_R4[kc,ja]  →  R4[bi,ja]
+        {
+            std::vector<real_t> Weff(OV2), Wakic_R(OV2), Wakci_R_mat(OV2);
+            std::vector<real_t> t2_R1(OV2), t2_R3(OV2), t2_R4(OV2);
+
+            // Build reshaped W intermediates
+            for (int a = 0; a < nvir; a++)
+                for (int i = 0; i < nocc; i++)
+                    for (int k = 0; k < nocc; k++)
+                        for (int c = 0; c < nvir; c++) {
+                            size_t row = a*nocc+i;
+                            size_t col = k*nvir+c;
+                            real_t wic = Wakic[((size_t)a*nocc+k)*nocc*nvir + (size_t)i*nvir+c];
+                            real_t wci = Wakci[((size_t)a*nocc+k)*nvir*nocc + (size_t)c*nocc+i];
+                            Weff[row*ov + col] = 2.0*wic - wci;
+                            Wakic_R[row*ov + col] = wic;
+                        }
+            for (int b = 0; b < nvir; b++)
+                for (int i = 0; i < nocc; i++)
+                    for (int k = 0; k < nocc; k++)
+                        for (int c = 0; c < nvir; c++)
+                            Wakci_R_mat[(b*nocc+i)*ov + k*nvir+c] =
+                                Wakci[((size_t)b*nocc+k)*nvir*nocc + (size_t)c*nocc+i];
+
+            // Build reshaped t2
+            for (int k = 0; k < nocc; k++)
+                for (int c = 0; c < nvir; c++)
+                    for (int j = 0; j < nocc; j++)
+                        for (int b = 0; b < nvir; b++) {
+                            size_t row = k*nvir+c;
+                            size_t col = j*nvir+b;
+                            t2_R1[row*ov + col] = t2v[T2(k,j,c,b)];
+                            t2_R3[row*ov + col] = t2v[T2(k,j,b,c)];
+                        }
+            for (int k = 0; k < nocc; k++)
+                for (int c = 0; c < nvir; c++)
+                    for (int j = 0; j < nocc; j++)
+                        for (int a = 0; a < nvir; a++)
+                            t2_R4[(k*nvir+c)*ov + j*nvir+a] = t2v[T2(k,j,a,c)];
+
+            // DGEMM 1: R12 = Weff × t2_R1  (terms 1+2)
+            q_ct1.memcpy(d_Wex_A, Weff.data(), OV2 * sizeof(double));
+            q_ct1.memcpy(d_Wex_B, t2_R1.data(), OV2 * sizeof(double)).wait();
+            gpu::matrixMatrixProductRect(d_Wex_A, d_Wex_B, d_Wex_C1,
+                                    (int)ov, (int)ov, (int)ov, false, false, false, 1.0);
+            // DGEMM 2: R12 -= Wakic_R × t2_R3  (term 3, accumulate)
+            q_ct1.memcpy(d_Wex_A, Wakic_R.data(), OV2 * sizeof(double));
+            q_ct1.memcpy(d_Wex_B, t2_R3.data(), OV2 * sizeof(double)).wait();
+            gpu::matrixMatrixProductRect(d_Wex_A, d_Wex_B, d_Wex_C1,
+                                    (int)ov, (int)ov, (int)ov, false, false, true, -1.0);
+            // DGEMM 3: R4 = -Wakci_R × t2_R4  (term 4)
+            q_ct1.memcpy(d_Wex_A, Wakci_R_mat.data(), OV2 * sizeof(double));
+            q_ct1.memcpy(d_Wex_B, t2_R4.data(), OV2 * sizeof(double)).wait();
+            gpu::matrixMatrixProductRect(d_Wex_A, d_Wex_B, d_Wex_C2,
+                                    (int)ov, (int)ov, (int)ov, false, false, false, -1.0);
+
+            // Download results
+            std::vector<real_t> R12(OV2), R4(OV2);
+            q_ct1.memcpy(R12.data(), d_Wex_C1, OV2 * sizeof(double));
+            q_ct1.memcpy(R4.data(), d_Wex_C2, OV2 * sizeof(double)).wait();
+
+            // Scatter W exchange DGEMM results into raw
+            for (int i = 0; i < nocc; i++)
+                for (int j = 0; j < nocc; j++)
+                    for (int a = 0; a < nvir; a++)
+                        for (int b = 0; b < nvir; b++)
+                            raw[T2(i,j,a,b)] += R12[(a*nocc+i)*ov + j*nvir+b]
+                                               + R4[(b*nocc+i)*ov + j*nvir+a];
+        }
+
+        // ---- GPU DGEMM for Z×t1 → raw contribution ----
+        // Z[(ab)*ov + i*nvir+c] stored as [vv*nocc, nvir] (c is contiguous)
+        // result[(ab*nocc+i), j] = sum_c Z[(ab*nocc+i), c] × t1^T[c, j]
+        // = DGEMM: [vv*nocc, nocc] = Z[vv*nocc, nvir] × t1^T[nvir, nocc]
+        // Then: raw[T2(i,j,a,b)] += result[(a*nvir+b)*nocc + i, j]
+        std::vector<real_t> Z(vv * ov);
+        std::copy(v_vvov.begin(), v_vvov.end(), Z.begin());
+        for (int a = 0; a < nvir; a++)
+            for (int b = 0; b < nvir; b++)
+                for (int i = 0; i < nocc; i++)
+                    for (int c = 0; c < nvir; c++) {
+                        size_t z_idx = ((size_t)a*nvir+b)*ov + (size_t)i*nvir+c;
+                        for (int k = 0; k < nocc; k++) {
+                            Z[z_idx] -= v_ovov[((size_t)k*nvir+b)*ov + (size_t)i*nvir+c] * t1[k*nvir+a];
+                            Z[z_idx] -= v_voov[((size_t)a*nocc+k)*(size_t)nocc*nvir + (size_t)i*nvir+c] * t1[k*nvir+b];
+                        }
+                    }
+
+        // Z×t1 DGEMM: result[vv*nocc, nocc] = Z[vv*nocc, nvir] × t1^T[nvir, nocc]
+        q_ct1.memcpy(d_Z, Z.data(), vv * ov * sizeof(double)).wait();
+        // d_t1 already on GPU; result goes into d_ovvv_t1 (scratch, avoids overwriting d_t2v)
+        gpu::matrixMatrixProductRect(d_Z, d_t1, d_ovvv_t1,
+                                (int)(vv * nocc), nocc, nvir,
+                                false, true, false, 1.0);
+        std::vector<real_t> Zt1_result(vv * oo);
+        q_ct1.memcpy(Zt1_result.data(), d_ovvv_t1, vv * oo * sizeof(double)).wait();
+
+        // Build Q (small: O(nocc² × vv))
+        std::vector<real_t> Q(vv * oo);
+        for (int a = 0; a < nvir; a++)
+            for (int b = 0; b < nvir; b++)
+                for (int i = 0; i < nocc; i++)
+                    for (int j = 0; j < nocc; j++) {
+                        real_t val = 0.0;
+                        for (int k = 0; k < nocc; k++)
+                            val += v_vooo[((size_t)a*nocc+k)*oo + (size_t)i*nocc+j] * t1[k*nvir+b];
+                        Q[((size_t)a*nvir+b)*oo + (size_t)i*nocc+j] = val;
+                    }
+
+        // Reduced inner loop: only O(nocc) per (i,j,a,b) — Lac×t2 and Z×t1 done via DGEMM
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int a = 0; a < nvir; a++)
+                    for (int b = 0; b < nvir; b++) {
+                        size_t idx = T2(i,j,a,b);
+                        real_t val = 0.5 * v_oovv[((size_t)i*nocc+j)*vv + (size_t)a*nvir+b];
+
+                        // -Lki * t2 (O(nocc) inner loop — small)
+                        for (int k = 0; k < nocc; k++)
+                            val -= Lki[k*nocc+i] * t2v[T2(k,j,a,b)];
+
+                        // Z×t1 DGEMM result scatter
+                        val += Zt1_result[((size_t)a*nvir+b)*oo + (size_t)i*nocc+j];
+
+                        // -Q[ab,ij]
+                        val -= Q[((size_t)a*nvir+b)*oo + (size_t)i*nocc+j];
+
+                        raw[idx] += val;
+                    }
+
+        // Symmetrize: t2_new(i,j,a,b) = [raw(i,a,j,b) + raw(j,b,i,a)] / D
+        // raw is stored as raw[T2(i,j,a,b)] = raw(i,a,j,b)
+        // so raw(j,b,i,a) = raw[T2(j,i,b,a)]
+        std::vector<real_t> newT2(t2Size);
+        for (int i = 0; i < nocc; i++)
+            for (int j = 0; j < nocc; j++)
+                for (int a = 0; a < nvir; a++)
+                    for (int b = 0; b < nvir; b++) {
+                        size_t idx = T2(i,j,a,b);
+                        newT2[idx] = (raw[idx] + raw[T2(j,i,b,a)]) / Dijab[idx];
+                    }
+
+        // ---- DIIS ----
+        std::vector<real_t> ampVec(num_amps);
+        std::vector<real_t> errVec(num_amps);
+        for (size_t k = 0; k < t1Size; k++) {
+            ampVec[k] = newT1[k];
+            errVec[k] = newT1[k] - t1[k];
+        }
+        for (size_t k = 0; k < t2Size; k++) {
+            ampVec[t1Size + k] = newT2[k];
+            errVec[t1Size + k] = newT2[k] - t2v[k];
+        }
+        diis.push(ampVec, errVec);
+        if (diis.can_extrapolate()) {
+            auto extrap = diis.extrapolate();
+            for (size_t k = 0; k < t1Size; k++) newT1[k] = extrap[k];
+            for (size_t k = 0; k < t2Size; k++) newT2[k] = extrap[t1Size + k];
+        }
+
+        for (size_t k = 0; k < t1Size; k++) t1[k] = newT1[k];
+        for (size_t k = 0; k < t2Size; k++) t2v[k] = newT2[k];
+
+        real_t newEcc = energy();
+        real_t deltaE = newEcc - Ecc;
+        Ecc = newEcc;
+
+        std::cout << "CCSD iter " << std::setw(2) << iter
+                  << ": E = " << std::fixed << std::setprecision(12) << Ecc
+                  << ", dE = " << std::scientific << std::setprecision(4) << deltaE
+                  << std::endl;
+
+        if (std::abs(deltaE) < CONV) {
+            std::cout << "CCSD converged after " << iter << " iterations" << std::endl;
+            break;
+        }
+    }
+
+    // Free pre-allocated GPU buffers
+    tracked_syclFree(d_gpu_pool);  // single deallocation for all GPU buffers
+
+    // ---- (T) perturbative triples correction (spatial orbital, DGEMM-accelerated) ----
+    // Pre-compute ALL f-sum and m-sum contractions via 2 large DGEMMs:
+    //   F_sum[(i*vv+ab), (kj*nvir+c)] = sum_f V_full[i*vv+ab, f] * t2v[kj*nvir+c, f]
+    //   M_sum[(aa*oo+ji), (k*vv+bc)]  = -v_vooo[aa*oo+ji, m] * t2v_H[m, k*vv+bc]
+    // Then the inner loop over (a,b,c) does only lookups (no contractions).
+    if (computing_ccsd_t && ccsd_t_energy) {
+        std::cout << "---- Computing (T) correction (spatial orbital, DGEMM) ----" << std::endl;
+        std::string str = "Computing (T) correction energy... ";
+        PROFILE_ELAPSED_TIME(str);
+
+        const size_t o3 = (size_t)nocc * nocc * nocc;
+        const size_t ov_sz = (size_t)nocc * nvir;
+        real_t E_T = 0.0;
+
+        // ---- DGEMM 1: F_sum for all f-sums ----
+        // V_full[(i*vv+ab), f] = v_ovvv[i*vvv + f*vv + ab]  (transpose f,ab within each i)
+        // T2_mat[(kj*nvir+c), f] = t2v[kj*vv + c*nvir + f]  (= t2v as-is, since vv=nvir²)
+        // F_sum = V_full × T2_mat^T  →  [nocc*vv × oo*nvir]
+        const size_t F_rows = (size_t)nocc * vv;    // nocc * nvir²
+        const size_t F_cols = oo * nvir;             // nocc² * nvir
+        std::vector<real_t> V_full(F_rows * nvir);
+        for (int i = 0; i < nocc; i++)
+            for (int ab = 0; ab < (int)vv; ab++)
+                for (int f = 0; f < nvir; f++)
+                    V_full[((size_t)i*vv + ab)*nvir + f] = v_ovvv[(size_t)i*vvv + (size_t)f*vv + ab];
+
+        // t2v is already in the right layout for T2_mat: t2v[row*nvir + f] where row = kj*nvir+c
+        // DGEMM: F_sum[F_rows × F_cols] = V_full[F_rows × nvir] × t2v^T[nvir × F_cols]
+        const size_t F_total = F_rows * F_cols;
+        double *d_V_full= tracked_syclMalloc<double>(F_rows * nvir, q_ct1);
+        double *d_T2_mat= tracked_syclMalloc<double>(t2Size, q_ct1);
+        double *d_F_sum= tracked_syclMalloc<double>(F_total, q_ct1);
+
+        q_ct1.memcpy(d_V_full, V_full.data(), F_rows * nvir * sizeof(double));
+        q_ct1.memcpy(d_T2_mat, t2v.data(), t2Size * sizeof(double)).wait();
+        gpu::matrixMatrixProductRect(d_V_full, d_T2_mat, d_F_sum,
+                                (int)F_rows, (int)F_cols, nvir,
+                                false, true, false, 1.0);
+
+        tracked_syclFree(d_V_full);
+        // d_F_sum stays on GPU for the kernel
+
+        // ---- DGEMM 2: M_sum for all m-sums ----
+        // G[(aa*oo+ji), m] = v_vooo[(aa*nocc+j)*oo + i*nocc + m]  (= v_vooo as-is)
+        // H[m, k*vv+bc] = t2v[(m*nocc+k)*vv + bc]  (= t2v viewed as [nocc × nocc*vv])
+        // M_sum = -G × H  →  [(nvir*oo) × (nocc*vv)]
+        const size_t M_rows = (size_t)nvir * oo;  // = vo * nocc
+        const size_t M_cols = (size_t)nocc * vv;   // = t2Size / nocc actually = nocc * vv
+        const size_t M_total = M_rows * M_cols;
+
+        double *d_G=tracked_syclMalloc<double>(M_rows, q_ct1);
+        double *d_M_sum=tracked_syclMalloc<double>(M_total, q_ct1);
+
+        q_ct1.memcpy(d_G, v_vooo.data(), M_rows * nocc * sizeof(double)).wait();
+        // d_T2_mat is still valid (t2v as [nocc × nocc*vv])
+        gpu::matrixMatrixProductRect(d_G, d_T2_mat, d_M_sum,
+                                (int)M_rows, (int)M_cols, nocc,
+                                false, false, false, -1.0);
+
+        tracked_syclFree(d_G);
+        tracked_syclFree(d_T2_mat);
+        // d_M_sum stays on GPU for the kernel
+
+        // ---- GPU kernel for inner loop ----
+        // Enumerate all (a,b,c) triples with a >= b >= c
+        int num_triples = 0;
+        for (int a = 0; a < nvir; a++)
+            for (int b = 0; b <= a; b++)
+                for (int c = 0; c <= b; c++)
+                    num_triples++;
+
+        std::vector<int> abc_triples(num_triples * 3);
+        {
+            int idx = 0;
+            for (int a = 0; a < nvir; a++)
+                for (int b = 0; b <= a; b++)
+                    for (int c = 0; c <= b; c++) {
+                        abc_triples[idx*3]   = a;
+                        abc_triples[idx*3+1] = b;
+                        abc_triples[idx*3+2] = c;
+                        idx++;
+                    }
+        }
+
+        // Upload auxiliary arrays to GPU
+        double *d_v_oovv_t=tracked_syclMalloc<double>(oo * vv, q_ct1);
+        double *d_t1_t=tracked_syclMalloc<double>(ov, q_ct1);
+        double *d_eps_t=tracked_syclMalloc<double>(N, q_ct1);
+        int *d_abc=tracked_syclMalloc<int>(num_triples * 3, q_ct1);
+        double *d_block_ET=tracked_syclMalloc<double>(num_triples, q_ct1);
+
+        q_ct1.memcpy(d_v_oovv_t, v_oovv.data(), oo * vv * sizeof(double));
+        q_ct1.memcpy(d_t1_t, t1.data(), ov * sizeof(double));
+        q_ct1.memcpy(d_eps_t, eps.data(), N * sizeof(double));
+        q_ct1.memcpy(d_abc, abc_triples.data(), num_triples * 3 * sizeof(int));
+
+        // Launch kernel: one block per (a,b,c) triple
+        const int blockSize = 128;
+        {
+            q_ct1.submit([&](sycl::handler &cgh) {
+                sycl::local_accessor<double, 1> wt   (sycl::range<1>(6 * o3), cgh);
+                sycl::local_accessor<double, 1> zt   (sycl::range<1>(6 * o3), cgh);
+                sycl::local_accessor<double, 1> r3buf(sycl::range<1>(o3),     cgh);
+                cgh.parallel_for(
+                    sycl::nd_range<1>(num_triples * blockSize, blockSize),
+                    [=](sycl::nd_item<1> item) {
+                        ccsd_t_energy_kernel( item, wt, zt, r3buf,
+                            d_F_sum, (int)F_cols, d_M_sum, (int)M_cols,
+                            d_v_oovv_t, d_t1_t, d_eps_t, nocc, nvir, d_abc,
+                            num_triples, d_block_ET);
+                    });
+            });
+        }
+        q_ct1.wait_and_throw();
+
+        // Download partial sums and accumulate
+        std::vector<double> block_ET(num_triples);
+        q_ct1.memcpy(block_ET.data(), d_block_ET, num_triples * sizeof(double))
+            .wait();
+
+        for (int i = 0; i < num_triples; i++)
+            E_T += block_ET[i];
+
+        // Free GPU memory
+        tracked_syclFree(d_F_sum);
+        tracked_syclFree(d_M_sum);
+        tracked_syclFree(d_v_oovv_t);
+        tracked_syclFree(d_t1_t);
+        tracked_syclFree(d_eps_t);
+        tracked_syclFree(d_abc);
+        tracked_syclFree(d_block_ET);
+
+        E_T *= 2.0;
+        *ccsd_t_energy = E_T;
+        std::cout << "(T) correction energy: " << std::fixed << std::setprecision(12) << E_T << std::endl;
+    }
+
+    return Ecc;
+}
+
+
+// ============================================================
+//  Legacy spin-orbital CCSD implementation (kept for reference/fallback)
+// ============================================================
 real_t
 ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
                                const real_t *__restrict__ d_coefficient_matrix,
@@ -3932,10 +6720,6 @@ real_t ERI_Stored_RHF::compute_ccsd_energy() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// CCSD(T) implementation
-
-
-
-
 
 real_t ERI_Stored_RHF::compute_ccsd_t_energy() {
     PROFILE_FUNCTION();

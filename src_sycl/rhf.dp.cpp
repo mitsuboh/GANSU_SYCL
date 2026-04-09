@@ -1,5 +1,4 @@
 /*
-e>>>>>> upstream/main
  * GANSU: GPU Accelerated Numerical Simulation Utility
  *
  * Copyright (c) 2025-2026, Mitsuru Ikei
@@ -20,9 +19,7 @@ e>>>>>> upstream/main
  */
 
 #include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 #include "rhf.hpp"
-
 #include <limits> // numeric_limits<double>::max();
 #include <iomanip> // std::setprecision
 
@@ -75,7 +72,12 @@ RHF::RHF(const Molecular& molecular, const ParameterManager& parameters) :
     // Set an algorithm for ERI calculation (default: ERI_Stored_RHF)
     const std::string eri_method = parameters.get<std::string>("eri_method");
     if(eri_method == "stored"){ // ERI matrices are stored in the device memory
-        set_eri_method(std::make_unique<ERI_Stored_RHF>(*this));
+        auto eri_stored = std::make_unique<ERI_Stored_RHF>(*this);
+        // Set CCSD algorithm: 0=spatial-optimized, 1=spatial-naive, 2=spin-orbital
+        if (parameters.contains("ccsd_algorithm")) {
+            eri_stored->set_ccsd_algorithm(parameters.get<int>("ccsd_algorithm"));
+        }
+        set_eri_method(std::move(eri_stored));
     }else if(eri_method == "ri"){ // Resolution of Identity (RI) method
         const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
         Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
@@ -142,6 +144,8 @@ void RHF::post_process_after_scf() {
     if(post_hf_method == PostHFMethod::None){
         post_hf_energy_ = 0.0;
         return; // do nothing
+    }else if(post_hf_method == PostHFMethod::FCI){
+        post_hf_energy_ = eri_method_->compute_fci_energy();
     }else if(post_hf_method == PostHFMethod::MP2){
         post_hf_energy_ = eri_method_->compute_mp2_energy();
     }else if(post_hf_method == PostHFMethod::MP3){
@@ -354,7 +358,7 @@ void RHF::report() {
     HF::report(); // prints the information of the input molecular and basis set
     if(is_mulliken_analysis_){
         std::cout << std::endl;
-        std::cout << "Mulliken population" << std::endl;
+        std::cout << "[Mulliken population]" << std::endl;
         const auto& mulliken_population = analyze_mulliken_population();
         for(size_t i=0; i<atoms.size(); i++){
             std::cout << "Atom " << i << " " << atomic_number_to_element_name(atoms[i].atomic_number) << ": " << std::setprecision(6) << mulliken_population[i] << std::endl;
@@ -436,7 +440,9 @@ workq.memcpy(eps.data(), orbital_energies.device_ptr(), N * sizeof(real_t)).wait
         std::cout << std::endl;
         std::cout << "[Calculation Summary (Post-HF)]" << std::endl;
         std::cout << "Post-HF method: ";
-        if(get_post_hf_method() == PostHFMethod::MP2){
+        if(get_post_hf_method() == PostHFMethod::FCI){
+            std::cout << "FCI" << std::endl;
+        }else if(get_post_hf_method() == PostHFMethod::MP2){
             std::cout << "MP2" << std::endl;
         }else if(get_post_hf_method() == PostHFMethod::MP3){
             std::cout << "MP3" << std::endl;
@@ -446,7 +452,7 @@ workq.memcpy(eps.data(), orbital_energies.device_ptr(), N * sizeof(real_t)).wait
             std::cout << "CCSD(T)" << std::endl;
         }
         std::cout << "Post-HF energy correction: " << std::setprecision(17) << get_post_hf_energy() << " [hartree]" << std::endl;
-        std::cout << "Total Energy (including post-HF correction): " << std::setprecision(17) << get_total_energy() + get_post_hf_energy    () << " [hartree]" << std::endl;
+        std::cout << "Total Energy (including post-HF correction): " << std::setprecision(17) << get_total_energy() + get_post_hf_energy() << " [hartree]" << std::endl;
     }
 }
 
@@ -662,15 +668,15 @@ std::vector<std::vector<real_t>> RHF::compute_mayer_bond_order() const{
 }
 
 
-std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order()  {
+std::vector<std::vector<real_t>> RHF::compute_wiberg_bond_order() {
     std::vector<std::vector<real_t>> wiberg_bond_order_matrix(atoms.size(), std::vector<real_t>(atoms.size(), 0.0));
 
     std::vector<real_t> temp_matrix(num_basis * num_basis, 0.0); // temporary matrix to store S^{1/2} * D * S^{1/2}
 
     // Compute S^{1/2}
     gpu::computeSqrtOverlapDensitySqrtOverlapMatrix(
-        density_matrix.device_ptr(),
         overlap_matrix.device_ptr(),
+        density_matrix.device_ptr(),
         temp_matrix.data(),
         num_basis
     );

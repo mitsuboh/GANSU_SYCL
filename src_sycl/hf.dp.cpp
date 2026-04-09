@@ -82,6 +82,9 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     if(post_hf_method_str == "none"){
         std::cout << "Message: Post-HF method is not selected." << std::endl;
         post_hf_method_ = PostHFMethod::None;
+    }else if(post_hf_method_str == "fci"){
+        std::cout << "Message: Post-HF method is FCI." << std::endl;
+        post_hf_method_ = PostHFMethod::FCI;
     }else if(post_hf_method_str == "mp2"){
         std::cout << "Message: Post-HF method is MP2." << std::endl;
         post_hf_method_ = PostHFMethod::MP2;
@@ -112,6 +115,11 @@ HF::HF(const Molecular& molecular, const ParameterManager& parameters) :
     }
 
     // for Schwarz screening in Stored ERI and Direct SCF
+    int sum = 0;
+    for (const auto& x : shell_type_infos) {
+        sum += x.count;
+    }
+    num_primitive_shells = sum;
     num_primitive_shell_pairs = gpu::makeShellPairTypeInfo(shell_type_infos, shell_pair_type_infos);
 
 

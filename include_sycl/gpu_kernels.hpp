@@ -271,6 +271,32 @@ inline void sum_matrices_kernel(sycl::nd_item<1> item_ct1, double *d_K, const do
 }
 
 //SYCL_EXTERNAL void computeFockMatrix_RHF_kernel( const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis, sycl::local_accessor<real_t, 1> s_F_ij);
+inline void computeFockMatrix_RHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis)
+{
+    real_t sum = 0.0;
+    const int bra = item.get_group_linear_id();
+    const int i = bra / num_basis;
+    const int j = bra % num_basis;
+    const size_t lid = item.get_local_linear_id();
+    const int lsize  = item.get_local_range(0);
+
+    for (int l = lid; l < num_basis; l += lsize) {
+        for (int k = 0; k < num_basis; ++k) {
+            size_t eid1 = get_1d_indexM4(i, j, k, l, num_basis);
+            size_t eid2 = get_1d_indexM4(i, k, j, l, num_basis);
+            sum += (d_eri[eid1] - static_cast<real_t>(0.5) * d_eri[eid2]) * d_density_matrix[k * num_basis + l];
+        }
+    }
+
+    // ---- block reduction ----
+    sum = sycl::reduce_over_group(item.get_group(), sum, sycl::plus<real_t>());
+
+    if (lid == 0) {
+        d_fock_matrix[bra] = sum + d_core_hamiltonian_matrix[bra];
+    }
+}
+
+/*
 inline void computeFockMatrix_RHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix, int num_basis,
       sycl::local_accessor<real_t, 1> sdata)
 {
@@ -309,6 +335,7 @@ inline void computeFockMatrix_RHF_kernel(sycl::nd_item<1> item, const real_t* d_
             sdata[0] + d_core_hamiltonian_matrix[bra];
     }
 }
+*/
 
 //SYCL_EXTERNAL void computeFockMatrix_UHF_kernel( const double *d_density_matrix_a, const double *d_density_matrix_b, const double *d_core_hamiltonian_matrix, const double *d_eri, double *d_fock_matrix_a, double *d_fock_matrix_b, int num_basis, sycl::local_accessor<real_t, 1> s_Fa_ij, sycl::local_accessor<real_t, 1> s_Fb_ij);
 inline void computeFockMatrix_UHF_kernel(sycl::nd_item<1> item, const real_t* d_density_matrix_a, const real_t* d_density_matrix_b, const real_t* d_core_hamiltonian_matrix, const real_t* d_eri, real_t* d_fock_matrix_a, real_t* d_fock_matrix_b, int num_basis,

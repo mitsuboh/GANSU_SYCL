@@ -191,6 +191,68 @@ catch (sycl::exception const& e) {
 }
 }
 
+void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
+    const int M, const int N, const int K,
+    const bool transpose_A, const bool transpose_B, const bool accumulate, const double alpha)
+{
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+
+    double beta = accumulate ? 1.0 : 0.0;
+
+    // 行メジャーの leading dimension
+    int lda = transpose_A ? K : N;  // A の物理幅
+    int ldb = transpose_B ? N : K;  // B の物理幅
+    int ldc = N;                    // C の物理幅
+
+    oneapi::mkl::blas::row_major::gemm(
+        workq,
+        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
+        transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
+        M, N, K,
+        alpha,
+        d_A, lda,
+        d_B, ldb,
+        beta,
+        d_C, ldc
+    );
+}
+
+void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d_C,
+    const int M, const int N, const int K,
+    const long long strideA, const long long strideB, const long long strideC,
+    const int batchCount,
+    const bool transpose_A, const bool transpose_B,
+    const bool accumulate, const double alpha)
+{
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+
+    double beta = accumulate ? 1.0 : 0.0;
+
+    // 行メジャーの leading dimension
+    int lda = transpose_A ? K : N;  // A: M×K or K×M（row-major）
+    int ldb = transpose_B ? N : K;  // B: K×N or N×K
+    int ldc = N;                    // C: M×N
+
+    oneapi::mkl::transpose opA =
+        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
+    oneapi::mkl::transpose opB =
+        transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
+
+    oneapi::mkl::blas::row_major::gemm_batch(
+        workq,
+        opA, opB,
+        M, N, K,
+        alpha,
+        d_A, lda, strideA,
+        d_B, ldb, strideB,
+        beta,
+        d_C, ldc, strideC,
+        batchCount
+    );
+
+    // 必要なら q.wait(); は呼び出し側で制御
+}
+
 /**
  * @brief Computes the weighted sum of two matrices using cuBLAS.
  * @param d_matrix_A Device pointer to the size x size matrix
@@ -263,6 +325,10 @@ void matrixAddition(const double* d_matrix_A, const double* d_matrix_B, double* 
  * @details The matrix subtraction is computed as \f$ C = A - B \f$.
  */
 void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
+    weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
+}
+
+void matrixSubtractionInPlace(const double* d_matrix_A, double* d_matrix_B, double* d_matrix_C, const int size){
     weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
 }
 
@@ -615,8 +681,8 @@ void computeCoreHamiltonianMatrix(
     sycl::range<1> blocks(num_blocks);
     sycl::range<1> threads(threads_per_block);
 
-//launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t num_threads, const int num_basis)
 
+//launch_overlap_kinetic_kernel( int a, int b, real_t* g_overlap, real_t* g_kinetic, const PrimitiveShell *g_shell, const real_t* g_cgto_normalization_factors, const ShellTypeInfo shell_s0, const ShellTypeInfo shell_s1, const size_t num_threads, const int num_basis)
             streams[index].submit([&](sycl::handler& cgh){
 //            sycl::event e1 = streams[index].submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
@@ -725,6 +791,13 @@ void computeERIMatrix(
 //    sycl::context wk_ctx{work_dev} ;
 //    sycl::queue workq;
 
+    // Zero-initialize ERI matrix (kernels use atomicAdd)
+    //cudaMemset(d_eri_matrix, 0, (size_t)num_basis * num_basis * num_basis * num_basis * sizeof(real_t));
+    {
+        const size_t bytes = sizeof(real_t) * static_cast<size_t>(num_basis) * num_basis * num_basis;
+        workq.memset(d_eri_matrix, 0, bytes).wait();
+    }
+
     // compute the electron repulsion integrals
     const int threads_per_block = 256; // the number of threads per block
     const int shell_type_count = shell_type_infos.size();
@@ -785,8 +858,6 @@ void computeERIMatrix(
       sycl::range<1> threads(threads_per_block);
 
           streams[stream_id].submit([&](sycl::handler& cgh){
-// streams produces wrong result -- needs to debug!!
-//          workq.submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                        [=](sycl::nd_item<1> item_ct1) {
                 launch_eri_kernel( item_ct1,
@@ -1055,14 +1126,12 @@ void computeFockMatrix_RHF(const real_t* d_density_matrix, const real_t* d_core_
     sycl::range<1> blocks(static_cast<size_t>(num_blocks));
     sycl::range<1> threads(static_cast<size_t>(threadsPerBlock));
     workq.submit([&](sycl::handler& cgh){
-    sycl::local_accessor<real_t, 1> s_F_ij(sycl::range<1>(static_cast<size_t>(threadsPerBlock)), cgh);
-
     cgh.parallel_for(
         sycl::nd_range<1>(blocks * threads, threads),
         [=](sycl::nd_item<1> item_ct1) {
             computeFockMatrix_RHF_kernel(item_ct1, d_density_matrix,
                                          d_core_hamiltonian_matrix, d_eri,
-                                         d_fock_matrix, num_basis, s_F_ij);
+                                         d_fock_matrix, num_basis);
         });
         });
 }
@@ -1811,7 +1880,6 @@ void invertMatrix(double *d_A, const int N) try {
     workq.wait_and_throw();
 
     tracked_syclFree(d_ipiv);
-    tracked_syclFree(d_work_rf);
     tracked_syclFree(d_work_ri);
 }
 catch (sycl::exception const &exc) {
@@ -2137,6 +2205,275 @@ void computeIntermediateMatrixB(
                 num_basis, num_auxiliary_basis);
         });
 }
+
+
+
+
+//* With density matrix
+//void computeFockMatrix_RI_RHF_with_density_matrix(
+//    const real_t *d_density_matrix, const real_t *d_core_hamiltonian_matrix,
+//    const real_t *d_intermediate_matrix_B, real_t *d_fock_matrix,
+//    const int num_basis, const int num_auxiliary_basis, real_t *d_J,
+//    real_t *d_K, real_t *d_W, real_t *d_T, real_t *d_V) {
+void computeFockMatrix_RI_RHF_with_density_matrix(
+    const real_t* d_density_matrix,
+    const real_t* d_core_hamiltonian_matrix,
+    const real_t* d_intermediate_matrix_B,
+    real_t* d_fock_matrix,
+    const int num_basis,
+    const int num_auxiliary_basis,
+    real_t* d_J,
+    real_t* d_K,
+    real_t* d_W,
+    real_t* d_T,
+    real_t* d_V){
+    sycl::queue& workq = GPUHandle::syclqueue();
+    //cublasManager cublas;
+//    dpct::blas::descriptor_ptr cublasHandle = GPUHandle::cublas();
+
+    // the following is used in the two kernels. So, if necessary, it should be changed for each kernel.
+    const int num_threads = 256;
+    const int num_blocks = (num_basis * num_basis + num_threads - 1) / num_threads;
+
+    double alpha = 1.0;
+    double beta = 0.0;
+
+    ////////////////////////////////// compute J-matrix //////////////////////////////////
+//    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
+    oneapi::mkl::blas::row_major::gemv(
+        workq,
+        oneapi::mkl::transpose::trans,
+        num_basis * num_basis,          // rows of B
+        num_auxiliary_basis,            // cols of B
+        alpha,
+        d_intermediate_matrix_B, num_basis * num_basis,
+        d_density_matrix, 1,
+        beta,
+        d_W, 1
+    );
+    // J = sum(W[i] * B[i])
+    workq.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                   weighted_sum_matrices_kernel( item,
+                       d_J, d_intermediate_matrix_B, d_W, num_basis,
+                       num_auxiliary_basis, false);
+             });
+
+    ////////////////////////////////// compute K-matrix //////////////////////////////////
+    oneapi::mkl::blas::row_major::gemm_batch(
+        workq,
+        oneapi::mkl::transpose::trans,   // A = D^T
+        oneapi::mkl::transpose::nontrans,
+        num_basis, num_basis, num_basis,
+        alpha,
+        d_density_matrix, num_basis, 0,
+        d_intermediate_matrix_B, num_basis, num_basis*num_basis,
+        beta,
+        d_T, num_basis, num_basis*num_basis,
+        num_auxiliary_basis
+    );
+/*
+    cublasDgemmStridedBatched(
+        cublasHandle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        num_basis, num_basis, num_basis,
+        &alpha,
+        d_density_matrix, num_basis, 0,
+        d_intermediate_matrix_B, num_basis, num_basis*num_basis,
+        &beta,
+        d_T, num_basis, num_basis*num_basis,
+        num_auxiliary_basis
+    );
+    cublasDgemmStridedBatched(
+        cublasHandle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        num_basis, num_basis, num_basis,
+        &alpha,
+        d_T, num_basis, num_basis*num_basis,
+        d_intermediate_matrix_B, num_basis, num_basis*num_basis,
+        &beta,
+        d_V, num_basis, num_basis*num_basis,
+        num_auxiliary_basis
+    );
+*/
+    oneapi::mkl::blas::row_major::gemm_batch(
+        workq,
+        oneapi::mkl::transpose::trans,   // A = D^T
+        oneapi::mkl::transpose::nontrans,
+        num_basis, num_basis, num_basis,
+        alpha,
+        d_T, num_basis, num_basis*num_basis,
+        d_intermediate_matrix_B, num_basis, num_basis*num_basis,
+        beta,
+        d_V, num_basis, num_basis*num_basis,
+        num_auxiliary_basis
+    );
+    // K = sum(V^p)
+    workq.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                       sum_matrices_kernel(item, d_K, d_V, num_basis,
+                                       num_auxiliary_basis, false);
+                   });
+
+    ////////////////////////////////// compute Fock matrix //////////////////////////////////
+    // F = H + J - (1/2)*K
+    workq.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                   computeFockMatrix_RI_RHF_kernel(item, 
+                       d_core_hamiltonian_matrix, d_J, d_K,
+                       d_fock_matrix, num_basis);
+             });
+    workq.wait_and_throw();
+}
+/**/
+
+
+
+
+
+
+//* With coefficient matrix
+void packThreeDimensionalTensorX(const sycl::nd_item<1>& item_ct1,
+    const real_t* d_X_in, real_t* d_X_out,
+    const int num_basis, const int num_auxiliary_basis, const int num_occ)
+{
+    const size_t idx = item_ct1.get_global_linear_id();
+    const size_t total_size = (size_t)num_auxiliary_basis * num_basis * num_occ;
+
+    if (idx >= total_size) {
+        return;
+    }
+
+    const int p = idx / (num_basis * num_occ);
+    const int mu = (idx % (num_basis * num_occ)) / num_occ;
+    const int k = (idx % (num_basis * num_occ)) % num_occ;
+
+    d_X_out[((size_t)num_auxiliary_basis * num_occ) * mu + num_occ * p + k] = d_X_in[idx];
+}
+
+
+void computeFockMatrix_RI_RHF_with_coefficient_matrix(
+    const real_t* d_coefficient_matrix,
+    const real_t* d_density_matrix,
+    const real_t* d_core_hamiltonian_matrix,
+    const real_t* d_intermediate_matrix_B,
+    real_t* d_fock_matrix,
+    const int num_basis,
+    const int num_auxiliary_basis,
+    const int num_occ,
+    real_t* d_J,
+    real_t* d_K,
+    real_t* d_W,
+    real_t* d_X,
+    real_t* d_X_packed)
+{
+    sycl::queue& workq = GPUHandle::syclqueue();
+
+    double alpha = 1.0;
+    double beta = 0.0;
+    const int num_threads = 256;
+    const int num_blocks = (num_basis * num_basis + num_threads - 1) / num_threads;
+
+    ////////////////////////////////// compute J-matrix //////////////////////////////////
+    oneapi::mkl::blas::row_major::gemv(
+        workq,
+        oneapi::mkl::transpose::trans,
+        num_basis * num_basis,          // rows of B
+        num_auxiliary_basis,            // cols of B
+        alpha,
+        d_intermediate_matrix_B, num_basis * num_basis,
+        d_density_matrix, 1,
+        beta,
+        d_W, 1
+    );
+    // J = sum(W[i] * B[i])
+    workq.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                   weighted_sum_matrices_kernel( item,
+                       d_J, d_intermediate_matrix_B, d_W, num_basis,
+                       num_auxiliary_basis, false);
+             });
+
+    ////////////////////////////////// compute K-matrix //////////////////////////////////
+    workq.memset(d_K, 0, sizeof(real_t) * num_basis * num_basis).wait();
+    oneapi::mkl::blas::row_major::gemm_batch(
+        workq,
+        oneapi::mkl::transpose::nontrans,
+        oneapi::mkl::transpose::nontrans,
+        num_occ, num_basis, num_basis,
+        alpha,
+        d_coefficient_matrix, num_basis, 0,
+        d_intermediate_matrix_B, num_basis, num_basis*num_basis,
+        beta,
+        d_X, num_occ, num_basis * num_occ,
+        num_auxiliary_basis
+    );
+/*
+    cublasDgemmStridedBatched(
+        cublasHandle,
+        CUBLAS_OP_N, CUBLAS_OP_N,
+        num_occ, num_basis, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis, 0,
+        d_intermediate_matrix_B, num_basis, num_basis * num_basis,
+        &beta,
+        d_X, num_occ, num_basis * num_occ,
+        num_auxiliary_basis
+    );
+*/
+    workq.parallel_for(
+        sycl::nd_range<1>(((num_auxiliary_basis * num_basis * num_occ + num_threads - 1) /
+                    num_threads) * num_threads, num_threads),
+        [=](sycl::nd_item<1> item) {
+            packThreeDimensionalTensorX(item, d_X, d_X_packed, num_basis,
+                                        num_auxiliary_basis, num_occ);
+        });
+    alpha = 2.0;
+    oneapi::mkl::blas::row_major::gemm(
+        workq,
+        oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
+        num_basis, num_basis, num_occ * num_auxiliary_basis,
+        alpha,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        beta,
+        d_K, num_basis
+    );
+/*
+    cublasDgemm(
+        cublasHandle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        num_basis, num_basis, num_occ * num_auxiliary_basis,
+        &alpha,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        d_X_packed, num_occ * num_auxiliary_basis,
+        &beta,
+        d_K, num_basis
+    );
+*/
+
+    ////////////////////////////////// compute Fock matrix //////////////////////////////////
+    // F = H + J - (1/2)*K
+    workq.parallel_for(
+            sycl::nd_range<1>(num_blocks * num_threads, num_threads),
+            [=](sycl::nd_item<1> item) {
+                   computeFockMatrix_RI_RHF_kernel(item, 
+                           d_core_hamiltonian_matrix, d_J, d_K,
+                           d_fock_matrix, num_basis);
+                   });
+    workq.wait_and_throw();
+}
+
+
+
+
+
+
+
 
 void computeFockMatrix_RI_RHF(const real_t *d_density_matrix,
                               const real_t *d_core_hamiltonian_matrix,
@@ -3053,6 +3390,7 @@ void computeFockMatrix_DFT_kernel( sycl::queue& workq,
         });
 }
 
+/*
 void computeFockMatrix_Direct_RHF(
     const real_t* d_density_matrix,
     const real_t* d_core_hamiltonian_matrix,
@@ -3268,7 +3606,7 @@ void computeFockMatrix_Direct_RHF(
         );
     });
 
-/*
+*//*
     launch_composeFockMatrix_sycl(
         main_q,
         d_fock_matrix,
@@ -3277,10 +3615,322 @@ void computeFockMatrix_Direct_RHF(
         num_basis,
         num_fock_replicas,
         num_threads_per_block);
-*/
-
+*//*
     main_q.wait();
 }
+
+*/
+
+
+
+
+
+
+
+void densityMatrixDifferenceShellPairsKernel(sycl::nd_item<1> item,
+    real_t *g_density_matrix_diff_shell, const real_t *g_density_matrix_diff,
+    const PrimitiveShell *g_primitive_shells,
+    const sycl::int2 *g_primitive_shell_pair_indices,
+    const int num_primitive_shells, const int num_basis)
+{
+    const int serial = item.get_global_linear_id();
+
+    if (serial >= (num_primitive_shells * (num_primitive_shells + 1) / 2)) {
+        return;
+    }
+    //const int shell_index_a = serial / num_primitive_shells;
+    //const int shell_index_b = serial % num_primitive_shells;
+    const sycl::int2 shell_pair_index = g_primitive_shell_pair_indices[serial];
+    const int shell_index_a = shell_pair_index.x();
+    const int shell_index_b = shell_pair_index.y();
+    const PrimitiveShell a = g_primitive_shells[shell_index_a];
+    const PrimitiveShell b = g_primitive_shells[shell_index_b];
+
+    const int shell_size_a = (a.shell_type == 0) ? 1 : 3;
+    const int shell_size_b = (b.shell_type == 0) ? 1 : 3;
+
+    //real_t diff_abs;
+    real_t max_value = 0.0;
+    for (int i = 0; i < shell_size_a; ++i) {
+        for (int j = 0; j < shell_size_b; ++j) {
+            const int mu = a.basis_index + i;
+            const int nu = b.basis_index + j;
+            //diff_abs = fabs(g_density_matrix_diff[num_basis * mu + nu]);
+            //if (diff_abs > max_value) {
+            //    max_value = diff_abs;
+            //}
+            //const real_t density_diff = g_density_matrix_diff[(mu < nu) ? (num_basis * mu + nu) : (num_basis * nu + mu)];
+            const real_t density_diff = g_density_matrix_diff[num_basis * mu + nu];
+            max_value = sycl::fmax(max_value, sycl::fabs(density_diff));
+        }
+    }
+    g_density_matrix_diff_shell[num_primitive_shells * shell_index_a + shell_index_b] = max_value;
+    if (shell_index_a != shell_index_b) {
+        g_density_matrix_diff_shell[num_primitive_shells * shell_index_b + shell_index_a] = max_value;
+    }
+}
+
+void makeDensityMatrixDifferenceShellPairs(
+    real_t *d_density_matrix_diff_shell, const real_t *d_density_matrix_diff,
+    const PrimitiveShell *d_primitive_shells,
+    const sycl::int2 *d_primitive_shell_pair_indices,
+    const int num_primitive_shells, const int num_basis)
+{
+    const int threads_per_block = 256;
+    const int num_primitive_shell_pairs = num_primitive_shells * (num_primitive_shells + 1) / 2;
+    const int num_blocks = (num_primitive_shell_pairs + threads_per_block - 1) / threads_per_block;
+    sycl::queue& workq = gpu::GPUHandle::syclqueue();
+    workq.parallel_for(
+        sycl::nd_range<1>(num_blocks * threads_per_block, threads_per_block),
+        [=](sycl::nd_item<1> item) {
+            densityMatrixDifferenceShellPairsKernel( item,
+                d_density_matrix_diff_shell, d_density_matrix_diff,
+                d_primitive_shells, d_primitive_shell_pair_indices,
+                num_primitive_shells, num_basis);
+        });
+    workq.wait_and_throw();
+}
+
+void computeFockMatrix_Direct_RHF(
+    const real_t *d_density_matrix, real_t *d_density_matrix_diff,
+    real_t *d_density_matrix_diff_shell,
+    const real_t *d_core_hamiltonian_matrix,
+    const std::vector<ShellTypeInfo> &shell_type_infos,
+    const std::vector<ShellPairTypeInfo> &shell_pair_type_infos,
+    const PrimitiveShell *d_primitive_shells,
+    const sycl::int2 *d_primitive_shell_pair_indices,
+    const real_t *d_cgto_normalization_factors, const real_t *d_boys_grid,
+    const real_t *d_schwarz_upper_bound_factors,
+    const real_t schwarz_screening_threshold, real_t *d_fock_matrix,
+    real_t *d_fock_matrix_prev, const int num_basis,
+    std::vector<int *> &d_global_counters,
+    std::vector<int *> &d_min_skipped_columns, real_t *d_fock_matrix_replicas,
+    const int num_fock_replicas, const int verbose, bool &is_first_call) try {
+//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
+//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+    sycl::queue& main_q = GPUHandle::syclqueue();
+    if (is_first_call) {
+        main_q.memset(d_fock_matrix_prev, 0, sizeof(real_t) * num_basis * num_basis) .wait();
+        main_q.memset(d_density_matrix_diff, 0, sizeof(real_t) * num_basis * num_basis) .wait();
+    }
+    // D_diff = D_new - D_old
+    matrixSubtractionInPlace(d_density_matrix, d_density_matrix_diff, d_density_matrix_diff, num_basis);
+    int num_primitive_shells = 0;
+    for (const auto& x : shell_type_infos) {
+        num_primitive_shells += x.count;
+    }
+    makeDensityMatrixDifferenceShellPairs(d_density_matrix_diff_shell, d_density_matrix_diff, d_primitive_shells, d_primitive_shell_pair_indices, num_primitive_shells, num_basis);
+    main_q.wait_and_throw();
+
+    //int h_num_screened_shell_quartets = 0;
+    //int* d_num_screened_shell_quartets;
+    //cudaMalloc(&d_num_screened_shell_quartets, sizeof(int));
+    //cudaMemset(d_num_screened_shell_quartets, 0, sizeof(int));
+
+    // compute the electron repulsion integrals
+    const int num_threads_per_block = 256;
+    const int shell_type_count = shell_type_infos.size();
+    main_q.memset(d_fock_matrix_replicas, 0, sizeof(real_t) * num_basis * num_basis * num_fock_replicas).wait();
+
+    // list shell-quadruples for sorted shell-type (s0, s1, s2, s3)
+    std::vector<std::tuple<int, int, int, int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    // reverse the order of the shell_quadruples to make it sorted by (s0, s1, s2, s3)
+    // e.g. (pp|pp), (sp|pp), (sp|sp), (ss|pp), (ss|sp), (ss|ss) for s and p shells
+    //std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+    // make multi stream
+    const int num_kernels = static_cast<int>(shell_quadruples.size());
+    // main_q と同じ device/context を使って複数 queue を作る
+    std::vector<sycl::queue> queues;
+    queues.reserve(num_kernels);
+    auto dev = main_q.get_device();
+    auto ctx = main_q.get_context();
+
+    for (int i = 0; i < num_kernels; ++i) {
+        queues.emplace_back(ctx, dev);
+    }
+
+    // for-loop for sorted shell-type (s0, s1, s2, s3)
+    int kernel_idx = 0;
+    const int task_group_size = 16;
+    const int num_cuda_blocks = 256;
+    for (const auto& quadruple: shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0==s1) ? shell_s0.count*(shell_s0.count+1)/2 : shell_s0.count*shell_s1.count;
+        const size_t num_ket = (s2==s3) ? shell_s2.count*(shell_s2.count+1)/2 : shell_s2.count*shell_s3.count;
+        const size_t num_braket = ((s0==s2) && (s1==s3)) ? num_bra*(num_bra+1)/2 : num_bra*num_ket; // equal to the number of threads
+        const size_t num_blocks = (num_braket + num_threads_per_block - 1) / num_threads_per_block; // the number of blocks
+        const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
+        const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
+
+        auto& workq = queues[kernel_idx];
+
+        if (s0 <= 1 && s1 <= 1 && s2 <= 1 && s3 <= 1) {
+            // initialzie global counters and minimum skipped columns for dynamic screening
+            const int num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
+            const int num_ket_groups = (num_ket + task_group_size - 1) / task_group_size;
+            const int num_init_blocks = (num_bra_groups + num_threads_per_block - 1) / num_threads_per_block;
+            //cudaMemset(d_global_counters[kernel_idx], 0, sizeof(int) * num_bra_groups);
+            workq.memset(d_global_counters[kernel_idx], 0,
+                                        sizeof(int) * num_bra_groups);
+            initializeMinSkippedColumns(workq, d_min_skipped_columns[kernel_idx],
+                     num_bra_groups, num_ket_groups);
+
+            if (!((s0==0 && s1==0 && s2==0 && s3==0) || (s0==0 && s1==0 && s2==0 && s3==1)
+               || (s0==0 && s1==0 && s2==1 && s3==1) || (s0==0 && s1==1 && s2==0 && s3==1)
+               || (s0==0 && s1==1 && s2==1 && s3==1) || (s0==1 && s1==1 && s2==1 && s3==1)))
+                {
+                    std::cerr << "Invalid shell type: " << s0 << "," << s1 << "," << s2 << "," << s3 << "\n";
+                    std::exit(1);
+                }
+
+            int* d_global_counter = d_global_counters[kernel_idx];
+            int* d_min_skipped_column = d_min_skipped_columns[kernel_idx];
+
+            int s_ket_group_idx = 0;
+            bool s_significant_flag = false;
+
+            workq.submit([&](sycl::handler& cgh) {
+
+                sycl::local_accessor<int, 1> s_ket_group_idx(sycl::range<1>(1), cgh);
+                sycl::local_accessor<bool, 1> s_significant_flag(sycl::range<1>(1), cgh);
+                sycl::local_accessor<real_t, 1> s_schwarz_upper_bound(sycl::range<1>(1), cgh);
+
+                cgh.parallel_for(sycl::nd_range<1>(num_cuda_blocks * num_threads_per_block, num_threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    launch_eri_kernel_dynamic( item,
+                    s0, s1, s2, s3,
+                    d_fock_matrix_replicas,
+                    d_primitive_shells,
+                    d_primitive_shell_pair_indices,
+                    d_cgto_normalization_factors,
+                    shell_s0, shell_s1, shell_s2, shell_s3,
+                    schwarz_screening_threshold,
+                    d_schwarz_upper_bound_factors,
+                    num_basis,
+num_primitive_shells, 
+                    d_boys_grid,
+                    d_density_matrix,
+d_density_matrix_diff_shell,
+                    d_global_counter,
+                    d_min_skipped_column,
+                    head_bra, head_ket,
+                    num_bra, num_ket,
+                    num_fock_replicas,
+                    s_ket_group_idx,
+                    s_significant_flag,
+                    s_schwarz_upper_bound);
+                });
+            });
+        }
+        else {
+            workq.submit([&](sycl::handler& cgh) {
+                cgh.parallel_for( sycl::nd_range<1>(num_blocks * num_threads_per_block, num_threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    launch_MD_direct_SCF_1T1SP(
+                    item,
+                    d_fock_matrix_replicas,
+                    d_density_matrix,
+                    d_primitive_shells,
+                    num_fock_replicas,
+                    d_cgto_normalization_factors,
+                    shell_s0, shell_s1, shell_s2, shell_s3,
+                    num_braket,
+                    schwarz_screening_threshold,
+                    d_schwarz_upper_bound_factors,
+                    d_primitive_shell_pair_indices,
+                    num_basis,
+                    d_boys_grid,
+                    head_bra,
+                    head_ket);
+                });
+            });
+        }
+        kernel_idx++;
+
+        if (verbose) {
+            std::cout << "(" << shell_type_to_shell_name(s0) << shell_type_to_shell_name(s1) << "|" << shell_type_to_shell_name(s2) << shell_type_to_shell_name(s3) << "): ";
+            std::cout << "|" << shell_type_to_shell_name(s0) << "|=" << shell_s0.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s1) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s2) << "|=" << shell_s1.count << ", ";
+            std::cout << "|" << shell_type_to_shell_name(s3) << "|=" << shell_s1.count << ", ";
+            std::cout << "|bra|= " << num_bra << ", " ;
+            std::cout << "|ket|= " << num_ket << ", " ;
+            std::cout << "|braket|= " << num_braket << ", " ;
+            std::cout << "num_blocks: " << num_blocks << std::endl;
+        }
+    }
+    // syncronize streams
+    main_q.wait_and_throw();
+
+    // syncronize streams
+    for (auto& workq : queues) {
+        workq.wait();
+    }
+
+    const int num_blocks_fock = ((num_basis * (num_basis + 1) / 2) + num_threads_per_block - 1) / num_threads_per_block;
+    //composeFockMatrix<<<num_blocks_fock, num_threads_per_block>>>(d_fock_matrix, d_fock_matrix_replicas, d_core_hamiltonian_matrix, num_basis, num_fock_replicas, is_first_call);
+    main_q.parallel_for(
+        sycl::nd_range<1>(num_blocks_fock * num_threads_per_block, num_threads_per_block),
+        [=](sycl::nd_item<1> item) {
+            composeFockMatrix(item, d_fock_matrix_prev, d_fock_matrix_replicas,
+                              d_core_hamiltonian_matrix, num_basis,
+                              num_fock_replicas, is_first_call);
+        });
+    main_q.memcpy(d_fock_matrix, d_fock_matrix_prev,
+                 sizeof(real_t) * num_basis * num_basis);
+
+    //cudaDeviceSynchronize();
+    // update D_old = D_new for the next iteration
+    main_q.memcpy(d_density_matrix_diff, d_density_matrix,
+                 sizeof(real_t) * num_basis * num_basis);
+
+    if (is_first_call) {
+        is_first_call = false;
+    }
+
+    //cudaMemcpy(&h_num_screened_shell_quartets, d_num_screened_shell_quartets, sizeof(int), cudaMemcpyDeviceToHost);
+    //std::cout << "Number of screened shell quartets: " << h_num_screened_shell_quartets << std::endl;
+}
+catch (sycl::exception const &exc) {
+  std::cerr << exc.what() << "Exception caught at file:" << __FILE__
+            << ", line:" << __LINE__ << std::endl;
+  std::exit(1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

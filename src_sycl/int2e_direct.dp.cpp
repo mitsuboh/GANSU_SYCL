@@ -33,18 +33,15 @@ namespace gansu::gpu{
 
 SYCL_EXTERNAL
 void composeFockMatrix(sycl::nd_item<1> item,
-    real_t* g_fock_matrix, real_t* g_fock_matrix_replicas, const real_t* g_int1e, const int num_basis, const int num_fock_replicas)
+    real_t* g_fock_matrix, real_t* g_fock_matrix_replicas,
+    const real_t* g_int1e, const int num_basis,
+    const int num_fock_replicas, bool is_first_call)
 {
     const int num_utm_elements = num_basis * (num_basis + 1) / 2;
     const int idx_linear = item.get_global_linear_id();
     if (idx_linear >= num_utm_elements)  return; 
 
-//    const int nu = sycl::vec<double, 1>{
-//            ((sycl::sqrt(sycl::vec<int, 1>{(8 * idx_linear + 1)} .convert<double, sycl::rounding_mode::rte>()[0]) - 1) / 2)}
-//            .convert<int, sycl::rounding_mode::rtn>()[0];
-    const int nu = static_cast<int>(
-        sycl::floor((sycl::sqrt(8.0 * idx_linear + 1.0) - 1.0) * 0.5));
-
+    const int nu = static_cast<int>(sycl::floor((sycl::sqrt(8.0 * idx_linear + 1.0) - 1.0) * 0.5));
     const int mu = idx_linear - nu * (nu + 1) / 2;
 
     real_t fock_value = 0.0;
@@ -52,11 +49,47 @@ void composeFockMatrix(sycl::nd_item<1> item,
     for (int i = 0; i < num_fock_replicas; ++i) {
         fock_value += g_fock_matrix_replicas[stride * i + (num_basis * mu + nu)];
     }
-    fock_value += g_int1e[num_basis * mu + nu];
-    g_fock_matrix[num_basis * mu + nu] = fock_value;
-    if (mu != nu) {
-        g_fock_matrix[num_basis * nu + mu] = fock_value;
+    //fock_value += g_int1e[num_basis * mu + nu];
+    if (is_first_call) {
+        fock_value += g_int1e[num_basis * mu + nu];
     }
+    //g_fock_matrix[num_basis * mu + nu] = fock_value;
+    g_fock_matrix[num_basis * mu + nu] += fock_value;
+    if (mu != nu) {
+        //g_fock_matrix[num_basis * nu + mu] = fock_value;
+        g_fock_matrix[num_basis * nu + mu] += fock_value;
+    }
+}
+
+
+inline real_t get_max_density_diff(
+    const real_t* g_density_matrix_diff,
+    const int mu, const int nu, const int la, const int si,
+    const int num_basis)
+{
+    double max_value = 0.0;
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * mu + nu]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * la + si]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * mu + la]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * nu + si]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * mu + si]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff[num_basis * nu + la]), max_value);
+    return max_value;
+}
+
+inline real_t get_max_density_diff_shell(
+    const real_t* g_density_matrix_diff_shell,
+    const int al, const int be, const int ga, const int de,
+    const int num_primitive_shells)
+{
+    real_t max_value = 0.0;
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * ga + de]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * al + be]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * be + de]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * al + ga]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * al + de]), max_value);
+    max_value = fmax(fabs(g_density_matrix_diff_shell[num_primitive_shells * be + ga]), max_value);
+    return max_value;
 }
 
 SYCL_EXTERNAL
@@ -67,12 +100,15 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
-
+    const sycl::local_accessor<bool, 1>& s_significant_flag, 
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
+    //int* g_num_screened_shell_quartets)
 {
     int ab, cd;
     int bra_group_idx = 0;
@@ -83,6 +119,13 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool is_bra_asymmetric, is_ket_asymmetric, is_braket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -91,7 +134,9 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -114,18 +159,23 @@ void ssss2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    //real_t max_density_diff = get_max_density_diff(g_density_matrix, g_primitive_shells[primitive_shell_index_a].basis_index, g_primitive_shells[primitive_shell_index_b].basis_index, g_primitive_shells[primitive_shell_index_c].basis_index, g_primitive_shells[primitive_shell_index_d].basis_index, num_basis);
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        //atomicAdd(g_num_screened_shell_quartets, 1);
+                        continue;
+                    }
+
                     is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     is_braket_asymmetric = ((primitive_shell_index_a != primitive_shell_index_c) || (primitive_shell_index_b != primitive_shell_index_d));
@@ -160,11 +210,14 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
+    const sycl::local_accessor<bool, 1>& s_significant_flag, 
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
 {
     //*
     int ab, cd;
@@ -176,6 +229,13 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool is_bra_asymmetric; //is_ket_asymmetric, is_braket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -185,6 +245,9 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
                     if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -193,6 +256,7 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         s_ket_group_idx[0] = ket_group_idx;
                     }
                 }
+            }
                 else {
                     //s_significant_flag = false;
                 }
@@ -207,18 +271,20 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        continue;
+                    }
+
                     is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     //is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     //is_braket_asymmetric = ((primitive_shell_index_a != primitive_shell_index_c) || (primitive_shell_index_b != primitive_shell_index_d));
@@ -242,7 +308,6 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
         }
         ++bra_group_idx;
     }
-    /**/
 }
 
 SYCL_EXTERNAL
@@ -253,11 +318,14 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
 {
     //*
     int ab, cd;
@@ -269,6 +337,13 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool is_bra_asymmetric, is_ket_asymmetric; //is_braket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -277,7 +352,9 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -300,18 +377,20 @@ void sspp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        continue;
+                    }
+
                     is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     //is_braket_asymmetric = ((primitive_shell_index_a != primitive_shell_index_c) || (primitive_shell_index_b != primitive_shell_index_d));
@@ -346,11 +425,14 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
+    const sycl::local_accessor<bool, 1>& s_significant_flag, 
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
 {
     //*
     int ab, cd;
@@ -362,6 +444,13 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool /*is_bra_asymmetric, is_ket_asymmetric, */is_braket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -370,7 +459,9 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -393,18 +484,20 @@ void spsp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        continue;
+                    }
+
                     //is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     //is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     is_braket_asymmetric = ((primitive_shell_index_a != primitive_shell_index_c) || (primitive_shell_index_b != primitive_shell_index_d));
@@ -440,11 +533,14 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
+    const sycl::local_accessor<bool, 1>& s_significant_flag, 
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
 {
     int ab, cd;
     int bra_group_idx = 0;
@@ -456,6 +552,13 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool is_ket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && 0 < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -464,7 +567,9 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -487,18 +592,20 @@ void sppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab < num_bra && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        continue;
+                    }
+
                     //is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     //is_braket_asymmetric = ((primitive_shell_index_a != primitive_shell_index_c) || (primitive_shell_index_b != primitive_shell_index_d));
@@ -534,11 +641,14 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
     const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
     const real_t *g_schwarz_upper_bound_factors, const int num_basis,
-    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells,
+    const real_t *g_boys_grid, const real_t *g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int *g_counter,
     int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
     const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
     const sycl::local_accessor<int, 1>& s_ket_group_idx,
-    const sycl::local_accessor<bool, 1>& s_significant_flag) 
+    const sycl::local_accessor<bool, 1>& s_significant_flag, 
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound) 
 {
     int ab, cd;               // bra and ket index of shell pairs
     int bra_group_idx = 0;  // row index of task groups
@@ -549,6 +659,13 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
     bool is_bra_asymmetric, is_ket_asymmetric, is_braket_asymmetric;
     const int num_bra_groups = (num_bra + TASK_GROUP_SIZE - 1) / TASK_GROUP_SIZE;
 
+    if (item_ct1.get_local_id(0) == 0) {
+        s_ket_group_idx[0] = 0;
+        s_schwarz_upper_bound[0] = 0.0;
+        // s_significant_flag[0] = false;
+    }
+    item_ct1.barrier(sycl::access::fence_space::local_space);
+
     while (bra_group_idx < num_bra_groups && bra_group_idx < g_min_skipped_column[bra_group_idx]) {
         ab = (TASK_GROUP_SIZE * bra_group_idx) +
              (item_ct1.get_local_id(0) / TASK_GROUP_SIZE);
@@ -557,7 +674,9 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = bra_group_idx + atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
+                    s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
+                    if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
                         atomic_min(g_min_skipped_column, bra_group_idx, ket_group_idx);
                         //s_significant_flag = false;
                     }
@@ -580,18 +699,20 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 cd = (TASK_GROUP_SIZE * s_ket_group_idx[0]) +
                      (item_ct1.get_local_id(0) % TASK_GROUP_SIZE);
                 if (ab <= cd && cd < num_ket) {
-                    primitive_shell_index_a =
-                        g_primitive_shell_pair_indices[head_bra + ab].x() +
-                        shell_s0.start_index;
-                    primitive_shell_index_b =
-                        g_primitive_shell_pair_indices[head_bra + ab].y() +
-                        shell_s1.start_index;
-                    primitive_shell_index_c =
-                        g_primitive_shell_pair_indices[head_ket + cd].x() +
-                        shell_s2.start_index;
-                    primitive_shell_index_d =
-                        g_primitive_shell_pair_indices[head_ket + cd].y() +
-                        shell_s3.start_index;
+                    //primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x() + shell_s0.start_index;
+                    //primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y() + shell_s1.start_index;
+                    //primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x() + shell_s2.start_index;
+                    //primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y() + shell_s3.start_index;
+                    primitive_shell_index_a = g_primitive_shell_pair_indices[head_bra + ab].x();
+                    primitive_shell_index_b = g_primitive_shell_pair_indices[head_bra + ab].y();
+                    primitive_shell_index_c = g_primitive_shell_pair_indices[head_ket + cd].x();
+                    primitive_shell_index_d = g_primitive_shell_pair_indices[head_ket + cd].y();
+
+                    real_t max_density_diff = get_max_density_diff_shell(g_density_matrix_diff_shell, primitive_shell_index_a, primitive_shell_index_b, primitive_shell_index_c, primitive_shell_index_d, num_primitive_shells);
+                    if (max_density_diff * s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
+                        continue;
+                    }
+
                     is_bra_asymmetric = (primitive_shell_index_a != primitive_shell_index_b);
                     is_ket_asymmetric = (primitive_shell_index_c != primitive_shell_index_d);
                     is_braket_asymmetric = (ab != cd);
@@ -618,11 +739,6 @@ void pppp2e_dynamic(const sycl::nd_item<1>& item_ct1,
 }
 
 /*
-DPCT1110:6: The total declared local variable size in device function
-ssss2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void ssss2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -644,12 +760,6 @@ void ssss2e_direct(real_t *g_fock_matrix,
     }
 
     // Calculate row and column indices from linear index (vertical thread assignment)
-    /*
-    DPCT1013:14: The rounding mode could not be specified and the generated code
-    may have different accuracy than the original code. Verify the correctness.
-    SYCL math built-in function rounding mode is aligned with OpenCL C 1.2
-    standard.
-    */
     int cd =
         sycl::vec<double, 1>{
             ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1) }
@@ -692,13 +802,6 @@ void ssss2e_direct(real_t *g_fock_matrix,
 }
 
 
-//*
-/*
-DPCT1110:7: The total declared local variable size in device function
-sssp2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void sssp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -752,14 +855,7 @@ void sssp2e_direct(real_t *g_fock_matrix,
                             (item_ct1.get_local_id(2) % num_fock_replicas),
         num_basis, g_boys_grid, g_density_matrix, g_cgto_normalization_factors);
 }
-/**/
 
-/*
-DPCT1110:8: The total declared local variable size in device function
-sspp2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void sspp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -812,12 +908,6 @@ void sspp2e_direct(real_t *g_fock_matrix,
         num_basis, g_boys_grid, g_density_matrix, g_cgto_normalization_factors);
 }
 
-/*
-DPCT1110:9: The total declared local variable size in device function
-spsp2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void spsp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -837,12 +927,6 @@ void spsp2e_direct(real_t *g_fock_matrix,
         return;
     }
 
-    /*
-    DPCT1013:15: The rounding mode could not be specified and the generated code
-    may have different accuracy than the original code. Verify the correctness.
-    SYCL math built-in function rounding mode is aligned with OpenCL C 1.2
-    standard.
-    */
     int cd =
         sycl::vec<double, 1>{
             ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1)}
@@ -882,12 +966,6 @@ void spsp2e_direct(real_t *g_fock_matrix,
         num_basis, g_boys_grid, g_density_matrix, g_cgto_normalization_factors);
 }
 
-/*
-DPCT1110:10: The total declared local variable size in device function
-sppp2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void sppp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -941,13 +1019,6 @@ void sppp2e_direct(real_t *g_fock_matrix,
 }
 
 
-//*
-/*
-DPCT1110:11: The total declared local variable size in device function
-pppp2e_direct exceeds 128 bytes and may cause high register pressure. Consult
-with your hardware vendor to find the total register size available and adjust
-the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void pppp2e_direct(real_t *g_fock_matrix,
                    const PrimitiveShell *g_primitive_shells,
                    const sycl::int2 *g_primitive_shell_pair_indices,
@@ -967,12 +1038,6 @@ void pppp2e_direct(real_t *g_fock_matrix,
         return;
     }
 
-    /*
-    DPCT1013:16: The rounding mode could not be specified and the generated code
-    may have different accuracy than the original code. Verify the correctness.
-    SYCL math built-in function rounding mode is aligned with OpenCL C 1.2
-    standard.
-    */
     int cd =
         sycl::vec<double, 1>{
             ((sycl::sqrt(sycl::vec<long long, 1>{static_cast<long long>(8 * idx_linear + 1)}
@@ -1011,9 +1076,8 @@ void pppp2e_direct(real_t *g_fock_matrix,
                             (item_ct1.get_local_id(2) % num_fock_replicas),
         num_basis, g_boys_grid, g_density_matrix, g_cgto_normalization_factors);
 }
-/**/
 
-
+*/
 
 
 
@@ -1147,10 +1211,14 @@ void launch_MD_direct_SCF_1T1SP(const sycl::nd_item<1>& item,
     }
 
     // Obtain primitive shells [ab|cd]
-    const size_t primitive_index_a = ab.x() + shell_s0.start_index;
-    const size_t primitive_index_b = ab.y() + shell_s1.start_index;
-    const size_t primitive_index_c = cd.x() + shell_s2.start_index;
-    const size_t primitive_index_d = cd.y() + shell_s3.start_index;
+    //const size_t primitive_index_a = ab.x() + shell_s0.start_index;
+    //const size_t primitive_index_b = ab.y() + shell_s1.start_index;
+    //const size_t primitive_index_c = cd.x() + shell_s2.start_index;
+    //const size_t primitive_index_d = cd.y() + shell_s3.start_index;
+    const size_t primitive_index_a = ab.x();
+    const size_t primitive_index_b = ab.y();
+    const size_t primitive_index_c = cd.x();
+    const size_t primitive_index_d = cd.y();
 
     const PrimitiveShell a = g_shell[primitive_index_a];
     const PrimitiveShell b = g_shell[primitive_index_b];
@@ -1512,14 +1580,17 @@ void launch_eri_kernel_dynamic(
      const real_t schwarz_screening_threshold, 
      const real_t* g_schwarz_upper_bound_factors, 
      const int num_basis, 
+     const int num_primitive_shells,
      const real_t* g_boys_grid, 
      const real_t* g_density_matrix, 
+     const real_t* g_density_matrix_diff_shell,
      int* g_counter, int* g_min_skipped_column,
      const size_t head_bra, const size_t head_ket, 
      const size_t num_bra, const size_t num_ket, 
      const int num_fock_replicas,
      const sycl::local_accessor<int, 1>& s_ket_group_idx,
-     const sycl::local_accessor<bool, 1>& s_significant_flag)
+     const sycl::local_accessor<bool, 1>& s_significant_flag,
+     const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound)
 {
     if (a > b) std::swap(a, b);
     if (c > d) std::swap(c, d);
@@ -1532,44 +1603,50 @@ void launch_eri_kernel_dynamic(
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 0 && c == 0 && d == 1) sssp2e_dynamic(item,
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 0 && c == 1 && d == 1) sspp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 1 && c == 0 && d == 1) spsp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 0 && b == 1 && c == 1 && d == 1) sppp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
     else if (a == 1 && b == 1 && c == 1 && d == 1) pppp2e_dynamic(item, 
                  g_fock_matrix_replicas, g_primitive_shells, g_primitive_shell_pair_indices, 
                  g_cgto_normalization_factors, shell_s0, shell_s1, shell_s2, shell_s3, 
                  schwarz_screening_threshold, g_schwarz_upper_bound_factors, num_basis, 
-                 g_boys_grid, g_density_matrix, g_counter, g_min_skipped_column,
+                 num_primitive_shells, g_boys_grid, g_density_matrix,
+                 g_density_matrix_diff_shell, g_counter, g_min_skipped_column,
                  head_bra, head_ket, num_bra, num_ket, num_fock_replicas,
-                 s_ket_group_idx, s_significant_flag);
+                 s_ket_group_idx, s_significant_flag,s_schwarz_upper_bound);
 }
 
 

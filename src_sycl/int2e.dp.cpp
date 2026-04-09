@@ -1816,6 +1816,9 @@ void MD_1T1SP(sycl::nd_item<1> item_ct1, double *g_int2e, const PrimitiveShell *
 
     //解を格納する配列R
     double R[2925];
+//Ikei DEBUG
+    for (int i = 0; i < 3*1377; i++) R_mid[i] = 0;
+    for (int i = 0; i < 2925; i++) R[i] = 0;
 
     //thread内で結果を保持するメモリ
     double thread_val=0.0;

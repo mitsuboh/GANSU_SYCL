@@ -22,6 +22,7 @@ find_package(MKL CONFIG REQUIRED)
 set(TEST_SOURCES
     test_gpu_manager.dp.cpp
     test_gpu_kernels.dp.cpp
+    test_validation.dp.cpp
 )
 
 add_executable(test_runner ${TEST_SOURCES})

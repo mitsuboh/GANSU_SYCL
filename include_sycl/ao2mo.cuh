@@ -1,0 +1,515 @@
+#ifndef AO2MO_CUH
+#define AO2MO_CUH
+
+#include <sycl/sycl.hpp>
+#include <oneapi/mkl/blas.hpp>
+#include "eri_stored.hpp"
+
+namespace gansu {
+
+// cuBLAS-like enum compatibility (optional adapter)
+inline oneapi::mkl::transpose to_sycl_op(int op) {
+    switch (op) {
+        case 0: return oneapi::mkl::transpose::nontrans; // CUBLAS_OP_N
+        case 1: return oneapi::mkl::transpose::trans;    // CUBLAS_OP_T
+        case 2: return oneapi::mkl::transpose::conjtrans;// CUBLAS_OP_C
+        default: throw std::runtime_error("Invalid op");
+    }
+}
+
+static inline int dgemm_device_row_major(
+    sycl::queue& q,
+    int opA_rm, int opB_rm,
+    int m, int n, int k,
+    const double* alpha,
+    const double* A_rm, int lda_rm,
+    const double* B_rm, int ldb_rm,
+    const double* beta,
+    double* C_rm, int ldc_rm
+){
+    try {
+        auto event = oneapi::mkl::blas::row_major::gemm(
+            q,
+            to_sycl_op(opA_rm),
+            to_sycl_op(opB_rm),
+            m, n, k,
+            *alpha,
+            A_rm, lda_rm,
+            B_rm, ldb_rm,
+            *beta,
+            C_rm, ldc_rm
+        );
+
+        event.wait(); // match cuBLAS synchronous behavior
+        return 0;     // mimic CUBLAS_STATUS_SUCCESS
+
+    } catch (const std::exception& e) {
+        return -1;    // simple error mapping
+    }
+}
+
+
+static inline int dgemm_strided_batched_device_row_major(
+    sycl::queue& q,
+    int opA_rm, int opB_rm,
+    int m, int n, int k,
+    const double* alpha,
+    const double* A_rm, int lda_rm, int64_t strideA_rm,
+    const double* B_rm, int ldb_rm, int64_t strideB_rm,
+    const double* beta,
+    double* C_rm, int ldc_rm, int64_t strideC_rm,
+    int batchCount
+){
+    try {
+        auto event = oneapi::mkl::blas::row_major::gemm_batch(
+            q,
+            to_sycl_op(opA_rm),
+            to_sycl_op(opB_rm),
+            m, n, k,
+            *alpha,
+            A_rm, lda_rm, strideA_rm,
+            B_rm, ldb_rm, strideB_rm,
+            *beta,
+            C_rm, ldc_rm, strideC_rm,
+            batchCount
+        );
+
+        event.wait(); // keep cuBLAS-like synchronous behavior
+        return 0;
+
+    } catch (const std::exception& exception_object) {
+        return -1;
+    }
+}
+
+
+static inline int dgeam_transpose_row_major(
+    sycl::queue& queue,
+    int rows_rm,
+    int cols_rm,
+    const double* A_rm,
+    double* AT_rm
+){
+    try {
+        sycl::range<2> global_range(static_cast<size_t>(rows_rm),
+                                    static_cast<size_t>(cols_rm));
+
+        sycl::event transpose_event =
+            queue.parallel_for(
+                global_range,
+                [=](sycl::id<2> index) {
+                    int i = static_cast<int>(index[0]); // row
+                    int j = static_cast<int>(index[1]); // col
+
+                    // A_rm: rows_rm x cols_rm
+                    // AT_rm: cols_rm x rows_rm
+
+                    AT_rm[j * rows_rm + i] = A_rm[i * cols_rm + j];
+                }
+            );
+
+        transpose_event.wait();
+
+        return 0;
+
+    } catch (const std::exception& exception_object) {
+        return -1;
+    }
+}
+
+
+// two normal dgemms and two stridedbatched dgemms
+//*
+inline void transform_eri_ao2mo_dgemm_full(
+    sycl::queue& queue,
+    double* d_eri_ao,
+    double* d_eri_mo,
+    const double* d_coefficient_matrix,
+    const int num_basis)
+{
+    const size_t num_basis_2 = num_basis * num_basis;
+    const size_t num_basis_3 = num_basis_2 * num_basis;
+
+    const double alpha = 1.0;
+    const double beta  = 0.0;
+
+    // Step 1: GEMM (first contraction)
+    dgemm_device_row_major(
+        queue,
+        1, 0,  // CUBLAS_OP_T, CUBLAS_OP_N
+        num_basis, num_basis_3, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis,
+        d_eri_ao, num_basis_3,
+        &beta,
+        d_eri_mo, num_basis_3
+    );
+
+    // Step 2: Batched GEMM (second contraction)
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_basis, num_basis_2, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis, 0,
+        d_eri_mo, num_basis_2, num_basis_3,
+        &beta,
+        d_eri_ao, num_basis_2, num_basis_3,
+        num_basis
+    );
+
+    // Step 3: Transpose
+    dgeam_transpose_row_major(
+        queue,
+        num_basis_2, num_basis_2,
+        d_eri_ao,
+        d_eri_mo
+    );
+
+    // Step 4: GEMM (third contraction)
+    dgemm_device_row_major(
+        queue,
+        1, 0,
+        num_basis, num_basis_3, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis,
+        d_eri_mo, num_basis_3,
+        &beta,
+        d_eri_ao, num_basis_3
+    );
+
+    // Step 5: Batched GEMM (fourth contraction)
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_basis, num_basis_2, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis, 0,
+        d_eri_ao, num_basis_2, num_basis_3,
+        &beta,
+        d_eri_mo, num_basis_2, num_basis_3,
+        num_basis
+    );
+
+    // SYCLでは明示的に待機
+    queue.wait();
+}
+/**/
+
+
+inline size_t ovov2seq(
+    const int i, const int a, const int j, const int b, 
+    const int num_occupied, const int num_virtual) 
+{
+    return (((size_t(i) * num_virtual + a) * num_occupied + j) * num_virtual + b);
+}
+
+
+
+inline size_t ovov2seq_aabb(
+    const int i, const int a, const int j, const int b, 
+    const int num_occupied_al, const int num_virtual_al, 
+    const int num_occupied_be, const int num_virtual_be) 
+{
+    return (((size_t(i) * num_virtual_al + a) * num_occupied_be + j) * num_virtual_be + b);
+}
+
+
+// for rmp2 and ump2 (same spin)
+//*
+inline void transform_eri_ao2mo_dgemm_ovov(
+    sycl::queue& queue,
+    double* d_eri_ao,
+    double* d_eri_mo,
+    const double* d_coefficient_matrix,
+    const int num_occ,
+    const int num_vir)
+{
+    const size_t num_basis = num_occ + num_vir;
+    const size_t num_basis_2 = num_basis * num_basis;
+    const size_t num_basis_3 = num_basis_2 * num_basis;
+
+    const double alpha = 1.0;
+    const double beta  = 0.0;
+
+    // Step 1: GEMM
+    dgemm_device_row_major(
+        queue,
+        1, 0,  // transpose, non-transpose
+        num_occ, num_basis_3, num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis,
+        d_eri_ao, num_basis_3,
+        &beta,
+        d_eri_mo, num_basis_3
+    );
+
+    // Step 2: transpose
+    dgeam_transpose_row_major(
+        queue,
+        num_occ * num_basis,
+        num_basis * num_basis,
+        d_eri_mo,
+        d_eri_ao
+    );
+
+    // Step 3: GEMM
+    dgemm_device_row_major(
+        queue,
+        1, 0,
+        num_occ,
+        num_basis_2 * num_occ,
+        num_basis,
+        &alpha,
+        d_coefficient_matrix, num_basis,
+        d_eri_ao, num_basis_2 * num_occ,
+        &beta,
+        d_eri_mo, num_basis_2 * num_occ
+    );
+
+    // Step 4: batched GEMM
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_vir, num_occ * num_basis, num_basis,
+        &alpha,
+        d_coefficient_matrix + num_occ, num_basis, 0,
+        d_eri_mo, num_occ * num_basis, num_basis_2 * num_occ,
+        &beta,
+        d_eri_ao, num_occ * num_basis, num_vir * num_occ * num_basis,
+        num_occ
+    );
+
+    // Step 5: transpose
+    dgeam_transpose_row_major(
+        queue,
+        num_occ * num_vir,
+        num_occ * num_basis,
+        d_eri_ao,
+        d_eri_mo
+    );
+
+    // Step 6: batched GEMM
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_vir, num_occ * num_vir, num_basis,
+        &alpha,
+        d_coefficient_matrix + num_occ, num_basis, 0,
+        d_eri_mo, num_occ * num_vir, num_basis * num_occ * num_vir,
+        &beta,
+        d_eri_ao, num_occ * num_vir, num_vir * num_occ * num_vir,
+        num_occ
+    );
+
+    // 同期
+    queue.wait();
+}
+/**/
+
+
+
+// for ump2 (opposite spin)
+//*
+inline void transform_eri_ao2mo_dgemm_ovov_os(
+    sycl::queue& queue,
+    double* d_eri_ao,
+    double* d_eri_mo,
+    const double* d_coefficient_matrix_al,
+    const double* d_coefficient_matrix_be,
+    const int num_occ_al, const int num_vir_al,
+    const int num_occ_be, const int num_vir_be)
+{
+    const size_t num_basis = num_occ_al + num_vir_al;
+    const size_t num_basis_2 = num_basis * num_basis;
+    const size_t num_basis_3 = num_basis_2 * num_basis;
+
+    const double alpha = 1.0;
+    const double beta  = 0.0;
+
+    // Step 1: α-spin GEMM
+    dgemm_device_row_major(
+        queue,
+        1, 0,
+        num_occ_al, num_basis_3, num_basis,
+        &alpha,
+        d_coefficient_matrix_al, num_basis,
+        d_eri_ao, num_basis_3,
+        &beta,
+        d_eri_mo, num_basis_3
+    );
+
+    // Step 2: α-spin transpose
+    dgeam_transpose_row_major(
+        queue,
+        num_occ_al * num_basis,
+        num_basis * num_basis,
+        d_eri_mo,
+        d_eri_ao
+    );
+
+    // Step 3: β-spin GEMM
+    dgemm_device_row_major(
+        queue,
+        1, 0,
+        num_occ_be,
+        num_basis_2 * num_occ_al,
+        num_basis,
+        &alpha,
+        d_coefficient_matrix_be, num_basis,
+        d_eri_ao, num_basis_2 * num_occ_al,
+        &beta,
+        d_eri_mo, num_basis_2 * num_occ_al
+    );
+
+    // Step 4: β-spin batched GEMM
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_vir_be,
+        num_occ_al * num_basis,
+        num_basis,
+        &alpha,
+        d_coefficient_matrix_be + num_occ_be, num_basis, 0,
+        d_eri_mo, num_occ_al * num_basis, num_basis_2 * num_occ_al,
+        &beta,
+        d_eri_ao, num_occ_al * num_basis, num_vir_be * num_occ_al * num_basis,
+        num_occ_be
+    );
+
+    // Step 5: β-spin transpose
+    dgeam_transpose_row_major(
+        queue,
+        num_occ_be * num_vir_be,
+        num_occ_al * num_basis,
+        d_eri_ao,
+        d_eri_mo
+    );
+
+    // Step 6: α-spin batched GEMM
+    dgemm_strided_batched_device_row_major(
+        queue,
+        1, 0,
+        num_vir_al,
+        num_occ_be * num_vir_be,
+        num_basis,
+        &alpha,
+        d_coefficient_matrix_al + num_occ_al, num_basis, 0,
+        d_eri_mo, num_occ_be * num_vir_be, num_basis * num_occ_be * num_vir_be,
+        &beta,
+        d_eri_ao, num_occ_be * num_vir_be, num_vir_al * num_occ_be * num_vir_be,
+        num_occ_al
+    );
+
+    // SYCL では明示的に待機
+    queue.wait();
+}
+/**/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+} // namespace gansu
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+void transform_eri_ao2mo_dgemm_full(
+    double* d_eri_ao, double* d_eri_mo, 
+    const double* d_coefficient_matrix, const int num_basis)
+{
+    double* d_G1;
+    double* d_G2;
+    const int num_threads_per_block = 256;
+    const size_t num_basis_sq = num_basis * num_basis;
+    const size_t num_blocks = ((size_t)num_basis_sq * num_basis_sq + num_threads_per_block - 1) / num_threads_per_block;
+
+    const double alpha = 1.0;
+    const double beta = 0.0;
+    cublasHandle_t cublasH = NULL;
+    cublasCreate(&cublasH);
+
+    // mu2i for (i, nu, la, si)
+    for (int i = 0; i < num_basis; ++i) {
+        d_G1 = d_eri_ao + num_basis_sq * num_basis * i;
+        d_G2 = d_eri_mo + num_basis_sq * num_basis * i;
+        cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_basis_sq, num_basis, num_basis, 
+                    &alpha, d_G1, num_basis_sq, d_coefficient_matrix, num_basis, &beta, d_G2, num_basis_sq);
+    }
+    swap_bra_index<<<num_blocks, num_threads_per_block>>>(d_eri_mo, d_eri_ao, num_basis);
+    cudaDeviceSynchronize();
+
+    // nu2j for (i, j, k, si)
+    for (int i = 0; i < num_basis; ++i) {
+        d_G1 = d_eri_ao + num_basis_sq * num_basis * i;
+        d_G2 = d_eri_mo + num_basis_sq * num_basis * i;
+        cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_basis_sq, num_basis, num_basis, 
+                    &alpha, d_G1, num_basis_sq, d_coefficient_matrix, num_basis, &beta, d_G2, num_basis_sq);
+    }
+
+    // la2k for (i, nu, k, si)
+    cublasDgeam(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, num_basis_sq, num_basis_sq,
+                &alpha, d_eri_mo, num_basis_sq, &beta, d_eri_mo, num_basis_sq, d_eri_ao, num_basis_sq);
+    for (int i = 0; i < num_basis; ++i) {
+        d_G1 = d_eri_ao + num_basis_sq * num_basis * i;
+        d_G2 = d_eri_mo + num_basis_sq * num_basis * i;
+        cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_basis_sq, num_basis, num_basis, 
+                    &alpha, d_G1, num_basis_sq, d_coefficient_matrix, num_basis, &beta, d_G2, num_basis_sq);
+    }
+    swap_bra_index<<<num_blocks, num_threads_per_block>>>(d_eri_mo, d_eri_ao, num_basis);
+    cudaDeviceSynchronize();
+
+    // si2l for (i, j, k, l)
+    for (int i = 0; i < num_basis; ++i) {
+        d_G1 = d_eri_ao + num_basis_sq * num_basis * i;
+        d_G2 = d_eri_mo + num_basis_sq * num_basis * i;
+        cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_basis_sq, num_basis, num_basis, 
+                    &alpha, d_G1, num_basis_sq, d_coefficient_matrix, num_basis, &beta, d_G2, num_basis_sq);
+    }
+    //cublasDgeam(cublasH, CUBLAS_OP_T, CUBLAS_OP_N, num_basis_sq, num_basis_sq,
+    //            &alpha, d_eri_mo, num_basis_sq, &beta, d_eri_mo, num_basis_sq, d_eri_ao, num_basis_sq);
+
+    cublasDestroy(cublasH);
+}
+/**/
+
+
+
+
+
+
+#endif // AO2MO_CUH

@@ -22,7 +22,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 #include "hf.hpp"
 #include "rohf.hpp" // for SAD
 #include <memory> // std::unique_ptr
@@ -168,10 +167,6 @@ public:
       verbose(hf.get_verbose()){}
 
     Convergence_RHF(const Convergence_RHF&) = delete; ///< copy constructor is deleted
-    /*
-    DPCT1109:54: Virtual functions cannot be called in SYCL device code. You
-    need to adjust the code.
-    */
     virtual ~Convergence_RHF() = default; ///< destructor
 
     /**
@@ -238,8 +233,6 @@ public:
      * @details This function updates the Fock matrix with damping.
      */
     void get_new_fock_matrix() override {
-//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
         if (first_iteration_) { // First iteration: no damping, just store the density matrix and the Fock matrix
@@ -326,8 +319,6 @@ public:
      * @details This function updates the Fock matrix with damping.
      */
     void get_new_fock_matrix() override {
-//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
         // Compute the error matrix
         gpu::computeDIISErrorMatrix(
@@ -401,10 +392,6 @@ class InitialGuess_RHF {
 public:
     InitialGuess_RHF(RHF& hf) : hf_(hf) {}
     InitialGuess_RHF(const InitialGuess_RHF&) = delete;
-    /*
-    DPCT1109:55: Virtual functions cannot be called in SYCL device code. You
-    need to adjust the code.
-    */
     virtual ~InitialGuess_RHF() = default;
 
     virtual void guess() = 0;
@@ -491,7 +478,6 @@ public:
             density_matrix[i] = density_matrix_a_[i] + density_matrix_b_[i];
         }
 
-//        dpct::get_in_order_queue()
         sycl::queue& workq = gpu::GPUHandle::syclqueue();
             workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
@@ -561,42 +547,6 @@ public:
 
     }
 
-
-/*
-    void guess() override {
-        // allocate and initialize the density matrices of alpha and beta spins
-        std::unique_ptr<real_t[]> density_matrix(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
-        memset(density_matrix.get(), 0, hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t));
-
-
-        // solve ROHF for each atom to get the density matrix
-        for(int i=0; i<hf_.get_atoms().size(); i++){
-            const std::vector<Atom> monatomic_atom = { {hf_.get_atoms()[i].atomic_number, {0.0, 0.0, 0.0}} };
-//            BasisSet basis_set = BasisSet::construct_from_gbs(hf_.get_gbsfilename());
-            const Molecular monatomic_molecule(monatomic_atom, hf_.get_gbsfilename());
-
-            auto [atom_density_matrix_alpha, atom_density_matrix_beta] = get_or_compute_density_matrix(hf_.get_atoms()[i].atomic_number, monatomic_molecule);
-
-            // copy the density matrix of the atom to the density matrix of the molecule in the corresponding diagonal block
-            for(size_t p=0; p < monatomic_molecule.get_num_basis(); p++){
-                for(size_t q = 0; q < monatomic_molecule.get_num_basis(); q++){
-                    size_t p_molecule = hf_.get_atom_to_basis_range()[i].start_index + p;
-                    size_t q_molecule = hf_.get_atom_to_basis_range()[i].start_index + q;
-                    density_matrix[p_molecule * hf_.get_num_basis() + q_molecule] = atom_density_matrix_alpha[p * monatomic_molecule.get_num_basis() + q] + atom_density_matrix_beta [p * monatomic_molecule.get_num_basis() + q];
-                }
-            }
-        }
-
-        cudaMemcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(), hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t), cudaMemcpyHostToDevice);
-        hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
-
-        // Since the above Fock matrix is not correct (the density matrix is not correct), the coefficient matrix is computed from the Fock matrix
-        hf_.compute_coefficient_matrix(); // compute the coefficient matrix from the density matrix
-        hf_.compute_density_matrix(); // compute the density matrix from the coefficient matrix
-        hf_.compute_fock_matrix(); // compute the Fock matrix from the density matrix
-    }
-*/
-
     void guess() override {
         // allocate and initialize the density matrices of alpha and beta spins
         std::unique_ptr<real_t[]> density_matrix(new real_t[hf_.get_num_basis() * hf_.get_num_basis()]);
@@ -622,7 +572,6 @@ public:
             }
         }
 
-//        dpct::get_in_order_queue()
         sycl::queue& workq = gpu::GPUHandle::syclqueue();
             workq.memcpy(hf_.get_density_matrix().device_ptr(), density_matrix.get(),
                     hf_.get_num_basis() * hf_.get_num_basis() * sizeof(real_t))
@@ -661,6 +610,10 @@ public:
     real_t compute_mp4_energy() override;
     real_t compute_ccsd_energy() override;
     real_t compute_ccsd_t_energy() override;
+    real_t compute_fci_energy() override;
+
+    /// Set CCSD algorithm: 0=spatial-optimized (default), 1=spatial-naive, 2=spin-orbital
+    void set_ccsd_algorithm(int algo) { ccsd_algorithm_ = algo; }
 
 
     void compute_fock_matrix() override {
@@ -692,6 +645,7 @@ public:
 
 protected:
     RHF& rhf_; ///< RHF
+    int ccsd_algorithm_ = 0; ///< 0=spatial-optimized, 1=spatial-naive, 2=spin-orbital
 };
 
 
@@ -710,23 +664,44 @@ public:
 
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix = rhf_.get_density_matrix();
+        const DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
         const DeviceHostMatrix<real_t>& core_hamiltonian_matrix = rhf_.get_core_hamiltonian_matrix();
         DeviceHostMatrix<real_t>& fock_matrix = rhf_.get_fock_matrix();
         const int verbose = rhf_.get_verbose();
 
-        gpu::computeFockMatrix_RI_RHF(
-            density_matrix.device_ptr(),
-            core_hamiltonian_matrix.device_ptr(),
-            intermediate_matrix_B_.device_ptr(),
-            fock_matrix.device_ptr(),
-            num_basis_,
-            num_auxiliary_basis_,
-            d_J_.device_ptr(),
-            d_K_.device_ptr(),
-            d_W_tmp_.device_ptr(),
-            d_T_tmp_.device_ptr(),
-            d_V_tmp_.device_ptr()
-        );
+        //if (false) {
+        if (rhf_.get_hasMatrixC()) {
+            gpu::computeFockMatrix_RI_RHF_with_coefficient_matrix(
+                coefficient_matrix.device_ptr(),
+                density_matrix.device_ptr(),
+                core_hamiltonian_matrix.device_ptr(),
+                intermediate_matrix_B_.device_ptr(),
+                fock_matrix.device_ptr(),
+                num_basis_,
+                num_auxiliary_basis_,
+                num_occ_,
+                d_J_.device_ptr(),
+                d_K_.device_ptr(),
+                d_W_tmp_.device_ptr(),
+                d_tmp1_.device_ptr(),
+                d_tmp2_.device_ptr()
+            );
+        } else {
+            gpu::computeFockMatrix_RI_RHF_with_density_matrix(
+                density_matrix.device_ptr(),
+                core_hamiltonian_matrix.device_ptr(),
+                intermediate_matrix_B_.device_ptr(),
+                fock_matrix.device_ptr(),
+                num_basis_,
+                num_auxiliary_basis_,
+                d_J_.device_ptr(),
+                d_K_.device_ptr(),
+                d_W_tmp_.device_ptr(),
+                d_tmp1_.device_ptr(),
+                d_tmp2_.device_ptr()
+            );
+        }
+
 
         if(verbose){
             // copy the fock matrix to the host memory
@@ -740,6 +715,8 @@ public:
             }
         }
     }
+
+
 
 protected:
     RHF& rhf_; ///< RHF
@@ -770,9 +747,29 @@ public:
         const real_t schwarz_screening_threshold = rhf_.get_schwarz_screening_threshold();
         const int verbose = rhf_.get_verbose();
 
-
+        //gpu::computeFockMatrix_Direct_RHF(
+        //    density_matrix.device_ptr(),
+        //    core_hamiltonian_matrix.device_ptr(),
+        //    shell_type_infos,
+        //    shell_pair_type_infos,
+        //    primitive_shells.device_ptr(),
+        //    primitive_shell_pair_indices.device_ptr(),
+        //    cgto_normalization_factors.device_ptr(),
+        //    boys_grid.device_ptr(),
+        //    schwarz_upper_bound_factors.device_ptr(),
+        //    schwarz_screening_threshold,
+        //    fock_matrix.device_ptr(),
+        //    num_basis_,
+        //    global_counters_,
+        //    min_skipped_columns_,
+        //    fock_matrix_replicas_,
+        //    num_fock_replicas_,
+        //    verbose
+        //);
         gpu::computeFockMatrix_Direct_RHF(
             density_matrix.device_ptr(),
+            density_matrix_diff_.device_ptr(),
+            density_matrix_diff_shell_.device_ptr(),
             core_hamiltonian_matrix.device_ptr(),
             shell_type_infos,
             shell_pair_type_infos,
@@ -783,12 +780,14 @@ public:
             schwarz_upper_bound_factors.device_ptr(),
             schwarz_screening_threshold,
             fock_matrix.device_ptr(),
+            fock_matrix_prev_.device_ptr(),
             num_basis_,
             global_counters_,
             min_skipped_columns_,
             fock_matrix_replicas_,
             num_fock_replicas_,
-            verbose
+            verbose,
+            is_first_call_
         );
 
         if(verbose){
@@ -861,10 +860,6 @@ public:
         h_Z_tensor = sycl::malloc_host<real_t>((rhf_.get_num_electrons() / 2) * num_basis_ * num_auxiliary_basis_, workq);
         workq.memset(h_Z_tensor, 0, sizeof(real_t) * (rhf_.get_num_electrons() / 2) * num_basis_ * num_auxiliary_basis_).wait();
 
-//        cudaMemset(coefficient_matrix_prev.device_ptr(), 0.0, sizeof(real_t) * coefficient_matrix_prev.size());
-//
-//        cudaMallocHost((void**)&h_Z_tensor, sizeof(real_t) * (rhf_.get_num_electrons() / 2) * num_basis_ * num_auxiliary_basis_);
-//        memset(h_Z_tensor, 0.0, sizeof(real_t) * (rhf_.get_num_electrons() / 2) * num_basis_ * num_auxiliary_basis_);
     } ///< Constructor
     ERI_RI_Direct_RHF(const ERI_RI_Direct_RHF&) = delete; ///< copy constructor is deleted
     ~ERI_RI_Direct_RHF() = default; ///< destructor

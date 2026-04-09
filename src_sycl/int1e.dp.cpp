@@ -46,21 +46,15 @@ namespace gansu::gpu{
 // OS method
 //#include "OS_kernel.txt"
 
-// すべての行列要素にatomicAddを行う（汎用カーネルで使用）
-inline void AddToResult(double result, double *g_V, int y, int x, int sumCGTO, bool flag)
+
+inline void AddToResultUpperTri(double result, double *g_V, int y, int x, int sumCGTO, bool twice)
 {
-    double *p1 = &g_V[y * sumCGTO + x];
+//    double *p1 = &g_V[y * sumCGTO + x];
+    double factor = twice ? 2.0 : 1.0;
+    double *p1 = &g_V[(y<=x) ? y*sumCGTO + x : x*sumCGTO + y];
     sycl::atomic_ref< double, sycl::memory_order::relaxed,
         sycl::memory_scope::device, sycl::access::address_space::global_space > a1(*p1);
-    a1.fetch_add(result);
-
-    if (flag) {
-        double *p2 = &g_V[x * sumCGTO + y];
-        sycl::atomic_ref<double, sycl::memory_order::relaxed,
-        sycl::memory_scope::device, sycl::access::address_space::global_space> a2(*p2);
-
-        a2.fetch_add(result);
-    }
+    a1.fetch_add(result * factor);
 }
 
 
@@ -200,12 +194,11 @@ SYCL_EXTERNAL void compute_kinetic_energy_integral(const sycl::nd_item<1>& item_
              if( (a.shell_type == b.shell_type) && (size_a==size_b) && (lmn_a > lmn_b)) continue;
 
              bool double_condition = (size_a == size_b) && (primitive_index_a != primitive_index_b);
-             double factor = double_condition ? 2.0 : 1.0;
              int iy = size_a + lmn_a;
              int ix = size_b + lmn_b;
 
-            AddToResult(result_S * factor, g_overlap, iy, ix, num_basis, false);
-            AddToResult(result_K * factor, g_kinetic, iy, ix, num_basis, false);
+            AddToResultUpperTri(result_S, g_overlap, iy, ix, num_basis, double_condition);
+            AddToResultUpperTri(result_K, g_kinetic, iy, ix, num_basis, double_condition);
 
         }
     }
@@ -384,15 +377,9 @@ SYCL_EXTERNAL void compute_nuclear_attraction_integral(const sycl::nd_item<1>& i
                     }
                 }
                 result_V = (-g_atom[atom_index].atomic_number) * coefandNorm * Norm_A * Norm_B * temp;
-
-
-                AddToResult(
-                     result_V, 
-                     g_nucattr, 
-                     size_a+lmn_a, size_b+lmn_b, 
-                     num_basis, 
-                     primitive_index_a != primitive_index_b
-                );
+ 
+                bool double_condition = (size_a == size_b) && (primitive_index_a != primitive_index_b);
+                AddToResultUpperTri( result_V, g_nucattr, size_a+lmn_a, size_b+lmn_b, num_basis, double_condition);
             }
         }
     }

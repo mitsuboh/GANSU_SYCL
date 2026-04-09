@@ -11,14 +11,9 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+ 
 
-#include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
+#pragma once
 
-// Helper function: Copy device memory to host
-inline void copyToHost(std::vector<double>& host_data, const double* device_data, size_t size) {
-    sycl::queue& workq = gansu::gpu::GPUHandle::syclqueue();
-    workq 
-        .memcpy(host_data.data(), device_data, size * sizeof(double))
-        .wait();
-}
+
+double fci(double* h_Gmo1e, double* h_Gmo, int nao, int nelec, int na, long long np, double E_hf);
