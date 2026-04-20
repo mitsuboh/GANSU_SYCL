@@ -23,6 +23,7 @@ inline T atomic_add(T* base, int idx, T value) {
     sycl::atomic_ref<
         T,
         sycl::memory_order::relaxed,
+//        sycl::memory_order::seq_cst,
         sycl::memory_scope::device,
         sycl::access::address_space::global_space>
         atom(base[idx]);
@@ -41,6 +42,19 @@ inline T atomic_min(T* base, int idx, T value) {
         atom(base[idx]);
 
     return atom.fetch_min(value);  // returns old value
+}
+
+// atomic_load
+template <typename T>
+inline T atomic_load(const T* base, int idx) {
+    sycl::atomic_ref<
+        T,
+        sycl::memory_order::relaxed,
+        sycl::memory_scope::device,
+        sycl::access::address_space::global_space>
+        atom(const_cast<T&>(base[idx]));
+
+    return atom.load();
 }
 
 

@@ -113,6 +113,22 @@ void pppp2e_direct(real_t *g_fock_matrix,
                    const real_t *g_density_matrix, const size_t head_bra,
                    const size_t head_ket, const int num_fock_replicas);
 
+//Ikei DEBUG
+SYCL_EXTERNAL void ssss2e_cpu(const sycl::nd_item<1>& item, 
+    real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,
+    const sycl::int2 *g_primitive_shell_pair_indices,
+    const real_t *g_cgto_normalization_factors, const ShellTypeInfo shell_s0,
+    const ShellTypeInfo shell_s1, const ShellTypeInfo shell_s2,
+    const ShellTypeInfo shell_s3, const real_t schwarz_screening_threshold,
+    const real_t *g_schwarz_upper_bound_factors, const int num_basis,
+//    const real_t *g_boys_grid, const real_t *g_density_matrix, int *g_counter,
+    const int num_primitive_shells, const real_t* g_boys_grid, const real_t* g_density_matrix,
+    const real_t* g_density_matrix_diff_shell, int* g_counter,
+    int *g_min_skipped_column, const size_t head_bra, const size_t head_ket,
+    const size_t num_bra, const size_t num_ket, const int num_fock_replicas,
+    const sycl::local_accessor<int, 1>& s_ket_group_idx,
+    const sycl::local_accessor<bool, 1>& s_significant_flag,
+    const sycl::local_accessor<real_t, 1>& s_schwarz_upper_bound);
 
 SYCL_EXTERNAL void ssss2e_dynamic(const sycl::nd_item<1>& item, 
     real_t *g_fock_matrix_replicas, const PrimitiveShell *g_primitive_shells,

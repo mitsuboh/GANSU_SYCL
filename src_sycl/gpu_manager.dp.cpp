@@ -38,7 +38,6 @@ namespace gansu::gpu{
 
 
 
-
 /**
  * @brief Performs eigenvalue decomposition on a symmetric matrix.
  * 
@@ -3780,7 +3779,6 @@ void computeFockMatrix_Direct_RHF(
         const size_t num_blocks = (num_braket + num_threads_per_block - 1) / num_threads_per_block; // the number of blocks
         const size_t head_bra = shell_pair_type_infos[get_index_2to1_horizontal(s0, s1, shell_type_count)].start_index;
         const size_t head_ket = shell_pair_type_infos[get_index_2to1_horizontal(s2, s3, shell_type_count)].start_index;
-
         auto& workq = queues[kernel_idx];
 
         if (s0 <= 1 && s1 <= 1 && s2 <= 1 && s3 <= 1) {
@@ -3828,7 +3826,7 @@ void computeFockMatrix_Direct_RHF(
                     num_basis,
 num_primitive_shells, 
                     d_boys_grid,
-                    d_density_matrix,
+                    d_density_matrix_diff,
 d_density_matrix_diff_shell,
                     d_global_counter,
                     d_min_skipped_column,
@@ -3840,6 +3838,7 @@ d_density_matrix_diff_shell,
                     s_schwarz_upper_bound);
                 });
             });
+workq.wait_and_throw();
         }
         else {
             workq.submit([&](sycl::handler& cgh) {
@@ -3848,7 +3847,7 @@ d_density_matrix_diff_shell,
                     launch_MD_direct_SCF_1T1SP(
                     item,
                     d_fock_matrix_replicas,
-                    d_density_matrix,
+d_density_matrix_diff,
                     d_primitive_shells,
                     num_fock_replicas,
                     d_cgto_normalization_factors,
@@ -3895,13 +3894,14 @@ d_density_matrix_diff_shell,
                               d_core_hamiltonian_matrix, num_basis,
                               num_fock_replicas, is_first_call);
         });
+    main_q.wait();
     main_q.memcpy(d_fock_matrix, d_fock_matrix_prev,
-                 sizeof(real_t) * num_basis * num_basis);
+                 sizeof(real_t) * num_basis * num_basis).wait();
 
     //cudaDeviceSynchronize();
     // update D_old = D_new for the next iteration
     main_q.memcpy(d_density_matrix_diff, d_density_matrix,
-                 sizeof(real_t) * num_basis * num_basis);
+                 sizeof(real_t) * num_basis * num_basis).wait();
 
     if (is_first_call) {
         is_first_call = false;

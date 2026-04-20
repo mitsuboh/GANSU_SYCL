@@ -244,7 +244,6 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                 s_significant_flag[0] = false;
                 ket_group_idx = atomic_add(g_counter, bra_group_idx, 1);
                 if (ket_group_idx < g_min_skipped_column[bra_group_idx]) {
-                    if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
                     //if (g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx] < schwarz_screening_threshold) {
                     s_schwarz_upper_bound[0] = g_schwarz_upper_bound_factors[head_bra + TASK_GROUP_SIZE * bra_group_idx] * g_schwarz_upper_bound_factors[head_ket + TASK_GROUP_SIZE * ket_group_idx];
                     if (s_schwarz_upper_bound[0] < schwarz_screening_threshold) {
@@ -256,7 +255,6 @@ void sssp2e_dynamic(const sycl::nd_item<1>& item_ct1,
                         s_ket_group_idx[0] = ket_group_idx;
                     }
                 }
-            }
                 else {
                     //s_significant_flag = false;
                 }
