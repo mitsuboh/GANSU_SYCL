@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
 # SYCL を有効化
-add_compile_options(-fsycl -g -O2)
+add_compile_options(-fsycl)
 add_link_options(-fsycl)
 
 # --- Include directories ---
