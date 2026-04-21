@@ -26,6 +26,7 @@
 #include <string>
 //#include <cuda_runtime.h>
 #include "types.hpp"
+#include "gpu_manager.hpp"
 
 namespace gansu {
 

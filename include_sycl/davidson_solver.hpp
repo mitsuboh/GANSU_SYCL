@@ -225,7 +225,7 @@ public:
      * @pre solve() must have been called
      * @pre h_output must point to valid host memory of sufficient size
      */
-    void copy_eigenvectors_to_host(real_t* h_output) const;
+    void copy_eigenvectors_to_host(real_t* h_output);
 
     /**
      * @brief Get residual norms for each computed eigenvalue
@@ -251,6 +251,7 @@ private:
     const LinearOperator& linear_op_;  ///< Reference to the linear operator
     DavidsonConfig config_;             ///< Solver configuration
 
+    sycl::queue queue_;
     const int dim_;                     ///< Dimension of the operator
     int subspace_dim_;                  ///< Current subspace dimension
     int num_iterations_;                ///< Iteration counter

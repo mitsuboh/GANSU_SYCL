@@ -60,9 +60,9 @@ set(GANSU_SOURCES
     src_sycl/eri_stored_fci.dp.cpp
     src_sycl/eri_stored_mp4.dp.cpp
 #     src/eri_stored_ump.cu
-#     src/davidson_solver.cu
+    src_sycl/davidson_solver.dp.cpp
     src_sycl/fci.dp.cpp
-#     src/test_operators.cu
+    src_sycl/test_operators.dp.cpp
     src_sycl/utils.cpp
 )
 

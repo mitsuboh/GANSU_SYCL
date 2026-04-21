@@ -295,6 +295,9 @@ void DavidsonSolver::orthogonalize_vectors(int start_index, int num_vectors) {
 
     using namespace oneapi::mkl::blas::column_major;
 
+    real_t* d_proj = sycl::malloc_shared<real_t>(1, q);
+    real_t* d_norm = sycl::malloc_shared<real_t>(1, q);
+
     for (int i = start_index; i < start_index + num_vectors; ++i) {
         real_t* d_vec_i = &d_subspace_vectors_[i * dim_];
 
@@ -303,9 +306,10 @@ void DavidsonSolver::orthogonalize_vectors(int start_index, int num_vectors) {
             const real_t* d_vec_j = &d_subspace_vectors_[j * dim_];
 
             // Compute projection: proj = <v_j | v_i>
-            real_t proj = 0.0;
-            dot(q, dim_, d_vec_j, 1, d_vec_i, 1, &proj);
+            *d_proj = 0.0;
+            dot(q, dim_, d_vec_j, 1, d_vec_i, 1, d_proj);
             q.wait_and_throw();
+            real_t proj = *d_proj;
 
             // Subtract projection: v_i -= proj * v_j
             real_t alpha = -proj;
@@ -314,9 +318,10 @@ void DavidsonSolver::orthogonalize_vectors(int start_index, int num_vectors) {
         }
 
         // Normalize v_i
-        real_t norm = 0.0;
-        nrm2(q, dim_, d_vec_i, 1, &norm);
+        *d_norm = 0.0;
+        nrm2(q, dim_, d_vec_i, 1, d_norm);
         q.wait_and_throw();
+        real_t norm = *d_norm;
 
         if (norm < 1e-12) {
             if (config_.verbose > 0) {
@@ -342,6 +347,8 @@ void DavidsonSolver::orthogonalize_vectors(int start_index, int num_vectors) {
         scal(q, dim_, inv_norm, d_vec_i, 1);
         q.wait_and_throw();
     }
+    sycl::free(d_proj, q);
+    sycl::free(d_norm, q);
 }
 
 // ========== Subspace Matrix Construction ==========
@@ -467,6 +474,8 @@ void DavidsonSolver::add_correction_vectors() {
     using namespace oneapi::mkl::blas::column_major;
     int num_new_vectors = 0;
 
+    real_t* d_norm = sycl::malloc_shared<real_t>(1, q);
+
     for (int i = 0; i < config_.num_eigenvalues; ++i) {
         if (residual_norms_[i] <= config_.convergence_threshold) {
             continue;
@@ -485,9 +494,10 @@ void DavidsonSolver::add_correction_vectors() {
         }
 
         // Normalize correction vector
-        real_t norm = 0.0;
-        nrm2(q, dim_, d_correction, 1, &norm);
+        * d_norm = 0.0;
+        nrm2(q, dim_, d_correction, 1, d_norm);
         q.wait_and_throw();
+        real_t norm = *d_norm;
 
         if (norm > 1e-12) {
             real_t inv_norm = -1.0 / norm;  // Negative for correction direction
@@ -496,6 +506,8 @@ void DavidsonSolver::add_correction_vectors() {
             ++num_new_vectors;
         }
     }
+
+    sycl::free(d_norm, q);
 
     if (num_new_vectors > 0) {
         // Orthogonalize new vectors against existing subspace
@@ -525,7 +537,7 @@ void DavidsonSolver::restart_subspace() {
 
 // ========== Public Getters ==========
 
-void DavidsonSolver::copy_eigenvectors_to_host(real_t* h_output) const {
+void DavidsonSolver::copy_eigenvectors_to_host(real_t* h_output) {
     sycl::queue& q = queue_;
     if (!h_output) {
         THROW_EXCEPTION("DavidsonSolver::copy_eigenvectors_to_host: null pointer");
