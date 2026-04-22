@@ -109,35 +109,49 @@ inline real_t compute_phase(uint64_t str, int p, int q) {
  * @param[out] q Orbital added   (in str2 but not str1)
  */
 inline void find_single_excitation(uint64_t str1, uint64_t str2,
-                                                   int &p, int &q)
+                                   int &p, int &q)
 {
     uint64_t diff = str1 ^ str2;
-    uint64_t removed = diff & str1;  // bits in str1 not in str2
-    uint64_t added   = diff & str2;  // bits in str2 not in str1
-    p = sycl::ctz<long long int>(removed) -
-        1; // 0-indexed position of removed orbital
-    q = sycl::ctz<long long int>(added) -
-        1; // 0-indexed position of added orbital
+    uint64_t removed = diff & str1;
+    uint64_t added   = diff & str2;
+
+    p = -1;
+    q = -1;
+
+    // 0〜63 のビットを走査（M が小さいなら M までで OK）
+    for (int i = 0; i < 64; ++i) {
+        if (removed & (1ULL << i)) p = i;
+        if (added   & (1ULL << i)) q = i;
+    }
 }
 
 /**
  * @brief Find the two differing orbitals for a double excitation
  */
 inline void find_double_excitation(uint64_t str1, uint64_t str2,
-                                                   int &p1, int &p2, int &q1,
-                                                   int &q2)
+                                   int &p1, int &p2, int &q1, int &q2)
 {
     uint64_t diff = str1 ^ str2;
     uint64_t removed = diff & str1;
     uint64_t added   = diff & str2;
 
-    p1 = sycl::ctz<long long int>(removed) - 1;
-    removed &= removed - 1;  // clear lowest bit
-    p2 = sycl::ctz<long long int>(removed) - 1;
+    p1 = p2 = q1 = q2 = -1;
 
-    q1 = sycl::ctz<long long int>(added) - 1;
-    added &= added - 1;
-    q2 = sycl::ctz<long long int>(added) - 1;
+    // removed の 2 ビットを p1, p2 に
+    for (int i = 0; i < 64; ++i) {
+        if (removed & (1ULL << i)) {
+            if (p1 == -1) p1 = i;
+            else          p2 = i;
+        }
+    }
+
+    // added の 2 ビットを q1, q2 に
+    for (int i = 0; i < 64; ++i) {
+        if (added & (1ULL << i)) {
+            if (q1 == -1) q1 = i;
+            else          q2 = i;
+        }
+    }
 }
 
 /**
