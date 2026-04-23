@@ -451,8 +451,8 @@ void DavidsonSolver::compute_ritz_vectors_and_residuals() {
         // Compute residual norm
         real_t res_norm = 0.0;;
         nrm2(q, dim_,&d_residuals_[i * dim_], 1, &res_norm);
-        residual_norms_[i] = res_norm;
         q.wait_and_throw();
+        residual_norms_[i] = res_norm;
     }
 }
 

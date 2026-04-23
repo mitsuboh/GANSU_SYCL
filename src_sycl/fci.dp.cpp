@@ -30,7 +30,7 @@
 #include "device_host_memory.hpp"
 #include "fci.hpp"
 
-namespace blas = oneapi::mkl::blas;
+namespace blas = oneapi::mkl::blas::column_major;
 
 void range(int* in, int size) {
 #pragma omp parallel for schedule(dynamic)
@@ -143,16 +143,13 @@ void computeEigenvaluesAndVectorsn(sycl::queue& workq, int N, double* d_A, doubl
 
         workq.wait_and_throw();
 
-        if (devInfo != nullptr) *devInfo = 0;
-        if (vectors != nullptr) workq.memcpy(vectors, d_A, sizeof(double) * N * N).wait();
-        if (values != nullptr) workq.memcpy(values, d_W, sizeof(double) * N).wait();
+//Ikei following cuda version which copies only one line!
+        if (vectors != nullptr) workq.memcpy(vectors, d_A, sizeof(double) * N).wait();
+        if (values != nullptr) workq.memcpy(values, d_W, sizeof(double) * 1).wait();
         gansu::tracked_syclFree(d_work);
 
     }
     catch (sycl::exception const &e) {
-        if (devInfo != nullptr) {
-            *devInfo = -1; // indicate failure
-        }
         throw std::runtime_error(std::string("SYCL oneMKL syevd failed: ") + e.what());
     }
 }
@@ -499,17 +496,26 @@ void fill_heff_hermitian_gpu(sycl::queue& workq, double* d_heff_tmp, double* d_h
 {
     //xs: ci0_list, ax: ci1_list, xt:ci0, axt:ci1
     int row0 = row1 - nrow;
-    blas::dot(workq, np, d_ci0, 1, d_ci1, 1, &d_heff[row0 * heff_size + row0]);
+
+    // Store all events to guarantee full completion
+    std::vector<sycl::event> events;
+    events.reserve(row0 * 2 + 2);
+
+    auto e_diag = blas::dot(workq, np, d_ci0, 1, d_ci1, 1, &d_heff[row0 * heff_size + row0]);
+    events.push_back(e_diag);
 
     for (int i = 0; i < row0; i++) {
-        blas::dot(workq, np, d_ci0, 1, d_ci1_list + i * np, 1, &d_heff[row0 * heff_size + i]);
-        workq.memcpy(&d_heff[i * heff_size + row0], &d_heff[row0 * heff_size + i], sizeof(double));
+        auto e_dot = blas::dot(workq, np, d_ci0, 1, d_ci1_list + i * np, 1, &d_heff[row0 * heff_size + i]);
+        auto e_copy = workq.memcpy(&d_heff[i * heff_size + row0], &d_heff[row0 * heff_size + i], sizeof(double),{e_dot});
+        events.push_back(e_copy);
     }
 
-    workq.parallel_for( sycl::range<1>(row1 * row1), [=](sycl::id<1> idx) {
+    sycl::event::wait_and_throw(events);
+
+    auto e_copy_heff = workq.parallel_for( sycl::range<1>(row1 * row1), [=](sycl::id<1> idx) {
             Dcopy_kernel(idx, d_heff, d_heff_tmp, heff_size, row1); });
 
-    workq.wait_and_throw();
+    e_copy_heff.wait();
 }
 
 
@@ -530,19 +536,27 @@ void gen_x0_gpu(sycl::queue& q, double *v, double *d_c_list, double *d_x0, int s
      int nthread=256;
      int nblock=(np+nthread-1)/nthread;
 //     Dscal_kernel<<<nblock, nthread>>>(d_c_list+(space - 1)*np, d_x0, v[space - 1], np);
-     q.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
-            Dscal_kernel(idx, d_c_list + (space - 1) * np, d_x0, v[space - 1], np);
-        });
-     for (int i = space - 2; i >= 0; i--) {
-//	     Dscalplus_kernel<<<nblock, nthread>>>(d_c_list+i*np, d_x0, v[i], np);
-        q.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
-                Dscalplus_kernel(idx, d_c_list + i * np, d_x0, v[i], np);
+     int last = space-1;
+     auto   e = q.submit([&](sycl::handler& h) {
+            auto v_val = v[last];
+            h.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
+                Dscal_kernel(idx, d_c_list + (space - 1) * np, d_x0, v_val, np);
             });
+            });
+     for (int i = space - 2; i >= 0; i--) {
+        int i_cp = i;
+//	     Dscalplus_kernel<<<nblock, nthread>>>(d_c_list+i*np, d_x0, v[i], np);
+        e = q.submit([&](sycl::handler& h) {
+            auto v_val = v[i_cp];
+            h.depends_on(e);
+            h.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
+                Dscalplus_kernel(idx, d_c_list + i * np, d_x0, v_val, np);
+            });
+        });
      }
     q.wait_and_throw();
      //cudaMemcpy(x0, d_x0, sizeof(double) * np, cudaMemcpyDeviceToHost);
 }
-
 
 
 inline void dr_kernel(sycl::id<1> idx, double k, int np, double *d_ci0, double *d_ci1, double *d_citmp){
@@ -576,25 +590,27 @@ inline void Ddiv_kernel(sycl::id<1> idx, double *in, double *out, double k,  int
 }
 void normalize_xt_gpu(sycl::queue& workq, double* d_ci0, double* d_ci0_list, double lindep, double norm_min, int space, int np){
      int i;
-     double tmp, norm;
+     double norm;
      int nthread=256;
      int nblock=(np+nthread-1)/nthread;
+     auto tmp = sycl::malloc_shared<double>(1, workq);
 
      for (i=0; i<space; i++){
 //           cublasDdot(handle, np, d_ci0_list+i*np, 1, d_ci0, 1, &tmp);
-        tmp = 0.0;
-        blas::dot(workq, np, d_ci0_list + i * np, 1, d_ci0, 1, &tmp);
+        tmp[0] = 0.0;
+        blas::dot(workq, np, d_ci0_list + i * np, 1, d_ci0, 1, tmp);
         workq.wait_and_throw();
 //	   Dscalminus_kernel<<<nblock, nthread>>>(d_ci0_list+i*np, d_ci0, tmp, np);
         workq.parallel_for( sycl::range<1>(np), [=](sycl::id<1> idx) {
-                Dscalminus_kernel(idx, d_ci0_list + i * np, d_ci0, tmp, np);
+                Dscalminus_kernel(idx, d_ci0_list + i * np, d_ci0, tmp[0], np);
         });
+        workq.wait_and_throw();
      }
 //     cublasDdot(handle, np, d_ci0, 1, d_ci0, 1, &tmp);
-    tmp = 0.0;
-    blas::dot(workq, np, d_ci0, 1, d_ci0, 1, &tmp);
+    tmp[0] = 0.0;
+    blas::dot(workq, np, d_ci0, 1, d_ci0, 1, tmp);
     workq.wait_and_throw();
-    norm = sqrt(tmp); //pow(tmp, 0.5);
+    norm = sqrt(tmp[0]); //pow(tmp, 0.5);
     if (norm * norm > lindep){
 //         Ddiv_kernel<<<nblock, nthread>>>(d_ci0, d_ci0, norm, np);
         workq.parallel_for( sycl::range<1>(np), [=](sycl::id<1> idx) {
@@ -715,7 +731,8 @@ void contract_2e_spin1_gpu(sycl::queue& workq, double* d_eri, double* d_ci0, dou
                 
                 for (int stra_id = 0; stra_id < na; stra_id += na_chunk) {
                         int current_na = std::min(na - stra_id, na_chunk);
-                        
+//Ikei DEBUG                        
+                        int bcount = current_nb * current_na;
                         // Compute intermediate tensor t1
 //                        cab_kernel<<<newblocks_all, threadsPerBlock>>>( d_ci0, d_t1, current_nb, stra_id, strb_id, norb, current_na, nb, nlink, nlink,  d_link_nnorb);
                     workq.parallel_for(
@@ -725,11 +742,16 @@ void contract_2e_spin1_gpu(sycl::queue& workq, double* d_eri, double* d_ci0, dou
                                 current_nb, stra_id, strb_id, norb,
                                 current_na, nb, nlink, nlink, d_link_nnorb);
                     });
-                        
+                    workq.wait();
+
                         // Contract with 2-electron integrals
 //                        cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, bcountn, nnorb, nnorb, &D1, d_t1, bcountn, d_eri, nnorb, &D0, d_vt1, bcountn);
                     blas::gemm(workq, oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans,
-                        bcountn, nnorb, nnorb, D1, d_t1, bcountn, d_eri, nnorb, D0, d_vt1, bcountn);
+//                        bcountn, nnorb, nnorb, D1, d_t1, bcountn,
+                        bcount, nnorb, nnorb, D1, d_t1, bcount,
+//                        d_eri, nnorb, D0, d_vt1, bcountn);
+                        d_eri, nnorb, D0, d_vt1, bcount);
+                    workq.wait();
                         
                         // Compute final result
 //                        sigab_kernel<<<newblocks_all, threadsPerBlock>>>( d_ci1, d_vt1, current_nb, stra_id, strb_id, norb, current_na, nb, nlink, nlink, d_clink);
@@ -759,11 +781,12 @@ void davidson(sycl::queue& workq,
         // Convergence parameters for Davidson iteration
         double tol = 1e-10, lindep = 1e-10, level_shift = 1e-3;
         double toloose = sqrt(tol) / 100;
-        double dx_norm, de, e_last, dr_result;
+        double dx_norm, de, e_last;
         int conv_last;
         int nthread = 256;
         int nblock = (np + nthread - 1) / nthread;
         int space = 0, conv = 0, reset_state = 0, max_cycle = 100;
+        auto dr_result = sycl::malloc_shared<double>(1, workq);
         
         // Main Davidson iteration loop
         for (int icyc = 0; icyc < max_cycle; icyc++) {
@@ -774,9 +797,9 @@ void davidson(sycl::queue& workq,
                                                          d_ci0_list, d_ci1_list, space, nroots, heff_size, np);
                 
                 // Step 2: Store current vectors in subspace
-                workq.memcpy(d_ci1_list + space * np, d_ci1, sizeof(double) * np);
+                workq.memcpy(d_ci1_list + space * np, d_ci1, sizeof(double) * np).wait();
 //                cudaMemcpy(d_ci1_list + space * np, d_ci1, sizeof(double) * np, cudaMemcpyDeviceToDevice);
-                workq.memcpy(d_ci0_list + space * np, d_ci0, sizeof(double) * np);
+                workq.memcpy(d_ci0_list + space * np, d_ci0, sizeof(double) * np).wait();
                 
                 space += 1;
                 // Step 3: Build effective Hamiltonian matrix in the subspace
@@ -811,15 +834,21 @@ void davidson(sycl::queue& workq,
                         } else {
                                 // Compute residual: r = H*v - e*v
 //                                dr_kernel<<<nblock, nthread>>>(e[0], np, d_ci0, d_ci1, dr);
-                                workq.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
-                                    dr_kernel(idx, e[0], np, d_ci0, d_ci1, dr);
+                                auto ev1 = workq.submit([&](sycl::handler& h) {
+                                    auto e_top = e[0];
+                                    h.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
+                                        dr_kernel(idx, e_top, np, d_ci0, d_ci1, dr);
+                                    });
                                 });
+                                ev1.wait_and_throw();
+
 //                                cublasDdot(handle, np, dr, 1, dr, 1, &dr_result);
-                                double dr_result = 0.0;
-                                oneapi::mkl::blas::dot(workq, np, dr, 1, dr, 1, &dr_result);
+                                dr_result[0] = 0.0;
+                                blas::dot(workq, np, dr, 1, dr, 1, dr_result);
+
                                 workq.wait_and_throw();
 
-                                dx_norm = std::sqrt(std::fabs(dr_result));
+                                dx_norm = std::sqrt(std::fabs(dr_result[0]));
                                 conv = (fabs(de) < tol && dx_norm < toloose) ? 1 : 0;
                                 printf("icyc:%d, dx_norm:%f, e:%f, de:%f\n", icyc, dx_norm, e[0], de);
                                 if (conv == 1) {
@@ -834,14 +863,19 @@ void davidson(sycl::queue& workq,
                 
                 // Step 7: Compute residual and check convergence
 //                dr_kernel<<<nblock, nthread>>>(e[0], np, d_ci0, d_ci1, d_ci0);
-                workq.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
-                    dr_kernel(idx, e[0], np, d_ci0, d_ci1, d_ci0);
+                auto ev1 = workq.submit([&](sycl::handler& h) {
+                    auto e_top = e[0];
+                    h.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
+                        dr_kernel(idx, e_top, np, d_ci0, d_ci1, d_ci0);
+                    });
                 });
+                ev1.wait();
+
 //                cublasDdot(handle, np, d_ci0, 1, d_ci0, 1, &dr_result);
-                double dr_result = 0.0;
-                oneapi::mkl::blas::dot(workq, np, d_ci0, 1, d_ci0, 1, &dr_result);
-                workq.wait_and_throw();
-                dx_norm = std::sqrt(std::fabs(dr_result));
+                dr_result[0] = 0.0;
+                blas::dot(workq, np, d_ci0, 1, d_ci0, 1, dr_result);
+                workq.wait();
+                dx_norm = std::sqrt(std::fabs(dr_result[0]));
                 conv = (std::fabs(de) < tol && dx_norm < toloose) ? 1 : 0;
                 printf("icyc:%d, dx_norm:%f, FCI_E:%.15f, Correction_E:%.15f, de:%.15f\n", icyc, dx_norm, e[0]+E_rhf, e[0], de);
                 
@@ -854,15 +888,19 @@ void davidson(sycl::queue& workq,
                 // Step 8: Apply preconditioner if not converged and residual is significant
                 if (conv == 0 && dx_norm * dx_norm > lindep) {
 //                        precond_kernel<<<nblock, nthread>>>(d_hdiag, d_ci0, e[0], level_shift, np);
-                        workq.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
-                            precond_kernel(idx, d_hdiag, d_ci0, e[0], level_shift, np);
+                       auto ev1 = workq.submit([&](sycl::handler& h) {
+                            auto e_top = e[0];
+                            h.parallel_for(sycl::range<1>(np), [=](sycl::id<1> idx) {
+                                precond_kernel(idx, d_hdiag, d_ci0, e_top, level_shift, np);
+                            });
                         });
+                        ev1.wait_and_throw();
 //                        cublasDdot(handle, np, d_ci0, 1, d_ci0, 1, &dr_result);
-                        double dr_result = 0.0;
-                        oneapi::mkl::blas::dot(workq, np, d_ci0, 1, d_ci0, 1, &dr_result);
+                        dr_result[0] = 0.0;
+                        blas::dot(workq, np, d_ci0, 1, d_ci0, 1, dr_result);
                         workq.wait_and_throw();
 
-                        double tmpk = 1.0 / std::sqrt(dr_result);
+                        double tmpk = 1.0 / std::sqrt(dr_result[0]);
 //                        cublasDscal(handle, np, &tmpk, d_ci0, 1);
                         oneapi::mkl::blas::scal(workq, np, tmpk, d_ci0, 1);
                         workq.wait_and_throw();
@@ -873,6 +911,7 @@ void davidson(sycl::queue& workq,
                 // Step 9: Orthogonalize new vector against existing subspace
                 normalize_xt_gpu(workq, d_ci0, d_ci0_list, lindep, 1.0, space, np);
         }
+        sycl::free(dr_result, workq);
 }
 
 inline void jkcopy_kernel(sycl::nd_item<1> item, double *d_Gmo, double *d_jdiag, double *d_kdiag, int norb, int norb_sq, int norb_t){
@@ -975,22 +1014,22 @@ double fci(double* d_Gmo1e, double* d_Gmo, int norb, int nelec, int na, long lon
         double lastv = -1e-5;
         mainq.memcpy(&d_ci0[0], &firstv, sizeof(double)).wait();
         mainq.memcpy(&d_ci0[np-1], &lastv, sizeof(double)).wait();
-//Ikei
+
         absorb_h1e(mainq, d_Gmo1e, d_Gmo, d_eri, norb, nelec, 0.5);
 
         // Normalize ci0
 //        cublasHandle_t handle;
 //        cublasCreate(&handle);
-        double innerprod;
+        auto innerprod = sycl::malloc_shared<double>(1, mainq);
 //        cublasDdot(handle, np, d_ci0, 1, d_ci0, 1, &innerprod);
-        innerprod = 0.0;
-        oneapi::mkl::blas::dot(mainq, np, d_ci0, 1, d_ci0, 1, &innerprod);
+        innerprod[0] = 0.0;
+        blas::dot(mainq, np, d_ci0, 1, d_ci0, 1, innerprod);
         mainq.wait_and_throw();
 
 
 
-        double norm = sqrt(innerprod);
-        if (innerprod > lindep && norm > 1e-14) {
+        double norm = sqrt(innerprod[0]);
+        if (innerprod[0] > lindep && norm > 1e-14) {
 //            qr_decomposition_kernel<<<nblock, nthread>>>(d_ci0, np, lindep, norm);
             mainq.parallel_for( sycl::range<1>(np), [=](sycl::id<1> idx) {
                 qr_decomposition_kernel(idx, d_ci0, np, lindep, norm); }
