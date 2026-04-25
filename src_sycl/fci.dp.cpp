@@ -982,7 +982,6 @@ double fci(double* d_Gmo1e, double* d_Gmo, int norb, int nelec, int na, long lon
         d_link_nnorb = tracked_syclMalloc<int>(nnorb * na * 2 * sizeof(int), mainq);
         mainq.memset(d_clink, 0, nlinka * na * 3 * sizeof(int)).wait();
         mainq.memset(d_link_nnorb, 0, nnorb * na * 2 * sizeof(int)).wait();
-//Ikei
         gen_linkstr_index(mainq, neleca, norb, na,  d_occslst,  d_clink, d_link_nnorb);
 
         int max_space = 12;

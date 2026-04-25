@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
 # SYCL を有効化
-add_compile_options(-fsycl -g -O2)
+add_compile_options(-fsycl)
 add_link_options(-fsycl)
 
 # --- Include directories ---
@@ -59,7 +59,7 @@ set(GANSU_SOURCES
     src_sycl/eri_stored.dp.cpp
     src_sycl/eri_stored_fci.dp.cpp
     src_sycl/eri_stored_mp4.dp.cpp
-#     src/eri_stored_ump.cu
+    src_sycl/eri_stored_ump.dp.cpp
     src_sycl/davidson_solver.dp.cpp
     src_sycl/fci.dp.cpp
     src_sycl/test_operators.dp.cpp

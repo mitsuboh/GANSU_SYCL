@@ -120,6 +120,18 @@ public:
     DeviceHostMatrix<real_t>& get_fock_matrix_b() { return fock_matrix_b; }
 
     /**
+     * @brief Get the reference to the orbital energies (alpha spin)
+     * @return Reference to the orbital energies (alpha spin)
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies_a() { return orbital_energies_a; }
+
+    /**
+     * @brief Get the reference to the orbital energies (beta spin)
+     * @return Reference to the orbital energies (beta spin)
+     */
+    DeviceHostMemory<real_t>& get_orbital_energies_b() { return orbital_energies_b; }
+
+    /**
      * @brief Export the density matrix
      * @param density_matrix_a Density matrix (alpha spin) if UHF, otherwise the density matrix
      * @param density_matrix_b Density matrix (beta spin) if UHF, otherwise no use
@@ -141,6 +153,13 @@ public:
      * @param filename File name
      */
     void export_molden_file(const std::string& filename) override;
+
+    /**
+     * @brief Post process after SCF convergence
+     * @details This function performs post-HF calculations after the SCF convergence, in which the selected post-HF method is applied.
+     * @details This function overrides the virtual function in the base class HF.
+     */
+    void post_process_after_scf() override;
 
 private:
     real_t energy_; ///< Energy
@@ -494,8 +513,8 @@ public:
                 lumo[i] = hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i];
             }
             for(int i=0; i<N; i++){
-                hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i] =  c * homo[i]     + s * lumo[i];
-                hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i]     = -s * homo[i]     + c * lumo[i];
+                hf_.get_coefficient_matrix_a().host_ptr()[(hf_.get_num_alpha_spins()-1) * N + i] =  c * homo[i] + s * lumo[i];
+                hf_.get_coefficient_matrix_a().host_ptr()[hf_.get_num_alpha_spins() * N + i]     = -s * homo[i] + c * lumo[i];
             }
         }
 
@@ -506,8 +525,8 @@ public:
                 lumo[i] = hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i];
             }
             for(int i=0; i<N; i++){
-                hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i] =  c * homo[i] -     s * lumo[i];
-                hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i]     =  s * homo[i] +     c * lumo[i];
+                hf_.get_coefficient_matrix_b().host_ptr()[(hf_.get_num_beta_spins()-1) * N + i] =  c * homo[i] - s * lumo[i];
+                hf_.get_coefficient_matrix_b().host_ptr()[hf_.get_num_beta_spins() * N + i]     =  s * homo[i] + c * lumo[i];
             }
         }
 
@@ -842,6 +861,9 @@ public:
 
     ERI_Stored_UHF(const ERI_Stored_UHF&) = delete; ///< copy constructor is deleted
     ~ERI_Stored_UHF() = default; ///< destructor
+
+    real_t compute_mp2_energy() override;
+    //real_t compute_mp3_energy() override;
 
     void compute_fock_matrix() override {
         const DeviceHostMatrix<real_t>& density_matrix_a = uhf_.get_density_matrix_a();

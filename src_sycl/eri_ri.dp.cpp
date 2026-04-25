@@ -560,7 +560,7 @@ void search_k_and_syclmalloc_4cERI(sycl::queue& workq, int mocc, int mvir, int &
     }
 }
 */
-
+/*
 void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
     k = std::max(1, (int)(search_maximum_k(workq, mocc, mvir) * 0.7));
     int iter = 0;
@@ -582,6 +582,21 @@ void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int 
         throw std::runtime_error("Allocation failed completely.");
     }
 }
+*/
+
+void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
+    k = (int)(search_maximum_k(workq, mocc, mvir) * 0.9 / sizeof(double)); // syclMalloc uses elements not bytes
+
+    try {
+        size_t nelems = (size_t)k * (size_t)mvir * (size_t)mocc * (size_t)mvir;
+        *d_iajb = tracked_syclMalloc<double>(nelems, workq);
+    } catch (sycl::exception const &exc) {
+        std::cerr << "Failed to allocate device memory for d_iajb matrix: "  << exc.what() << "\n";
+    }
+
+    printf("k = %d\n",k);
+}
+
 
 /*
 void search_k_and_cudamalloc_4cERI(int mocc, int mvir, int &k, double **d_iajb,

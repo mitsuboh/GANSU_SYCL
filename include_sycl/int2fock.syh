@@ -12,8 +12,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef INT2FOCK_CUH
-#define INT2FOCK_CUH
+#ifndef INT2FOCK_SYH
+#define INT2FOCK_SYH
 
 namespace gansu::gpu{
 

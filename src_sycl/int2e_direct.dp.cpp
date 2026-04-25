@@ -1050,14 +1050,14 @@ void pppp2e_direct(real_t *g_fock_matrix,
         return;
     }
 
-    const int primitive_shell_index_a =
-        g_primitive_shell_pair_indices[ab].x() + shell_s0.start_index;
-    const int primitive_shell_index_b =
-        g_primitive_shell_pair_indices[ab].y() + shell_s1.start_index;
-    const int primitive_shell_index_c =
-        g_primitive_shell_pair_indices[cd].x() + shell_s2.start_index;
-    const int primitive_shell_index_d =
-        g_primitive_shell_pair_indices[cd].y() + shell_s3.start_index;
+//    const size_t primitive_shell_index_a = g_primitive_shell_pair_indices[ab].x() + shell_s0.start_index;
+//    const size_t primitive_shell_index_b = g_primitive_shell_pair_indices[ab].y() + shell_s1.start_index;
+//    const size_t primitive_shell_index_c = g_primitive_shell_pair_indices[cd].x() + shell_s2.start_index;
+//    const size_t primitive_shell_index_d = g_primitive_shell_pair_indices[cd].y() + shell_s3.start_index;
+    const size_t primitive_shell_index_a = g_primitive_shell_pair_indices[ab].x();
+    const size_t primitive_shell_index_b = g_primitive_shell_pair_indices[ab].y();
+    const size_t primitive_shell_index_c = g_primitive_shell_pair_indices[cd].x();
+    const size_t primitive_shell_index_d = g_primitive_shell_pair_indices[cd].y();
 
     PrimitiveShell a = g_primitive_shells[primitive_shell_index_a];
     PrimitiveShell b = g_primitive_shells[primitive_shell_index_b];
