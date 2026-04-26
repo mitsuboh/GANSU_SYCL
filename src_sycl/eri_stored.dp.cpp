@@ -25,7 +25,7 @@
 #include "eri_stored.hpp"
 #include "device_host_memory.hpp"
 
-#include "ao2mo.cuh"
+#include "ao2mo.syh"
 
 #define FULLMASK 0xffffffff
 
@@ -6602,6 +6602,7 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
                     sizeof(real_t) * num_ccsd_amplitudes)
             .wait(); // t_ia_new and t_ijab_new are in contiguous buffer
         // Compute residuals for DIIS and rms difference
+        rms = 0.0;
         for(size_t idx = 0; idx < num_ccsd_amplitudes; ++idx){
             h_residual[idx] = h_t_new[idx] - h_t_old[idx];
             rms += h_residual[idx] * h_residual[idx];
@@ -6694,14 +6695,14 @@ ccsd_from_aoeri_via_full_moeri(const real_t *__restrict__ d_eri_ao,
 
 
 
+// ccsd_algorithm: 0 = spatial-orbital optimized (GPU DGEMM + sub-blocks)
+//                 1 = spatial-orbital naive (pure CPU)
+//                 2 = spin-orbital (legacy)
 
 real_t ERI_Stored_RHF::compute_ccsd_energy() {
     PROFILE_FUNCTION();
 
-
-    // CCSD energy calculation 
-
-    const int num_occ = rhf_.get_num_electrons() / 2; // number of occupied orbitals for RHF
+    const int num_occ = rhf_.get_num_electrons() / 2;
     const int num_basis = rhf_.get_num_basis();
     DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
     DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
@@ -6709,9 +6710,14 @@ real_t ERI_Stored_RHF::compute_ccsd_energy() {
     const real_t* d_eps = orbital_energies.device_ptr();
     const real_t* d_eri = eri_matrix_.device_ptr();
 
-    bool computing_ccsd_t = false;
-
-    real_t E_CCSD = ccsd_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ, computing_ccsd_t);
+    real_t E_CCSD;
+    if (ccsd_algorithm_ == 2) {
+        E_CCSD = ccsd_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ, false, nullptr);
+    } else if (ccsd_algorithm_ == 1) {
+        E_CCSD = ccsd_spatial_orbital_naive(d_eri, d_C, d_eps, num_basis, num_occ, false, nullptr);
+    } else {
+        E_CCSD = ccsd_spatial_orbital(d_eri, d_C, d_eps, num_basis, num_occ, false, nullptr);
+    }
 
     std::cout << "CCSD energy: " << E_CCSD << " Hartree" << std::endl;
 
@@ -6726,7 +6732,7 @@ real_t ERI_Stored_RHF::compute_ccsd_t_energy() {
 
     // CCSD energy calculation 
 
-    const int num_occ = rhf_.get_num_electrons() / 2; // number of occupied orbitals for RHF
+    const int num_occ = rhf_.get_num_electrons() / 2;
     const int num_basis = rhf_.get_num_basis();
     DeviceHostMatrix<real_t>& coefficient_matrix = rhf_.get_coefficient_matrix();
     DeviceHostMemory<real_t>& orbital_energies = rhf_.get_orbital_energies();
@@ -6734,11 +6740,15 @@ real_t ERI_Stored_RHF::compute_ccsd_t_energy() {
     const real_t* d_eps = orbital_energies.device_ptr();
     const real_t* d_eri = eri_matrix_.device_ptr();
     
-    bool computing_ccsd_t = true;
     real_t ccsd_t_energy = 0.0;
-
-    real_t E_CCSD = ccsd_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ, computing_ccsd_t, &ccsd_t_energy);
-
+    real_t E_CCSD;
+    if (ccsd_algorithm_ == 2) {
+        E_CCSD = ccsd_from_aoeri_via_full_moeri(d_eri, d_C, d_eps, num_basis, num_occ, true, &ccsd_t_energy);
+    } else if (ccsd_algorithm_ == 1) {
+        E_CCSD = ccsd_spatial_orbital_naive(d_eri, d_C, d_eps, num_basis, num_occ, true, &ccsd_t_energy);
+    } else {
+        E_CCSD = ccsd_spatial_orbital(d_eri, d_C, d_eps, num_basis, num_occ, true, &ccsd_t_energy);
+    }
 
     std::cout << "CCSD correction energy: " << E_CCSD << " Hartree" << std::endl;
     std::cout << "(T) correction energy: " << ccsd_t_energy << " Hartree" << std::endl;

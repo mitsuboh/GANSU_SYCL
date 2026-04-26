@@ -199,8 +199,8 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
     double beta = accumulate ? 1.0 : 0.0;
 
     // 行メジャーの leading dimension
-    int lda = transpose_A ? K : N;  // A の物理幅
-    int ldb = transpose_B ? N : K;  // B の物理幅
+    int lda = transpose_A ? M : K;  // A の物理幅
+    int ldb = transpose_B ? K : N;  // B の物理幅
     int ldc = N;                    // C の物理幅
 
     oneapi::mkl::blas::row_major::gemm(
@@ -793,7 +793,7 @@ void computeERIMatrix(
     // Zero-initialize ERI matrix (kernels use atomicAdd)
     //cudaMemset(d_eri_matrix, 0, (size_t)num_basis * num_basis * num_basis * num_basis * sizeof(real_t));
     {
-        const size_t bytes = sizeof(real_t) * static_cast<size_t>(num_basis) * num_basis * num_basis;
+        const size_t bytes = sizeof(real_t) * static_cast<size_t>(num_basis) * num_basis * num_basis * num_basis;
         workq.memset(d_eri_matrix, 0, bytes).wait();
     }
 

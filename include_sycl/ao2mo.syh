@@ -1,5 +1,5 @@
-#ifndef AO2MO_CUH
-#define AO2MO_CUH
+#ifndef AO2MO_SYH
+#define AO2MO_SYH
 
 #include <sycl/sycl.hpp>
 #include <oneapi/mkl/blas.hpp>
@@ -512,4 +512,4 @@ void transform_eri_ao2mo_dgemm_full(
 
 
 
-#endif // AO2MO_CUH
+#endif // AO2MO_SYH

@@ -160,31 +160,38 @@ inline void find_double_excitation(uint64_t str1, uint64_t str2,
  * The phase is the product of individual annihilation/creation phases.
  */
 inline real_t compute_double_phase(uint64_t str, int p1, int p2,
-                                                   int q1, int q2)
+                                   int q1, int q2)
 {
-    // Phase for annihilating p1 from str
-    real_t phase = compute_phase(str, p1, 0);
-    // Count occupied orbitals below p1
-    uint64_t mask_p1 = (1ULL << p1) - 1;
-    int n_below_p1 = sycl::popcount(str & mask_p1);
-    phase = (n_below_p1 % 2 == 0) ? 1.0 : -1.0;
+    real_t phase = 1.0;
 
-    // After removing p1
+    // ---- remove p1 ----
+    int n_below_p1 = 0;
+    for (int i = 0; i < p1; ++i)
+        if (str & (1ULL << i)) n_below_p1++;
+    phase *= (n_below_p1 % 2 == 0) ? 1.0 : -1.0;
+
     uint64_t str2 = str & ~(1ULL << p1);
-    uint64_t mask_p2 = (1ULL << p2) - 1;
-    int n_below_p2 = sycl::popcount(str2 & mask_p2);
+
+    // ---- remove p2 ----
+    int n_below_p2 = 0;
+    for (int i = 0; i < p2; ++i)
+        if (str2 & (1ULL << i)) n_below_p2++;
     phase *= (n_below_p2 % 2 == 0) ? 1.0 : -1.0;
 
-    // After removing p2
     uint64_t str3 = str2 & ~(1ULL << p2);
-    uint64_t mask_q1 = (1ULL << q1) - 1;
-    int n_below_q1 = sycl::popcount(str3 & mask_q1);
+
+    // ---- add q1 ----
+    int n_below_q1 = 0;
+    for (int i = 0; i < q1; ++i)
+        if (str3 & (1ULL << i)) n_below_q1++;
     phase *= (n_below_q1 % 2 == 0) ? 1.0 : -1.0;
 
-    // After adding q1
     uint64_t str4 = str3 | (1ULL << q1);
-    uint64_t mask_q2 = (1ULL << q2) - 1;
-    int n_below_q2 = sycl::popcount(str4 & mask_q2);
+
+    // ---- add q2 ----
+    int n_below_q2 = 0;
+    for (int i = 0; i < q2; ++i)
+        if (str4 & (1ULL << i)) n_below_q2++;
     phase *= (n_below_q2 % 2 == 0) ? 1.0 : -1.0;
 
     return phase;
@@ -195,15 +202,23 @@ inline real_t compute_double_phase(uint64_t str, int p1, int p2,
  *
  * Phase = (-1)^(number of occupied orbitals that must be anticommuted past)
  */
+//Ikei DEBUG
 inline real_t compute_single_phase(uint64_t str, int p, int q) {
-    // Annihilate p, then create q
-    uint64_t mask_p = (1ULL << p) - 1;
-    int n_below_p = sycl::popcount(str & mask_p);
+    // count bits below p
+    int n_below_p = 0;
+    for (int i = 0; i < p; ++i) {
+        if (str & (1ULL << i)) n_below_p++;
+    }
     real_t phase = (n_below_p % 2 == 0) ? 1.0 : -1.0;
 
+    // remove p
     uint64_t str2 = str & ~(1ULL << p);
-    uint64_t mask_q = (1ULL << q) - 1;
-    int n_below_q = sycl::popcount(str2 & mask_q);
+
+    // count bits below q
+    int n_below_q = 0;
+    for (int i = 0; i < q; ++i) {
+        if (str2 & (1ULL << i)) n_below_q++;
+    }
     phase *= (n_below_q % 2 == 0) ? 1.0 : -1.0;
 
     return phase;
