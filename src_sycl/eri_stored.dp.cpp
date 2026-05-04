@@ -13,7 +13,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
 #include <iomanip>
 #include <iostream>
@@ -578,11 +577,12 @@ void transform_ao_eri_to_mo_eri_4stage(
         int threads = 256;
         int blocks = (int)((N4 + threads - 1) / threads);
 
-        workq.parallel_for(
+        auto e = workq.parallel_for(
             sycl::nd_range<1>(blocks * threads, threads),
             [=](sycl::nd_item<1> item) {
                 tensor4d_permute_kernel(item, in, out, N, p0, p1, p2, p3);
         });
+        e.wait();
     };
 
     // Stage 1: half1[p,ν,λ,σ] = sum_μ C^T[p,μ] × eri_ao[μ, ν*N²+λ*N+σ]
@@ -613,7 +613,7 @@ void transform_ao_eri_to_mo_eri_4stage(
     gpu::matrixMatrixProductRect(d_tmp, d_C, d_eri_mo,
                                 (int)N3, N, N,
                                 false, false, false, 1.0);
-
+    workq.wait();
     tracked_syclFree(d_tmp);
 }
 
@@ -641,9 +641,6 @@ void check_moeri_kernel(const sycl::nd_item<1> item_ct1,
     double eri_mo_val_bruteforce = eri_mo_bruteforce(eri_ao, C, num_basis, p, q, r, s);
 
     if (sycl::fabs(eri_mo_val - eri_mo_val_bruteforce) > 1e-10) {
-      /*
-      DPCT1015:1: Output needs adjustment.
-      */
       stream_ct1 << "Mismatch: (%d,%d,%d,%d): eri_mo=%18.10f, "
                     "eri_mo_bruteforce=%18.10f\n";
     }else{
@@ -757,7 +754,6 @@ double mp2_from_aoeri_via_full_moeri(
     {
         std::string str = "Computing AO -> MO full integral transformation... ";
         PROFILE_ELAPSED_TIME(str);
-
         transform_ao_eri_to_mo_eri_full(d_eri_ao, d_C, nao, d_eri_mo);
         q_ct1.wait_and_throw();
     }
@@ -802,12 +798,7 @@ double mp2_from_aoeri_via_full_moeri(
 
     int threads = 128;
     int blocks  = (int)((total + threads - 1) / threads);
-    /*
-    DPCT1083:3: The size of local memory in the migrated code may be different
-    from the original code. Check that the allocated memory size in the migrated
-    code is correct.
-    */
-    size_t shmem = (size_t)threads * sizeof(double);
+//    size_t shmem = (size_t)threads * sizeof(double);
 
     {
         std::string str = "Computing MP2 energy from full MO ERI... ";
@@ -819,8 +810,6 @@ double mp2_from_aoeri_via_full_moeri(
         Adjust the work-group size if needed.
         */
         {
-//            dpct::has_capability_or_fail(q_ct1.get_device(),
-//                                         {sycl::aspect::fp64});
             require_fp64(q_ct1);
 
             q_ct1.parallel_for(
@@ -903,12 +892,7 @@ real_t mp2_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
     size_t vir = (size_t)(num_basis - num_occ);
     size_t total = (size_t)occ * occ * vir * vir;
     const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-    /*
-    DPCT1083:5: The size of local memory in the migrated code may be different
-    from the original code. Check that the allocated memory size in the migrated
-    code is correct.
-    */
-    size_t shmem = (size_t)num_threads * sizeof(double);
+//    size_t shmem = (size_t)num_threads * sizeof(double);
 
     real_t* d_mp2_energy;
     d_mp2_energy = tracked_syclMalloc<real_t>(1, q_ct1);
@@ -917,11 +901,6 @@ real_t mp2_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
     }
     q_ct1.memset(d_mp2_energy, 0.0, sizeof(real_t)).wait();
 
-    /*
-    DPCT1049:4: The work-group size passed to the SYCL kernel may exceed the
-    limit. To get the device limit, query info::device::max_work_group_size.
-    Adjust the work-group size if needed.
-    */
     {
         require_fp64(q_ct1);
 
@@ -1288,12 +1267,6 @@ real_t ERI_Stored_RHF::compute_mp2_energy() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// MP3 energy calculation (naive implementation with on-the-fly integral transformation)
-/*
-DPCT1110:6: The total declared local variable size in device function
-mp3_naive_4h2p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void mp3_naive_4h2p_kernel(sycl::nd_item<1> item_ct1,
                            const double *__restrict__ eri_ao,
                            const double *__restrict__ C,
@@ -1337,12 +1310,6 @@ void mp3_naive_4h2p_kernel(sycl::nd_item<1> item_ct1,
   }
 }
 
-/*
-DPCT1110:7: The total declared local variable size in device function
-mp3_naive_2h4p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void mp3_naive_2h4p_kernel(sycl::nd_item<1> item_ct1, 
                            const double *__restrict__ eri_ao,
                            const double *__restrict__ C,
@@ -1388,12 +1355,6 @@ void mp3_naive_2h4p_kernel(sycl::nd_item<1> item_ct1,
   }
 }
 
-/*
-DPCT1110:8: The total declared local variable size in device function
-mp3_naive_3h3p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void mp3_naive_3h3p_kernel(sycl::nd_item<1> item_ct1, 
                            const double *__restrict__ eri_ao,
                            const double *__restrict__ C,
@@ -1465,12 +1426,7 @@ real_t mp3_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * occ * occ * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:10: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         /*
         DPCT1049:9: The work-group size passed to the SYCL kernel may exceed the
@@ -1504,12 +1460,7 @@ real_t mp3_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * vir * vir * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:12: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         /*
         DPCT1049:11: The work-group size passed to the SYCL kernel may exceed
@@ -1543,12 +1494,7 @@ real_t mp3_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * occ * vir * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:14: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         /*
         DPCT1049:13: The work-group size passed to the SYCL kernel may exceed
@@ -1806,12 +1752,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:18: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         {
             require_fp64(q_ct1);
@@ -1855,12 +1796,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * occ * occ * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:19: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         {
             require_fp64(q_ct1);
@@ -1889,12 +1825,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * vir * vir * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:20: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         {
             require_fp64(q_ct1);
@@ -1923,12 +1854,7 @@ real_t mp3_from_aoeri_via_full_moeri(const real_t *d_eri_ao,
         size_t vir = (size_t)(num_basis - num_occ);
         size_t total = (size_t)occ * occ * occ * vir * vir * vir;
         const int num_blocks = (int)((total + num_threads - 1) / num_threads);
-        /*
-        DPCT1083:21: The size of local memory in the migrated code may be
-        different from the original code. Check that the allocated memory size
-        in the migrated code is correct.
-        */
-        size_t shmem = (size_t)num_threads * sizeof(double);
+//        size_t shmem = (size_t)num_threads * sizeof(double);
 
         {
             require_fp64(q_ct1);
@@ -1994,12 +1920,7 @@ double mp2_from_full_moeri(
 
     int threads = 1024;
     size_t blocks  = (size_t)((total + threads - 1) / threads);
-    /*
-    DPCT1083:31: The size of local memory in the migrated code may be different
-    from the original code. Check that the allocated memory size in the migrated
-    code is correct.
-    */
-    size_t shmem = (size_t)threads * sizeof(double);
+//    size_t shmem = (size_t)threads * sizeof(double);
 
     {
         std::string str = "Computing MP2 energy from full MO ERI... ";
@@ -5430,7 +5351,12 @@ real_t ccsd_spatial_orbital(const real_t* __restrict__ d_eri_ao,
     {
         std::string str = "Computing AO -> MO 4-stage integral transformation... ";
         PROFILE_ELAPSED_TIME(str);
-        transform_ao_eri_to_mo_eri_4stage(d_eri_ao, d_coefficient_matrix, N, d_eri_mo);
+//Ikei
+    real_t* d_coefficient_matrix_shared = tracked_syclMalloc<real_t>(N*N, q_ct1);
+    q_ct1.memcpy(d_coefficient_matrix_shared, d_coefficient_matrix, N*N*sizeof(real_t)).wait();
+    transform_ao_eri_to_mo_eri_4stage(d_eri_ao, d_coefficient_matrix_shared, N, d_eri_mo);
+
+//        transform_ao_eri_to_mo_eri_4stage(d_eri_ao, d_coefficient_matrix, N, d_eri_mo);
         q_ct1.wait_and_throw();
     }
 
@@ -6296,7 +6222,7 @@ real_t ccsd_spatial_orbital(const real_t* __restrict__ d_eri_ao,
         const size_t M_cols = (size_t)nocc * vv;   // = t2Size / nocc actually = nocc * vv
         const size_t M_total = M_rows * M_cols;
 
-        double *d_G=tracked_syclMalloc<double>(M_rows, q_ct1);
+        double *d_G=tracked_syclMalloc<double>(M_rows * nocc, q_ct1);
         double *d_M_sum=tracked_syclMalloc<double>(M_total, q_ct1);
 
         q_ct1.memcpy(d_G, v_vooo.data(), M_rows * nocc * sizeof(double)).wait();

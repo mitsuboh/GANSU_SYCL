@@ -13,9 +13,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 #include <algorithm>
 
 #include <cstdlib>  // std::getenv
@@ -27,7 +25,6 @@
 #include "rhf.hpp"
 #include <oneapi/mkl.hpp>
 #include <oneapi/mkl/lapack.hpp>
-//#include <dpct/blas_utils.hpp>
 
 
 #include <cmath>
@@ -83,6 +80,104 @@ void mu2i_(sycl::nd_item<1> item, int norbs, int nocc, int nvir, int naux, doubl
 // void nu2a_dgemm(short norbs, short nocc, short nvir, short naux, double *d_C,
 //                 double *d_B_p_mu_nu, double *d_B_p_mu_a,
 //                 dpct::blas::descriptor_ptr &handle) {
+
+// 転置カーネル（CUDA の cublasDgeam(CUBLAS_OP_T) 相当）
+inline sycl::event transpose_matrix(sycl::queue& workq,
+                             double* d_out, const double* d_in,
+                             int rows_in, int cols_in,
+                             int lda_in, int lda_out,
+                             const std::vector<sycl::event>& deps = {})
+{
+    return workq.submit([&](sycl::handler& h) {
+        if (!deps.empty()) h.depends_on(deps);
+        h.parallel_for(
+            sycl::range<2>(static_cast<size_t>(rows_in),
+                           static_cast<size_t>(cols_in)),
+            [=](sycl::id<2> idx) {
+                int i = static_cast<int>(idx[0]); // row
+                int j = static_cast<int>(idx[1]); // col
+                d_out[j + i * lda_out] = d_in[i + j * lda_in];
+            }
+        );
+    });
+}
+
+
+sycl::event nu2a_dgemm(sycl::queue& workq,
+                int norbs, int nocc, int nvir, int naux,
+                double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a)
+{
+    const double alpha = 1.0;
+    const double beta  = 0.0;
+
+    sycl::event ev0 = workq.memset(d_B_p_mu_a, 0, naux * (size_t)norbs * nvir * sizeof(double));
+
+    return oneapi::mkl::blas::column_major::gemm(
+        workq,
+        oneapi::mkl::transpose::nontrans,
+        oneapi::mkl::transpose::nontrans,
+        nvir, naux * norbs, norbs,
+        alpha,
+        d_C + nocc, norbs,
+        d_B_p_mu_nu, norbs,
+        beta,
+        d_B_p_mu_a, nvir,
+        {ev0}
+    );
+}
+
+sycl::event mu2i_dgemm(sycl::queue& workq,
+                int norbs, int nocc, int nvir, int naux,
+                double* d_C, double* d_B_p_mu_a, double* d_B_p_i_a)
+{
+    const double alpha = 1.0;
+    const double beta  = 0.0;
+
+    // cudaMemset(d_B_p_i_a, 0, norbs * nvir * naux)
+    sycl::event e0 = workq.memset(d_B_p_i_a, 0, norbs * (size_t)nvir * naux * sizeof(double));
+
+    // --- 1回目の転置: CUDA の geam #1 と同じ ---
+    int row = naux * norbs;
+    int col = nvir;
+    // A: (col × row), lda = col
+    // C: (row × col), ldc = row
+    auto e1 = transpose_matrix(workq,
+                         d_B_p_i_a, d_B_p_mu_a,
+                         col, row,
+                         col, row, {e0});
+
+    // cudaMemset(d_B_p_mu_a, 0, norbs * norbs * naux)
+    auto e2 = workq.submit([&](sycl::handler& h) {
+        h.depends_on(e1);
+        h.memset(d_B_p_mu_a, 0, naux * (size_t)nocc * norbs * sizeof(double));
+    });
+    // GEMM: CUDA の cublasDgemm と 1:1
+    auto e3 = oneapi::mkl::blas::column_major::gemm(
+        workq,
+        oneapi::mkl::transpose::nontrans,
+        oneapi::mkl::transpose::nontrans,
+        nocc, naux * nvir, norbs,
+        alpha,
+        d_C, norbs,
+        d_B_p_i_a, norbs,
+        beta,
+        d_B_p_mu_a, nocc, {e2}
+    );
+    // --- 2回目の転置: CUDA の geam #2 と同じ ---
+    
+    int row2 = naux * nocc;
+    int col2 = nvir;
+    // A: (row × col), lda = row
+    // C: (col × row), ldc = col
+    auto e4 = transpose_matrix(workq,
+                     d_B_p_i_a, d_B_p_mu_a,
+                     row2, col2,
+                     row2, col2,{e3});
+    
+    return e4;
+}
+
+/*
 void nu2a_dgemm(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double* d_C, double* d_B_p_mu_nu, double* d_B_p_mu_a) {
 //    sycl::queue& workq = gpu::GPUHandle::syclqueue();
 
@@ -105,18 +200,6 @@ void nu2a_dgemm(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, dou
         d_B_p_mu_a, nvir  
     ).wait();
 
-/*
-    cublasDgemm(
-        handle, 
-        CUBLAS_OP_N, CUBLAS_OP_N, 
-        nvir, naux * norbs, norbs, 
-        &alpha, 
-        &d_C[nocc], norbs, 
-        d_B_p_mu_nu, norbs, 
-        &beta, 
-        d_B_p_mu_a, nvir
-    );
-*/    
     // cublasDestroy(handle);
 }
 
@@ -162,11 +245,13 @@ void mu2i_dgemm(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, dou
         d_B_p_i_a, naux * nocc
     ).wait();
 }
-
+*/
     
-void transform_intermediate_matrix(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double *d_C, double *d_B, double *d_tmp) {
-    nu2a_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_B, d_tmp);
-    mu2i_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_tmp, d_B);
+sycl::event transform_intermediate_matrix(sycl::queue& workq, int norbs, int nocc, int nvir, int naux, double *d_C, double *d_B, double *d_tmp) {
+    sycl::event e1 = nu2a_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_B, d_tmp);
+    e1.wait();
+    sycl::event e2 = mu2i_dgemm(workq, norbs, nocc, nvir, naux, d_C, d_tmp, d_B);
+    return e2;
 }
 
 
@@ -283,7 +368,7 @@ inline uint64_t calc_j(uint64_t id, int i, int s){
 /**/
 
 inline uint64_t calc_i(uint64_t id, int s, int k) {   // s:nocc_stride, k: nocc_block
-    return ((uint64_t)1.0 + sqrt(1.0 + 4.0*(2.0*id + (size_t)s*(s-1)))) / 2.0;
+    return ((uint64_t)1.0 + sycl::sqrt(1.0 + 4.0*(2.0*id + (size_t)s*(s-1)))) / 2.0;
 }
 
 
@@ -515,11 +600,6 @@ void ri_rmp2_kernel_body<energy_kernel4>(sycl::nd_item<1> item, int nocc, int no
 int search_maximum_k(int mocc, int mvir) {
     size_t free_mem_bytes, total_mem_bytes;
 */
-    /*
-    DPCT1106:65: 'cudaMemGetInfo' was migrated with the Intel extensions for
-    device information which may not be supported by all compilers or runtimes.
-    You may need to adjust the code.
-    */
 /*
     dpct::get_current_device().get_memory_info(free_mem_bytes, total_mem_bytes);
 
@@ -585,7 +665,7 @@ void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int 
 */
 
 void search_k_and_syclmalloc_4cERI( sycl::queue& workq, int mocc, int mvir, int &k, double **d_iajb) {
-    k = (int)(search_maximum_k(workq, mocc, mvir) * 0.9 / sizeof(double)); // syclMalloc uses elements not bytes
+    k = (int)(search_maximum_k(workq, mocc, mvir) * 0.9);
 
     try {
         size_t nelems = (size_t)k * (size_t)mvir * (size_t)mocc * (size_t)mvir;
@@ -624,14 +704,14 @@ template <typename Term>
 struct ri_rmp2;
 
 template <typename Term>
-sycl::event launch_ri_rmp2_kernel(sycl::queue &workq, size_t num_blocks, int num_threads, int nocc, int nocc_block, int nvir,
-                              int i, int naux, double* d_iajb, double* d_eps, double* d_energy)
+sycl::event launch_ri_rmp2_kernel(sycl::queue &workq, size_t num_blocks, int num_threads, int nocc,
+int nocc_block, int nvir, int i, int naux, double* d_iajb, double* d_eps, double* d_energy, sycl::event dep_ev)
 {
     size_t global_size = num_blocks * num_threads;
 
     return workq.submit([&](sycl::handler &h){
         sycl::local_accessor<double, 1> sh_tmp(num_threads, h);
-
+        h.depends_on(dep_ev); 
         h.parallel_for<ri_rmp2<Term>>(sycl::nd_range<1>(global_size, num_threads),
             [=](sycl::nd_item<1> item){
                ri_rmp2_kernel_body<Term>(item, nocc, nocc_block, nvir, i,
@@ -674,7 +754,8 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     search_k_and_syclmalloc_4cERI(workq, nocc, nvir, nocc_block, &d_iajb);
 
     // intermediate matrix 変換
-    transform_intermediate_matrix(workq, num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
+    auto e_trans = transform_intermediate_matrix(workq, num_basis_, nocc, nvir, num_auxiliary_basis, d_C, d_intermediate_matrix_B, d_tmp);
+    e_trans.wait();
     tracked_syclFree(d_tmp);
 
 //    const int num_threads = 1024;
@@ -684,7 +765,6 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     size_t num_blocks_2 = 0;
     size_t num_blocks_3 = ((size_t)(nocc_block * (size_t)nvir * (nvir - 1.0) / 2) + num_threads - 1) / num_threads;
     size_t num_blocks_4 = ((size_t)(nocc_block * (size_t)nvir) + num_threads - 1) / num_threads;
-
     sycl::event last_event;
     auto start_event = workq.submit([&](sycl::handler& h) {
         h.single_task([=]() {});
@@ -696,40 +776,51 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
         int curr_block = std::min(nocc_block, nocc - i);
 
         // GEMM: d_iajb = B * C^T 相当
-        oneapi::mkl::blas::column_major::gemm(
+        auto gemm_ev = oneapi::mkl::blas::column_major::gemm(
             workq,
             oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::trans,
             nocc * nvir, curr_block * nvir, num_auxiliary_basis,
             1.0,                      // alpha
             d_intermediate_matrix_B, nocc * nvir,
+//d_intermediate_matrix_B + i * (nocc * nvir), nocc * nvir,
             &d_intermediate_matrix_B[i * nvir], nocc * nvir,
             0.0,                     // beta
             d_iajb, nocc * nvir
         );
 
+    size_t num_blocks_1 =
+        (((size_t)(nocc_block * i + (size_t)nocc_block * (nocc_block - 1) / 2)
+          * (size_t)nvir * (nvir - 1) / 2)
+         + num_threads - 1) / num_threads;
+
+    size_t num_blocks_2 =
+        (((size_t)(nocc_block * i + (size_t)nocc_block * (nocc_block - 1) / 2)
+          * (size_t)nvir)
+         + num_threads - 1) / num_threads;
+
         // RI-RMP2 カーネル呼び出し相当
         auto e1 = launch_ri_rmp2_kernel<energy_kernel1>(
             workq, num_blocks_1, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
-            d_iajb, d_eps, d_energy
+            d_iajb, d_eps, d_energy, gemm_ev
         );
 
         auto e2 = launch_ri_rmp2_kernel<energy_kernel2>(
             workq, num_blocks_2, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
-            d_iajb, d_eps, d_energy
+            d_iajb, d_eps, d_energy, gemm_ev
         );
 
         auto e3 = launch_ri_rmp2_kernel<energy_kernel3>(
             workq, num_blocks_3, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
-            d_iajb, d_eps, d_energy
+            d_iajb, d_eps, d_energy, gemm_ev
         );
 
         auto e4 = launch_ri_rmp2_kernel<energy_kernel4>(
             workq, num_blocks_4, num_threads,
             nocc, nocc_block, nvir, i, num_auxiliary_basis,
-            d_iajb, d_eps, d_energy
+            d_iajb, d_eps, d_energy, gemm_ev
         );
 
         last_event = e4;
@@ -747,8 +838,6 @@ real_t ERI_RI_RHF::compute_mp2_energy() {
     workq.memcpy(&energy, d_energy, sizeof(real_t)).wait();
     tracked_syclFree(d_iajb);
     tracked_syclFree(d_energy);
-    sycl::free(d_iajb, workq);
-    sycl::free(d_energy, workq);
 
     printf("RMP2_energy: %.10f\n", energy);
     printf("RMP2_total_energy: %.10f\n", rhf_.get_total_energy() + energy);

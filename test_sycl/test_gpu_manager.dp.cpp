@@ -233,7 +233,7 @@ auto myQ = GPUHandle::syclqueue();
     myQ.memcpy(d_B, h_B, size * size * sizeof(double)).wait();
 
     // Perform weighted sum: C = 2.0 * A + 0.5 * B
-    weightedMatrixSum(d_A, d_B, d_C, 2.0, 0.5, size);
+    weightedMatrixSum(myQ, d_A, d_B, d_C, 2.0, 0.5, size);
 
     // Copy result back to host
     std::vector<double> h_C(size * size);
@@ -274,7 +274,7 @@ auto myQ = GPUHandle::syclqueue();
     myQ.memcpy(d_B, h_B, size * size * sizeof(double)).wait();
 
     // Perform addition: C = A + B
-    matrixAddition(d_A, d_B, d_C, size);
+    matrixAddition(myQ, d_A, d_B, d_C, size);
 
     // Copy result back to host
     std::vector<double> h_C(size * size);
@@ -315,7 +315,7 @@ auto myQ = GPUHandle::syclqueue();
     myQ.memcpy(d_B, h_B, size * size * sizeof(double)).wait();
 
     // Perform subtraction: C = A - B
-    matrixSubtraction(d_A, d_B, d_C, size);
+    matrixSubtraction(myQ, d_A, d_B, d_C, size);
 
     // Copy result back to host
     std::vector<double> h_C(size * size);

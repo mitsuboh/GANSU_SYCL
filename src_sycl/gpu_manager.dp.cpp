@@ -36,7 +36,19 @@
 
 namespace gansu::gpu{
 
-
+inline sycl::event transposeMatrix( sycl::queue& q, const real_t* A, real_t* B, int size, const std::vector<sycl::event>& deps = {}) {
+    return q.submit([&](sycl::handler& h) {
+        h.depends_on(deps);
+        h.parallel_for(
+            sycl::range<2>(size, size),
+            [=](sycl::id<2> idx) {
+                int i = idx[0];
+                int j = idx[1];
+                B[j * size + i] = A[i * size + j];
+            }
+        );
+    });
+}
 
 /**
  * @brief Performs eigenvalue decomposition on a symmetric matrix.
@@ -94,8 +106,10 @@ int eigenDecomposition(const real_t *d_matrix, real_t *d_eigenvalues, real_t *d_
         //-----------------------------------------
         // transpose column-major -> row-major
         //-----------------------------------------
-        auto ev_trans = oneapi::mkl::blas::row_major::omatcopy( workq, oneapi::mkl::transpose::trans, size, size,
-                static_cast<real_t>(1.0), d_temp, size, d_eigenvectors, size, {ev_eig});
+//        auto ev_trans = oneapi::mkl::blas::row_major::omatcopy( workq, oneapi::mkl::transpose::trans, size, size,
+//                static_cast<real_t>(1.0), d_temp, size, d_eigenvectors, size, {ev_eig});
+        auto ev_trans = transposeMatrix(workq, d_temp, d_eigenvectors, size, {ev_eig});
+
 
         //-----------------------------------------
         // wait final event
@@ -195,6 +209,7 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
     const bool transpose_A, const bool transpose_B, const bool accumulate, const double alpha)
 {
     sycl::queue& workq = gpu::GPUHandle::syclqueue();
+    auto dev = workq.get_device();
 
     double beta = accumulate ? 1.0 : 0.0;
 
@@ -203,7 +218,7 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
     int ldb = transpose_B ? K : N;  // B の物理幅
     int ldc = N;                    // C の物理幅
 
-    oneapi::mkl::blas::row_major::gemm(
+    auto ev = oneapi::mkl::blas::row_major::gemm(
         workq,
         transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
         transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
@@ -214,6 +229,7 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
         beta,
         d_C, ldc
     );
+    ev.wait();
 }
 
 void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d_C,
@@ -261,7 +277,26 @@ void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d
  * @param weight_B Weight of the matrix B
  * @param size Size of the matrix (size x size)
  * @details The matrix weighted sum is computed as \f$ C = \alpha A + \beta B \f$.
- */
+
+void weightedMatrixSum(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, double weight_A, double weight_B, int size) {
+    const double alpha = weight_A;
+    const double beta  = weight_B;
+    const size_t n = size * size;
+
+    auto ev_copy = q.memcpy(d_matrix_C, d_matrix_B, sizeof(double) * n);
+    auto ev_scal = oneapi::mkl::blas::column_major::scal( q, n, beta, d_matrix_C, 1, {ev_copy});
+    auto ev_axpy = oneapi::mkl::blas::column_major::axpy( q, n, alpha, d_matrix_A, 1, d_matrix_C, 1, {ev_scal});
+    ev_axpy.wait();
+}
+*/
+sycl::event weightedMatrixSum(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, double weight_A, double weight_B, int size) {
+    const size_t n = size * size;
+    return q.parallel_for(sycl::range<1>(n), [=](sycl::id<1> i) {
+        d_matrix_C[i] = weight_A * d_matrix_A[i] + weight_B * d_matrix_B[i];
+    });
+}
+
+/*
 void weightedMatrixSum(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const double weight_A, const double weight_B, const int size) {
     //cublasManager cublas;
    sycl::queue& workq = GPUHandle::syclqueue();
@@ -289,18 +324,8 @@ catch (oneapi::mkl::lapack::invalid_argument const& e) {
 catch (sycl::exception const& e) {
     std::cerr << "SYCL exception during omatadd: " << e.what() << std::endl;
 }
-/*
-    cublasDgeam(
-        cublasHandle,
-        CUBLAS_OP_N, CUBLAS_OP_N,
-        size, size,
-        &alpha, d_matrix_A, size,
-        &beta, d_matrix_B, size,
-        d_matrix_C, size
-    );
-*/
 }
-
+*/
 
 /**
 * @brief Computes the addition of two matrices using cuBLAS.
@@ -310,8 +335,8 @@ catch (sycl::exception const& e) {
 * @param size Size of the matrix (size x size)
 * @details The matrix subtraction is computed as \f$ C = A + B \f$.
 */
-void matrixAddition(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
-   weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, 1.0, size);
+sycl::event matrixAddition(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
+   return weightedMatrixSum(q, d_matrix_A, d_matrix_B, d_matrix_C, 1.0, 1.0, size);
 }
 
 
@@ -323,12 +348,12 @@ void matrixAddition(const double* d_matrix_A, const double* d_matrix_B, double* 
  * @param size Size of the matrix (size x size)
  * @details The matrix subtraction is computed as \f$ C = A - B \f$.
  */
-void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
-    weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
+sycl::event matrixSubtraction(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size) {
+    return weightedMatrixSum(q, d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
 }
 
-void matrixSubtractionInPlace(const double* d_matrix_A, double* d_matrix_B, double* d_matrix_C, const int size){
-    weightedMatrixSum(d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
+sycl::event matrixSubtractionInPlace(sycl::queue& q, const double* d_matrix_A, double* d_matrix_B, double* d_matrix_C, const int size){
+    return weightedMatrixSum(q, d_matrix_A, d_matrix_B, d_matrix_C, 1.0, -1.0, size);
 }
 
 /**
@@ -979,9 +1004,13 @@ void computeCoefficientMatrix(const real_t *d_fock_matrix,
         false,
         false
     );
+//Ikei
+//workq.wait();
+
 
     // diagonalize the symmetrized Fock matrix F'C' = C'E
     eigenDecomposition(d_tempSymFockMatrix, d_tempEigenvalues, d_tempEigenvectors, num_basis);
+
 
     // obtain the coefficient matrix from the eigenvectors C = X C'
     matrixMatrixProduct(
@@ -1447,11 +1476,11 @@ real_t computeOptimalDampingFactor_RHF(const real_t *d_fock_matrix,
 
     // calculate the difference between the Fock matrices
     // \f$ F_{\mathrm{diff}} = F_{\mathrm{new}} - F_{\mathrm{old}}  \f$
-    matrixSubtraction(d_fock_matrix, d_prev_fock_matrix, d_tempDiffFockMatrix, num_basis);
+    matrixSubtraction(workq, d_fock_matrix, d_prev_fock_matrix, d_tempDiffFockMatrix, num_basis);
 
     // calculate the difference between the density matrices
     // \f$D_{\mathrm{diff}} = D_{\mathrm{new}} - D_{\mathrm{old}} \f$
-    matrixSubtraction(d_density_matrix, d_prev_density_matrix, d_tempDiffDensityMatrix, num_basis);
+    matrixSubtraction(workq, d_density_matrix, d_prev_density_matrix, d_tempDiffDensityMatrix, num_basis);
 
     // calculate the trace of the product of the difference matrices
     // \f$ s = \mathrm{Tr}[F_{\mathrm{old}}(D_{\mathrm{new}} - D_{\mathrm{old}})] \f$
@@ -1513,8 +1542,7 @@ catch (sycl::exception const &exc) {
  * @details The updated Fock matrix is given by \f$ F_{\mathrm{new}} = (1-\alpha)F_{\mathrm{old}} + \alpha F_{\mathrm{new}} \f$.
  * @details The current Fock matrix is overwritten with the updated Fock matrix. \f$ F_{\mathrm{old}} = F_{\mathrm{new}} \f$
  */
-void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha,
-             int num_basis) try {
+void damping(real_t *d_matrix_old, real_t *d_matrix_new, const real_t alpha, int num_basis) try {
     sycl::queue& workq = GPUHandle::syclqueue();
     real_t* d_tempMatrix;
 
@@ -1528,7 +1556,7 @@ catch (sycl::exception const& e) {
     }
 }
 
-    weightedMatrixSum(d_matrix_old, d_matrix_new, d_tempMatrix, 1.0-alpha, alpha, num_basis);
+    auto ev = weightedMatrixSum(workq, d_matrix_old, d_matrix_new, d_tempMatrix, 1.0-alpha, alpha, num_basis);
 
     workq.memcpy(d_matrix_old, d_tempMatrix, num_basis * num_basis * sizeof(real_t));
     workq.memcpy(d_matrix_new, d_tempMatrix, num_basis * num_basis * sizeof(real_t)).wait();
@@ -1604,7 +1632,7 @@ void computeDIISErrorMatrix(const real_t *d_overlap_matrix,
     matrixMatrixProduct(d_tempMatrix1, d_fock_matrix, d_tempSPF, num_basis, false, false);
 
     // DIIS error matrix = FPS - SPF
-    matrixSubtraction(d_tempFPS, d_tempSPF, d_diis_error_matrix, num_basis);
+    matrixSubtraction(workq, d_tempFPS, d_tempSPF, d_diis_error_matrix, num_basis);
 
     if(is_include_transform){
         // tempSPF = X(FPS-SPF)
@@ -1702,11 +1730,16 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
 //    GPUHandle syclsolver;
 
     // get the workspace size
-    std::int64_t work_size;
-    work_size = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>(workq, num_size, num_size, lda);
+    std::int64_t work_size_getrf
+              = oneapi::mkl::lapack::getrf_scratchpad_size<real_t>(workq, num_size, num_size, lda);
 /*    int work_size;
     cusolverDnDgetrf_bufferSize(cusolver.cusolverHandle, num_size, num_size, d_DIIS_matrix, num_size, &work_size);
 */
+    std::int64_t work_size_getrs
+              = oneapi::mkl::lapack::getrs_scratchpad_size<real_t>(workq, oneapi::mkl::transpose::nontrans,
+        num_size, 1, lda, num_size);
+
+    std::int64_t work_size = std::max(work_size_getrf, work_size_getrs);
 
     // allocate the workspace
     real_t* d_work;
@@ -1761,10 +1794,14 @@ void computeFockMatrixDIIS(real_t *d_error_matrices, real_t *d_fock_matrices,
 
     // compute the DIIS Fock matrix (\f$ F_{\mathrm{new}} = \sum_{i=1}^{N} c_i F_i \f$)
     // F = c_1 F_1 + c_2 F_2
-    weightedMatrixSum(&d_fock_matrices[0*num_basis*num_basis], &d_fock_matrices[1*num_basis*num_basis], d_new_fock_matrix, h_DIIS_rhs[0], h_DIIS_rhs[1], num_basis);
-    for (int i = 2; i < num_prev; i++){
-        weightedMatrixSum(d_new_fock_matrix, &d_fock_matrices[i*num_basis*num_basis], d_new_fock_matrix, 1.0, h_DIIS_rhs[i], num_basis);
+
+    workq.memcpy(d_new_fock_matrix, &d_fock_matrices[0 * num_basis * num_basis], num_basis * num_basis * sizeof(real_t)).wait();
+    oneapi::mkl::blas::column_major::scal( workq, num_basis * num_basis, h_DIIS_rhs[0], d_new_fock_matrix, 1).wait();
+
+    for (int i = 1; i < num_prev; ++i) {
+        oneapi::mkl::blas::column_major::axpy( workq, num_basis * num_basis, h_DIIS_rhs[i], &d_fock_matrices[i * num_basis * num_basis], 1, d_new_fock_matrix, 1).wait();
     }
+
 
     // free the memory
     tracked_syclFree(d_DIIS_matrix);
@@ -2239,7 +2276,7 @@ void computeFockMatrix_RI_RHF_with_density_matrix(
 
     ////////////////////////////////// compute J-matrix //////////////////////////////////
 //    cublasDgemv(cublasHandle, CUBLAS_OP_T, num_basis*num_basis, num_auxiliary_basis, &alpha, d_intermediate_matrix_B, num_basis*num_basis, d_density_matrix, 1, &beta, d_W, 1);
-    oneapi::mkl::blas::row_major::gemv(
+    oneapi::mkl::blas::column_major::gemv(
         workq,
         oneapi::mkl::transpose::trans,
         num_basis * num_basis,          // rows of B
@@ -2260,7 +2297,7 @@ void computeFockMatrix_RI_RHF_with_density_matrix(
              });
 
     ////////////////////////////////// compute K-matrix //////////////////////////////////
-    oneapi::mkl::blas::row_major::gemm_batch(
+    oneapi::mkl::blas::column_major::gemm_batch(
         workq,
         oneapi::mkl::transpose::trans,   // A = D^T
         oneapi::mkl::transpose::nontrans,
@@ -2296,7 +2333,7 @@ void computeFockMatrix_RI_RHF_with_density_matrix(
         num_auxiliary_basis
     );
 */
-    oneapi::mkl::blas::row_major::gemm_batch(
+    oneapi::mkl::blas::column_major::gemm_batch(
         workq,
         oneapi::mkl::transpose::trans,   // A = D^T
         oneapi::mkl::transpose::nontrans,
@@ -2377,7 +2414,7 @@ void computeFockMatrix_RI_RHF_with_coefficient_matrix(
     const int num_blocks = (num_basis * num_basis + num_threads - 1) / num_threads;
 
     ////////////////////////////////// compute J-matrix //////////////////////////////////
-    oneapi::mkl::blas::row_major::gemv(
+    oneapi::mkl::blas::column_major::gemv(
         workq,
         oneapi::mkl::transpose::trans,
         num_basis * num_basis,          // rows of B
@@ -2399,7 +2436,7 @@ void computeFockMatrix_RI_RHF_with_coefficient_matrix(
 
     ////////////////////////////////// compute K-matrix //////////////////////////////////
     workq.memset(d_K, 0, sizeof(real_t) * num_basis * num_basis).wait();
-    oneapi::mkl::blas::row_major::gemm_batch(
+    oneapi::mkl::blas::column_major::gemm_batch(
         workq,
         oneapi::mkl::transpose::nontrans,
         oneapi::mkl::transpose::nontrans,
@@ -2432,7 +2469,7 @@ void computeFockMatrix_RI_RHF_with_coefficient_matrix(
                                         num_auxiliary_basis, num_occ);
         });
     alpha = 2.0;
-    oneapi::mkl::blas::row_major::gemm(
+    oneapi::mkl::blas::column_major::gemm(
         workq,
         oneapi::mkl::transpose::trans, oneapi::mkl::transpose::nontrans,
         num_basis, num_basis, num_occ * num_auxiliary_basis,
@@ -2600,7 +2637,7 @@ void computeFockMatrix_RI_UHF(const real_t *d_density_matrix_a,
     }
 
     // D = D_a + D_b
-    matrixAddition(d_density_matrix_a, d_density_matrix_b, d_density_matrix, num_basis);
+    matrixAddition(workq, d_density_matrix_a, d_density_matrix_b, d_density_matrix, num_basis);
 
     // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
     real_t* d_W = nullptr;
@@ -2832,7 +2869,7 @@ void computeFockMatrix_RI_ROHF(
         }
 
         // D = D_closed + D_open
-        matrixAddition(d_density_matrix_closed, d_density_matrix_open, d_density_matrix, num_basis);
+        matrixAddition(workq, d_density_matrix_closed, d_density_matrix_open, d_density_matrix, num_basis);
 
         // W = B D (Matrix(M_aux x M^2 matrix) * Vector (M^2 x 1) )
         real_t* d_W = nullptr;
@@ -2930,7 +2967,7 @@ void computeFockMatrix_RI_ROHF(
         }
 
         // D = 0.5*D_closed + D_open
-        weightedMatrixSum(d_density_matrix_closed, d_density_matrix_open, d_density_matrix, 0.5, 1.0, num_basis);
+        weightedMatrixSum(workq, d_density_matrix_closed, d_density_matrix_open, d_density_matrix, 0.5, 1.0, num_basis);
 
         // T^p = B^p Da^T
         // Note: cublasDgemmBatched should be used?
@@ -3713,7 +3750,7 @@ void computeFockMatrix_Direct_RHF(
         main_q.memset(d_density_matrix_diff, 0, sizeof(real_t) * num_basis * num_basis) .wait();
     }
     // D_diff = D_new - D_old
-    matrixSubtractionInPlace(d_density_matrix, d_density_matrix_diff, d_density_matrix_diff, num_basis);
+    matrixSubtractionInPlace(main_q, d_density_matrix, d_density_matrix_diff, d_density_matrix_diff, num_basis);
     int num_primitive_shells = 0;
     for (const auto& x : shell_type_infos) {
         num_primitive_shells += x.count;
@@ -3763,10 +3800,11 @@ void computeFockMatrix_Direct_RHF(
     // for-loop for sorted shell-type (s0, s1, s2, s3)
     int kernel_idx = 0;
     const int task_group_size = 16;
-    const int num_cuda_blocks = 256;
+//    const int num_cuda_blocks = 256;
     for (const auto& quadruple: shell_quadruples) {
         int s0, s1, s2, s3;
         std::tie(s0, s1, s2, s3) = quadruple;
+
 
         const ShellTypeInfo shell_s0 = shell_type_infos[s0];
         const ShellTypeInfo shell_s1 = shell_type_infos[s1];
@@ -3783,7 +3821,9 @@ void computeFockMatrix_Direct_RHF(
 
         if (s0 <= 1 && s1 <= 1 && s2 <= 1 && s3 <= 1) {
             // initialzie global counters and minimum skipped columns for dynamic screening
+//            const int num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
             const int num_bra_groups = (num_bra + task_group_size - 1) / task_group_size;
+            const int num_cuda_blocks = num_bra_groups;
             const int num_ket_groups = (num_ket + task_group_size - 1) / task_group_size;
             const int num_init_blocks = (num_bra_groups + num_threads_per_block - 1) / num_threads_per_block;
             //cudaMemset(d_global_counters[kernel_idx], 0, sizeof(int) * num_bra_groups);
@@ -3862,6 +3902,7 @@ d_density_matrix_diff,
                     head_ket);
                 });
             });
+workq.wait_and_throw();
         }
         kernel_idx++;
 

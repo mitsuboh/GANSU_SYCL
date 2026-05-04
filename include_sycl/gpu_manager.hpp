@@ -31,6 +31,7 @@ namespace gansu::gpu{
 // prototype declarations
 void invertSqrtElements(real_t* d_vectors, const size_t size, const double threshold=1e-6);
 void invertElements(real_t* d_vectors, const size_t size);
+sycl::event transposeMatrix(sycl::queue& q, real_t* d_matrix, const int size,const std::vector<sycl::event>& deps = {});
 void transposeMatrixInPlace(real_t* d_matrix, const int size);
 void makeDiagonalMatrix(const real_t* d_vector, real_t* d_matrix, const int size);
 real_t computeMatrixTrace(const real_t* d_matrix, const int size);
@@ -38,9 +39,9 @@ int eigenDecomposition(const real_t* d_matrix, real_t* d_eigenvalues, real_t* d_
 void matrixMatrixProduct(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size, const bool transpose_A = false, const bool transpose_B = false, const bool accumulate=false);
 void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C, const int M, const int N, const int K, const bool transpose_A = false, const bool transpose_B = false, const bool accumulate = false, const double alpha = 1.0);
 void matrixMatrixProductBatched(const double* d_A, const double* d_B, double* d_C, const int M, const int N, const int K, const long long strideA, const long long strideB, const long long strideC, const int batchCount, const bool transpose_A = false, const bool transpose_B = false, const bool accumulate = false, const double alpha = 1.0);
-void weightedMatrixSum(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const double weight_A, const double weight_B, const int size);
-void matrixAddition(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size);
-void matrixSubtraction(const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size);
+sycl::event weightedMatrixSum(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const double weight_A, const double weight_B, const int size);
+sycl::event matrixAddition(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size);
+sycl::event matrixSubtraction(sycl::queue& q, const double* d_matrix_A, const double* d_matrix_B, double* d_matrix_C, const int size);
 double innerProduct(const double* d_vector_A, const double* d_vector_B, double* result, const int size);
 void invertMatrix(double* d_A, const int N);
 void choleskyDecomposition(double* d_A, const int N);
