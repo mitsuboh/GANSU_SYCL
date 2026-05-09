@@ -2402,7 +2402,7 @@ real_t mp3_from_aoeri_via_full_moeri_dgemm(
 
     sycl::event e_gemm1, e_gemm2, e_gemm3, e_gemm4;
 
-    e_gemm1 = oneapi::mkl::blas::row_major::gemm( q_ct1,
+    e_gemm1 = oneapi::mkl::blas::column_major::gemm( q_ct1,
         oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_vv, num_oo, num_oo,
         alpha, d_t_tmp, num_vv, d_oooo, num_oo, beta, d_mm1, num_vv);
 
@@ -2429,10 +2429,10 @@ real_t mp3_from_aoeri_via_full_moeri_dgemm(
 
 //    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_T, num_ov, num_ov, num_ov, 
 //                &alpha, d_t_ovov, num_ov, d_t_ovov, num_ov, &beta, d_mm3, num_ov);
-    e_gemm2 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+    e_gemm2 = oneapi::mkl::blas::column_major::gemm(q_ct1,
         oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_oo, num_vv, num_vv,
         alpha, d_t_tmp, num_oo, d_vvvv, num_vv, beta, d_mm2, num_oo, {e1});
-    e_gemm3 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+    e_gemm3 = oneapi::mkl::blas::column_major::gemm(q_ct1,
         oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::trans, num_ov, num_ov, num_ov,
         alpha, d_t_ovov, num_ov, d_t_ovov, num_ov, beta, d_mm3, num_ov, {e_gemm2});
 
@@ -2469,7 +2469,7 @@ real_t mp3_from_aoeri_via_full_moeri_dgemm(
 //    q_ct1.wait_and_throw();
 //    cublasDgemm(cublasH, CUBLAS_OP_N, CUBLAS_OP_N, num_ov, num_ov, num_ov, 
 //                &alpha, d_s_tmp2, num_ov, d_s_tmp1, num_ov, &beta, d_mm4, num_ov);
-    e_gemm4 = oneapi::mkl::blas::row_major::gemm(q_ct1,
+    e_gemm4 = oneapi::mkl::blas::column_major::gemm(q_ct1,
         oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans, num_ov, num_ov, num_ov,
         alpha, d_s_tmp2, num_ov, d_s_tmp1, num_ov, beta, d_mm4, num_ov, {e4});
 

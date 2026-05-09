@@ -1,30 +1,31 @@
-# 
-# GANSU: GPU Accelerated Numerical Simulation Utility
-# 
-# Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
-# All rights reserved.
-# 
-# This software is licensed under the BSD 3-Clause License.
-# You may obtain a copy of the license in the LICENSE file
-# located in the root directory of this source tree or at:
-# https://opensource.org/licenses/BSD-3-Clause
-#  
-# SPDX-License-Identifier: BSD-3-Clause
-# 
 cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
-# SYCL を有効化
-add_compile_options(-fsycl)
-add_link_options(-fsycl)
+# --- C++ / SYCL 設定 ---
+set(CMAKE_CXX_STANDARD 17)
+
+# --- SYCL compile flags for CUDA ---
+set(SYCL_COMMON_COMPILE
+    -fsycl
+    -fsycl-targets=nvptx64-nvidia-cuda
+    -fsycl-device-code-split=per_kernel
+    -g -O0
+)
+
+set(SYCL_CUDA_BACKEND_OPTS
+    -Xsycl-target-backend=nvptx64-nvidia-cuda "--cuda-gpu-arch=sm_86"
+)
 
 # --- Include directories ---
-include_directories(include_sycl)
+include_directories(
+    include_sycl
+    /home/mikei/docker_env/oneMath/include
+    /home/mikei/docker_env/oneMath/build/bin
+    /home/mikei/docker_env/oneMath/examples/include
+    /home/mikei/docker_env/oneDPL/include
+)
 
-# Uncomment the following line if f- or g-orbital basis functions are present.
-# add_definitions(-DENABLE_F_INT1E)
-# add_definitions(-DENABLE_G_INT1E)
-# add_definitions(-DINT1E_MAX_L=4)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
 
 # --- 静的ライブラリ ---
 add_library(int1e STATIC src_sycl/int1e.dp.cpp)
@@ -32,6 +33,7 @@ add_library(int2e STATIC src_sycl/int2e.dp.cpp)
 add_library(int2c2e STATIC src_sycl/int2c2e.dp.cpp)
 add_library(int3c2e STATIC src_sycl/int3c2e.dp.cpp)
 add_library(int2e_direct STATIC src_sycl/int2e_direct.dp.cpp)
+
 add_library(grad_w STATIC src_sycl/grad/grad_w.dp.cpp)
 add_library(grad_s STATIC src_sycl/grad/grad_s.dp.cpp)
 add_library(grad_k STATIC src_sycl/grad/grad_k.dp.cpp)
@@ -39,8 +41,18 @@ add_library(grad_v STATIC src_sycl/grad/grad_v.dp.cpp)
 add_library(grad_g STATIC src_sycl/grad/grad_g.dp.cpp)
 
 
-# --- oneAPI MKL ---
-find_package(MKL CONFIG REQUIRED)
+# Apply SYCL flags to static libraries
+target_compile_options(int1e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(int2e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(int2c2e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(int3c2e PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(int2e_direct PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+
+target_compile_options(grad_w PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(grad_s PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(grad_k PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(grad_v PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_compile_options(grad_g PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
 
 # --- GANSU ライブラリ ---
 set(GANSU_SOURCES
@@ -65,22 +77,32 @@ set(GANSU_SOURCES
     src_sycl/test_operators.dp.cpp
     src_sycl/utils.cpp
 )
-
 add_library(gansu STATIC ${GANSU_SOURCES})
 target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-# target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
-target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e int2e_direct MKL::MKL_SYCL
-        grad_w
-        grad_s
-        grad_k
-        grad_v
-        grad_g
-        )
+target_compile_options(gansu PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
+target_link_libraries(gansu PUBLIC int1e int2e int2c2e int3c2e int2e_direct grad_w grad_s grad_k grad_v grad_g)
+target_link_options(gansu PUBLIC -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
+
+# --- oneMKL GPU libraries ---
+link_directories(/home/mikei/docker_env/oneMath/build_9/lib)
+target_link_libraries(gansu PUBLIC
+    int1e
+    int2e
+    int2c2e
+    int3c2e
+    int2e_direct
+    onemath
+)
+
+# --- oneAPI MKL リンク（Sparse は除く） ---
+#find_package(MKL REQUIRED)
 
 # --- 実行ファイル ---
 add_executable(HF_main src_sycl/HF_main.dp.cpp)
+target_compile_options(HF_main PRIVATE ${SYCL_COMMON_COMPILE} ${SYCL_CUDA_BACKEND_OPTS})
 target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
-target_link_libraries(HF_main PRIVATE gansu)
+target_link_options(HF_main PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda ${SYCL_CUDA_BACKEND_OPTS})
+target_link_libraries(HF_main PRIVATE gansu onemath)
 
 # --- TBB が必要なら ---
 # find_package(TBB REQUIRED)

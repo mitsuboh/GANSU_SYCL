@@ -14,7 +14,7 @@
  */
  
 #include <sycl/sycl.hpp>
-#include <omp.h>
+//#include <omp.h>
 #include <cmath>
 #include <utility>
 #include <iostream>
@@ -902,7 +902,10 @@ void davidson(sycl::queue& workq,
 
                         double tmpk = 1.0 / std::sqrt(dr_result[0]);
 //                        cublasDscal(handle, np, &tmpk, d_ci0, 1);
-                        oneapi::mkl::blas::scal(workq, np, tmpk, d_ci0, 1);
+//                        oneapi::mkl::blas::scal(workq, np, tmpk, d_ci0, 1);
+workq.parallel_for(sycl::range<1>(np), [=](sycl::id<1> i) {
+    d_ci0[i] *= tmpk;
+});
                         workq.wait_and_throw();
                 } else {
                         break;

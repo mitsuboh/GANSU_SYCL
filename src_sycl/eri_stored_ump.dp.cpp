@@ -14,7 +14,7 @@
 
 #define DPCT_PROFILING_ENABLED
 #include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+//#include <dpct/dpct.hpp>
 #include <iomanip>
 #include <iostream>
 #include <assert.h>
@@ -32,105 +32,73 @@ namespace gansu {
 
 
 
-
-
-//*
-void compute_ump2_energy_contrib_ss(
-    double* g_energy_second, 
-    const double* g_eri_mo, const double* g_eps, 
-    const int num_occupied, const int num_virtual, double &s_tmp)
+inline sycl::event compute_ump2_energy_contrib_ss( sycl::queue& q,
+    double* d_second_energy,
+    const double* eri, const double* eps,
+    int nocc, int nvir)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const size_t total = (size_t)nocc * nvir * nocc * nvir;
 
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
-        s_tmp = 0;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
+    return q.submit([&](sycl::handler& cgh) {
+        auto red = sycl::reduction(d_second_energy, sycl::plus<double>());
 
-    double tmp = 0.0;
-    const size_t seq =
-        (((size_t)item_ct1.get_local_range(2) * item_ct1.get_local_range(1)) *
-         item_ct1.get_group(2)) +
-        item_ct1.get_local_range(2) * item_ct1.get_local_id(1) +
-        item_ct1.get_local_id(2);
-    if (seq < (size_t)num_occupied * num_virtual * (size_t)num_occupied * num_virtual) {
-        const int ia = seq / (num_occupied * num_virtual);
-        const int jb = seq % (num_occupied * num_virtual);
-        const int i = ia / num_virtual;
-        const int a = ia % num_virtual;
-        const int j = jb / num_virtual;
-        const int b = jb % num_virtual;
+        cgh.parallel_for( sycl::range<1>(total), red, [=](sycl::id<1> idx, auto& sum) {
+                size_t t = idx[0];
 
-        const double iajb = g_eri_mo[ovov2seq(i, a, j, b, num_occupied, num_virtual)];
-        const double jaib = g_eri_mo[ovov2seq(j, a, i, b, num_occupied, num_virtual)];
-        //tmp = iajb * (2 * iajb - jaib) / (g_eps[i] + g_eps[j] - g_eps[num_occupied + a] - g_eps[num_occupied + b]);
-        tmp = iajb * (iajb - jaib) / (g_eps[i] + g_eps[j] - g_eps[num_occupied + a] - g_eps[num_occupied + b]);
-    }
+                int i = t / (nvir * nocc * nvir);
+                t %= (nvir * nocc * nvir);
 
-    for (int offset = 16; offset > 0; offset /= 2) {
-        tmp += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), tmp, offset);
-    }
-    if (item_ct1.get_local_id(2) == 0) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &s_tmp, tmp);
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            g_energy_second, s_tmp * 0.5);
-    }
+                int a = t / (nocc * nvir);
+                t %= (nocc * nvir);
+
+                int j = t / nvir;
+                int b = t % nvir;
+
+                double iajb = eri[idx];
+                double ibja = eri[(size_t)i*nvir*nocc*nvir + b*nocc*nvir + j*nvir + a];
+
+                double denom = eps[i] + eps[j] - eps[nocc + a] - eps[nocc + b];
+
+                sum += iajb * (2.0 * iajb - ibja) / denom;
+            }
+        );
+    });
 }
-/**/
 
 
-//*
-void compute_ump2_energy_contrib_os(
-    double* g_energy_second, const double* g_eri_mo, 
-    const double* g_eps_al, const double* g_eps_be, 
-    const int num_occupied_al, const int num_virtual_al, 
-    const int num_occupied_be, const int num_virtual_be, double &s_tmp)
+
+
+inline sycl::event compute_ump2_energy_contrib_os(sycl::queue& q,
+    double* d_second_energy, const double* eri,
+    const double* eps_a, const double* eps_b,
+    int nocc_a, int nvir_a,
+    int nocc_b, int nvir_b)
 {
-    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
+    const std::size_t total = (std::size_t)nocc_a * nvir_a * nocc_b * nvir_b;
 
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
-        s_tmp = 0;
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
+    return q.submit([&](sycl::handler& cgh) {
+        auto red = sycl::reduction(d_second_energy, sycl::plus<double>());
 
-    double tmp = 0.0;
-    const size_t seq =
-        (((size_t)item_ct1.get_local_range(2) * item_ct1.get_local_range(1)) *
-         item_ct1.get_group(2)) +
-        item_ct1.get_local_range(2) * item_ct1.get_local_id(1) +
-        item_ct1.get_local_id(2);
-    if (seq < (size_t)num_occupied_al * num_virtual_al * (size_t)num_occupied_be * num_virtual_be) {
-        const int ia = seq / (num_occupied_be * num_virtual_be);
-        const int jb = seq % (num_occupied_be * num_virtual_be);
-        const int i = ia / num_virtual_al;
-        const int a = ia % num_virtual_al;
-        const int j = jb / num_virtual_be;
-        const int b = jb % num_virtual_be;
+        cgh.parallel_for( sycl::range<1>(total), red, [=](sycl::id<1> id, auto& sum) {
+                std::size_t t = id[0];
 
-        const double iajb = g_eri_mo[ovov2seq_aabb(i, a, j, b, num_occupied_al, num_virtual_al, num_occupied_be, num_virtual_be)];
-        tmp = (iajb * iajb) / (g_eps_al[i] + g_eps_be[j] - g_eps_al[num_occupied_al + a] - g_eps_be[num_occupied_be + b]);
-    }
+                int b = t % nvir_b; t /= nvir_b;
+                int j = t % nocc_b; t /= nocc_b;
+                int a = t % nvir_a; t /= nvir_a;
+                int i = (int)t;
 
-    for (int offset = 16; offset > 0; offset /= 2) {
-        tmp += dpct::shift_sub_group_left(
-            sycl::ext::oneapi::this_work_item::get_sub_group(), tmp, offset);
-    }
-    if (item_ct1.get_local_id(2) == 0) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            &s_tmp, tmp);
-    }
-    item_ct1.barrier(sycl::access::fence_space::local_space);
-    if (item_ct1.get_local_id(2) == 0 && item_ct1.get_local_id(1) == 0) {
-        dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(
-            g_energy_second, s_tmp);
-    }
+                std::size_t idx_iajb =
+                    (((std::size_t)i * nvir_a + a) * nocc_b + j) * nvir_b + b;
+
+                double iajb = eri[idx_iajb];
+
+                double denom = eps_a[i] + eps_b[j] - eps_a[nocc_a + a] - eps_b[nocc_b + b];
+
+                sum += 2.0 * iajb * iajb / denom;
+            }
+        );
+    });
 }
-/**/
 
 
 
@@ -146,8 +114,6 @@ double ump2_from_aoeri_via_required_moeri(
     const int num_occupied_orbitals_al,
     const int num_occupied_orbitals_be)
 {
-//  dpct::device_ext &dev_ct1 = dpct::get_current_device();
-//  sycl::queue &q_ct1 = dev_ct1.in_order_queue();
     sycl::queue& q_ct1 = gpu::GPUHandle::syclqueue();
     double* d_eri_tmp1 = nullptr;
     double* d_eri_tmp2 = nullptr;
@@ -170,79 +136,57 @@ double ump2_from_aoeri_via_required_moeri(
     const int num_threads_per_block = num_threads_per_warp * num_warps_per_block;
 
     float time_aa, time_bb, time_ab;
-    dpct::event_ptr begin, end;
-    begin = new sycl::event();
-    end = new sycl::event();
+//    dpct::event_ptr begin, end;
+//    begin = new sycl::event();
+//    end = new sycl::event();
 
-    dpct::sync_barrier(begin);
+//    dpct::sync_barrier(begin);
     // Compute alpha-alpha energy contribution
     {
         std::string str = "Computing 1st term... ";
         PROFILE_ELAPSED_TIME(str);
 
-        q_ct1.memcpy(d_eri_tmp1, d_eri_ao,
-                     sizeof(double) * num_basis_2 * num_basis_2);
-        q_ct1
-            .memset(d_eri_tmp2, 0,
+        q_ct1.memcpy(d_eri_tmp1, d_eri_ao, sizeof(double) * num_basis_2 * num_basis_2);
+        q_ct1.memset(d_eri_tmp2, 0,
                     sizeof(double) * max_num_occ * num_basis_2 * num_basis)
-            .wait();
+        .wait();
 
         // AO ERIs (d_eri_tmp1) will be overwritten with (ia|jb) MO ERIs (d_eri_mo_ovov)
         transform_eri_ao2mo_dgemm_ovov(q_ct1, d_eri_tmp1, d_eri_tmp2, d_coefficient_matrix_al, num_occupied_orbitals_al, num_virtual_orbitals_al);
         q_ct1.wait_and_throw();
         double* d_eri_mo_ovov_aa = d_eri_tmp1;
 
-        const size_t total = (size_t)num_occupied_orbitals_al * num_virtual_orbitals_al * num_occupied_orbitals_al * num_virtual_orbitals_al;
-        const size_t num_blocks = (total + num_threads_per_block - 1) / num_threads_per_block;
-        const dpct::dim3 blocks(num_blocks);
-        const dpct::dim3 threads(num_threads_per_warp, num_warps_per_block);
-
         // aaaa
-        /*
-        DPCT1049:58: The work-group size passed to the SYCL kernel may exceed
-        the limit. To get the device limit, query
-        info::device::max_work_group_size. Adjust the work-group size if needed.
-        */
-        {
-            dpct::has_capability_or_fail(q_ct1.get_device(),
-                                         {sycl::aspect::fp64});
+        require_fp64(q_ct1);
 
-            q_ct1.submit([&](sycl::handler &cgh) {
-                sycl::local_accessor<double, 0> s_tmp_acc_ct1(cgh);
+        sycl::event e = compute_ump2_energy_contrib_ss(q_ct1,
+            d_second_energy, d_eri_mo_ovov_aa, d_orbital_energies_al, num_occupied_orbitals_al, num_virtual_orbitals_al);
 
-                cgh.parallel_for(
-                    sycl::nd_range<3>(blocks * threads, threads),
-                    [=](sycl::nd_item<3> item_ct1)
-                        [[sycl::reqd_sub_group_size(32)]] {
-                            compute_ump2_energy_contrib_ss(
-                                d_second_energy, d_eri_mo_ovov_aa,
-                                d_orbital_energies_al, num_occupied_orbitals_al,
-                                num_virtual_orbitals_al, s_tmp_acc_ct1);
-                        });
-            });
-        }
         q_ct1.wait_and_throw();
-    }
-    dpct::sync_barrier(end);
-    end->wait_and_throw();
-    time_aa =
-        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
-         begin->get_profiling_info<
-             sycl::info::event_profiling::command_start>()) /
-        1000000.0f;
-    printf("alpha-alpha: %.2f [ms]\n", time_aa);
+        uint64_t start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+        uint64_t end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
 
-    dpct::sync_barrier(begin);
+        time_aa = (end - start) * 1e-6; // ns → ms
+        printf("alpha-alpha: %.2f [ms]\n", time_aa);
+    }
+//    dpct::sync_barrier(end);
+//    end->wait_and_throw();
+//    time_aa =
+//        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
+//         begin->get_profiling_info<
+//             sycl::info::event_profiling::command_start>()) /
+//        1000000.0f;
+//    printf("alpha-alpha: %.2f [ms]\n", time_aa);
+
+//    dpct::sync_barrier(begin);
     // Compute beta-beta energy contribution
     {
         std::string str = "Computing 2nd term... ";
         PROFILE_ELAPSED_TIME(str);
 
-        q_ct1.memcpy(d_eri_tmp1, d_eri_ao,
-                     sizeof(double) * num_basis_2 * num_basis_2);
+        q_ct1.memcpy(d_eri_tmp1, d_eri_ao, sizeof(double) * num_basis_2 * num_basis_2);
         q_ct1
-            .memset(d_eri_tmp2, 0,
-                    sizeof(double) * max_num_occ * num_basis_2 * num_basis)
+            .memset(d_eri_tmp2, 0, sizeof(double) * max_num_occ * num_basis_2 * num_basis)
             .wait();
 
         // AO ERIs (d_eri_tmp1) will be overwritten with (ia|jb) MO ERIs (d_eri_mo_ovov)
@@ -250,47 +194,26 @@ double ump2_from_aoeri_via_required_moeri(
         q_ct1.wait_and_throw();
         double* d_eri_mo_ovov_bb = d_eri_tmp1;
 
-        const size_t total = (size_t)num_occupied_orbitals_be * num_virtual_orbitals_be * num_occupied_orbitals_be * num_virtual_orbitals_be;
-        const size_t num_blocks = (total + num_threads_per_block - 1) / num_threads_per_block;
-        const dpct::dim3 blocks(num_blocks);
-        const dpct::dim3 threads(num_threads_per_warp, num_warps_per_block);
-
-        // bbbb
-        /*
-        DPCT1049:59: The work-group size passed to the SYCL kernel may exceed
-        the limit. To get the device limit, query
-        info::device::max_work_group_size. Adjust the work-group size if needed.
-        */
-        {
-            dpct::has_capability_or_fail(q_ct1.get_device(),
-                                         {sycl::aspect::fp64});
-
-            q_ct1.submit([&](sycl::handler &cgh) {
-                sycl::local_accessor<double, 0> s_tmp_acc_ct1(cgh);
-
-                cgh.parallel_for(
-                    sycl::nd_range<3>(blocks * threads, threads),
-                    [=](sycl::nd_item<3> item_ct1)
-                        [[sycl::reqd_sub_group_size(32)]] {
-                            compute_ump2_energy_contrib_ss(
-                                d_second_energy, d_eri_mo_ovov_bb,
-                                d_orbital_energies_be, num_occupied_orbitals_be,
-                                num_virtual_orbitals_be, s_tmp_acc_ct1);
-                        });
-            });
-        }
+        require_fp64(q_ct1);
+        sycl::event e = compute_ump2_energy_contrib_ss(q_ct1,
+            d_second_energy, d_eri_mo_ovov_bb, d_orbital_energies_be, num_occupied_orbitals_be, num_virtual_orbitals_be);
         q_ct1.wait_and_throw();
-    }
-    dpct::sync_barrier(end);
-    end->wait_and_throw();
-    time_bb =
-        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
-         begin->get_profiling_info<
-             sycl::info::event_profiling::command_start>()) /
-        1000000.0f;
-    printf("beta-beta: %.2f [ms]\n", time_bb);
+        uint64_t start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+        uint64_t end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
 
-    dpct::sync_barrier(begin);
+        time_bb = (end - start) * 1e-6; // ns → ms
+        printf("beta-beta: %.2f [ms]\n", time_bb);
+    }
+//    dpct::sync_barrier(end);
+//    end->wait_and_throw();
+//    time_bb =
+//        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
+//         begin->get_profiling_info<
+//             sycl::info::event_profiling::command_start>()) /
+//        1000000.0f;
+//    printf("beta-beta: %.2f [ms]\n", time_bb);
+
+//    dpct::sync_barrier(begin);
     // Compute alpha-beta energy contribution
     {
         std::string str = "Computing 3rd term... ";
@@ -307,49 +230,29 @@ double ump2_from_aoeri_via_required_moeri(
         transform_eri_ao2mo_dgemm_ovov_os(q_ct1, d_eri_tmp1, d_eri_tmp2, d_coefficient_matrix_al, d_coefficient_matrix_be, num_occupied_orbitals_al, num_virtual_orbitals_al, num_occupied_orbitals_be, num_virtual_orbitals_be);
         q_ct1.wait_and_throw();
         double* d_eri_mo_ovov_ab = d_eri_tmp1;
+       
+        require_fp64(q_ct1);
 
-        const size_t total = (size_t)num_occupied_orbitals_al * num_virtual_orbitals_al * num_occupied_orbitals_be * num_virtual_orbitals_be;
-        const size_t num_blocks = (total + num_threads_per_block - 1) / num_threads_per_block;
-        const dpct::dim3 blocks(num_blocks);
-        const dpct::dim3 threads(num_threads_per_warp, num_warps_per_block);
+        sycl::event e = compute_ump2_energy_contrib_os(q_ct1,
+            d_second_energy, d_eri_mo_ovov_ab, d_orbital_energies_al, d_orbital_energies_be,
+            num_occupied_orbitals_al, num_virtual_orbitals_al, num_occupied_orbitals_be,
+            num_virtual_orbitals_be);
 
-        // aabb
-        /*
-        DPCT1049:60: The work-group size passed to the SYCL kernel may exceed
-        the limit. To get the device limit, query
-        info::device::max_work_group_size. Adjust the work-group size if needed.
-        */
-        {
-            dpct::has_capability_or_fail(q_ct1.get_device(),
-                                         {sycl::aspect::fp64});
-
-            q_ct1.submit([&](sycl::handler &cgh) {
-                sycl::local_accessor<double, 0> s_tmp_acc_ct1(cgh);
-
-                cgh.parallel_for(
-                    sycl::nd_range<3>(blocks * threads, threads),
-                    [=](sycl::nd_item<3> item_ct1)
-                        [[sycl::reqd_sub_group_size(32)]] {
-                            compute_ump2_energy_contrib_os(
-                                d_second_energy, d_eri_mo_ovov_ab,
-                                d_orbital_energies_al, d_orbital_energies_be,
-                                num_occupied_orbitals_al,
-                                num_virtual_orbitals_al,
-                                num_occupied_orbitals_be,
-                                num_virtual_orbitals_be, s_tmp_acc_ct1);
-                        });
-            });
-        }
         q_ct1.wait_and_throw();
+        uint64_t start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+        uint64_t end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+
+        time_ab = (end - start) * 1e-6; // ns → ms
+        printf("alpha-beta: %.2f [ms]\n", time_ab);
     }
-    dpct::sync_barrier(end);
-    end->wait_and_throw();
-    time_ab =
-        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
-         begin->get_profiling_info<
-             sycl::info::event_profiling::command_start>()) /
-        1000000.0f;
-    printf("alpha-beta: %.2f [ms]\n", time_ab);
+//    dpct::sync_barrier(end);
+//    end->wait_and_throw();
+//    time_ab =
+//        (end->get_profiling_info<sycl::info::event_profiling::command_end>() -
+//         begin->get_profiling_info<
+//             sycl::info::event_profiling::command_start>()) /
+//        1000000.0f;
+//    printf("alpha-beta: %.2f [ms]\n", time_ab);
 
 
     double h_second_energy = 0.0;

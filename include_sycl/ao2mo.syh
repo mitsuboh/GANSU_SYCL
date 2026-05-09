@@ -28,23 +28,35 @@ static inline int dgemm_device_row_major(
     double* C_rm, int ldc_rm
 ){
     try {
-        auto event = oneapi::mkl::blas::row_major::gemm(
+        // Row-major: C = opA(A) * opB(B)  (m×n)
+        // Column-major view: C^T = opB(B)^T * opA(A)^T  (n×m)
+        //
+        // Memory trick:
+        //   A_rm (row-major) is A_cm = A_rm^T (col-major)
+        //   B_rm (row-major) is B_cm = B_rm^T (col-major)
+        //   C_rm (row-major) is C_cm = C_rm^T (col-major)
+        //
+        // Then:
+        //   C_cm = op(B_cm) * op(A_cm)
+        // where op(B_cm) uses the SAME op flag as opB_rm (not flipped),
+        // and op(A_cm) uses the SAME op flag as opA_rm.
+
+        auto event = oneapi::mkl::blas::column_major::gemm(
             q,
-            to_sycl_op(opA_rm),
-            to_sycl_op(opB_rm),
-            m, n, k,
+            to_sycl_op(opB_rm), to_sycl_op(opA_rm),
+            n, m, k,
             *alpha,
-            A_rm, lda_rm,
             B_rm, ldb_rm,
+            A_rm, lda_rm,
             *beta,
             C_rm, ldc_rm
         );
 
-        event.wait(); // match cuBLAS synchronous behavior
-        return 0;     // mimic CUBLAS_STATUS_SUCCESS
+        event.wait();
+        return 0;
 
-    } catch (const std::exception& e) {
-        return -1;    // simple error mapping
+    } catch (...) {
+        return -1;
     }
 }
 
@@ -61,23 +73,36 @@ static inline int dgemm_strided_batched_device_row_major(
     int batchCount
 ){
     try {
-        auto event = oneapi::mkl::blas::row_major::gemm_batch(
+        // Row-major:  C = opA(A) * opB(B)     (m×n)
+        // Transpose:  C^T = opB(B)^T * opA(A)^T  (n×m)
+        //
+        // Memory trick:
+        //   A_rm memory == A_cm = A_rm^T in column-major
+        //   B_rm memory == B_cm = B_rm^T in column-major
+        //   C_rm memory == C_cm = C_rm^T in column-major
+        //
+        // Therefore in column-major we compute:
+        //   C_cm (n×m) = op(B_cm) * op(A_cm)
+        // where op flags are the same as row-major op flags (not flipped).
+        //
+        // Leading dimensions and strides in elements carry over unchanged.
+
+        auto event = oneapi::mkl::blas::column_major::gemm_batch(
             q,
-            to_sycl_op(opA_rm),
-            to_sycl_op(opB_rm),
-            m, n, k,
+            to_sycl_op(opB_rm), to_sycl_op(opA_rm),
+            n, m, k,
             *alpha,
-            A_rm, lda_rm, strideA_rm,
             B_rm, ldb_rm, strideB_rm,
+            A_rm, lda_rm, strideA_rm,
             *beta,
-            C_rm, ldc_rm, strideC_rm,
+            C_rm, ldc_rm, strideC_rm,   // C は row-major のまま
             batchCount
         );
 
-        event.wait(); // keep cuBLAS-like synchronous behavior
+        event.wait();
         return 0;
 
-    } catch (const std::exception& exception_object) {
+    } catch (...) {
         return -1;
     }
 }
@@ -85,8 +110,7 @@ static inline int dgemm_strided_batched_device_row_major(
 
 static inline int dgeam_transpose_row_major(
     sycl::queue& queue,
-    int rows_rm,
-    int cols_rm,
+    int rows_rm, int cols_rm,
     const double* A_rm,
     double* AT_rm
 ){
@@ -133,7 +157,6 @@ inline void transform_eri_ao2mo_dgemm_full(
     const double alpha = 1.0;
     const double beta  = 0.0;
 
-    // Step 1: GEMM (first contraction)
     dgemm_device_row_major(
         queue,
         1, 0,  // CUBLAS_OP_T, CUBLAS_OP_N
@@ -145,7 +168,6 @@ inline void transform_eri_ao2mo_dgemm_full(
         d_eri_mo, num_basis_3
     );
 
-    // Step 2: Batched GEMM (second contraction)
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,
@@ -158,7 +180,6 @@ inline void transform_eri_ao2mo_dgemm_full(
         num_basis
     );
 
-    // Step 3: Transpose
     dgeam_transpose_row_major(
         queue,
         num_basis_2, num_basis_2,
@@ -166,7 +187,6 @@ inline void transform_eri_ao2mo_dgemm_full(
         d_eri_mo
     );
 
-    // Step 4: GEMM (third contraction)
     dgemm_device_row_major(
         queue,
         1, 0,
@@ -177,8 +197,6 @@ inline void transform_eri_ao2mo_dgemm_full(
         &beta,
         d_eri_ao, num_basis_3
     );
-
-    // Step 5: Batched GEMM (fourth contraction)
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,
@@ -232,7 +250,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
     const double alpha = 1.0;
     const double beta  = 0.0;
 
-    // Step 1: GEMM
     dgemm_device_row_major(
         queue,
         1, 0,  // transpose, non-transpose
@@ -243,8 +260,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
         &beta,
         d_eri_mo, num_basis_3
     );
-
-    // Step 2: transpose
     dgeam_transpose_row_major(
         queue,
         num_occ * num_basis,
@@ -252,8 +267,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
         d_eri_mo,
         d_eri_ao
     );
-
-    // Step 3: GEMM
     dgemm_device_row_major(
         queue,
         1, 0,
@@ -267,7 +280,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
         d_eri_mo, num_basis_2 * num_occ
     );
 
-    // Step 4: batched GEMM
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,
@@ -279,8 +291,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
         d_eri_ao, num_occ * num_basis, num_vir * num_occ * num_basis,
         num_occ
     );
-
-    // Step 5: transpose
     dgeam_transpose_row_major(
         queue,
         num_occ * num_vir,
@@ -288,8 +298,6 @@ inline void transform_eri_ao2mo_dgemm_ovov(
         d_eri_ao,
         d_eri_mo
     );
-
-    // Step 6: batched GEMM
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,
@@ -327,7 +335,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
     const double alpha = 1.0;
     const double beta  = 0.0;
 
-    // Step 1: α-spin GEMM
     dgemm_device_row_major(
         queue,
         1, 0,
@@ -338,8 +345,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
         &beta,
         d_eri_mo, num_basis_3
     );
-
-    // Step 2: α-spin transpose
     dgeam_transpose_row_major(
         queue,
         num_occ_al * num_basis,
@@ -347,8 +352,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
         d_eri_mo,
         d_eri_ao
     );
-
-    // Step 3: β-spin GEMM
     dgemm_device_row_major(
         queue,
         1, 0,
@@ -362,7 +365,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
         d_eri_mo, num_basis_2 * num_occ_al
     );
 
-    // Step 4: β-spin batched GEMM
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,
@@ -376,8 +378,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
         d_eri_ao, num_occ_al * num_basis, num_vir_be * num_occ_al * num_basis,
         num_occ_be
     );
-
-    // Step 5: β-spin transpose
     dgeam_transpose_row_major(
         queue,
         num_occ_be * num_vir_be,
@@ -385,8 +385,6 @@ inline void transform_eri_ao2mo_dgemm_ovov_os(
         d_eri_ao,
         d_eri_mo
     );
-
-    // Step 6: α-spin batched GEMM
     dgemm_strided_batched_device_row_major(
         queue,
         1, 0,

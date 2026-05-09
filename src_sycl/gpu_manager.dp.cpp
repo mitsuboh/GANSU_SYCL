@@ -218,14 +218,14 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
     int ldb = transpose_B ? K : N;  // B の物理幅
     int ldc = N;                    // C の物理幅
 
-    auto ev = oneapi::mkl::blas::row_major::gemm(
+    auto ev = oneapi::mkl::blas::column_major::gemm(
         workq,
-        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
         transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
-        M, N, K,
+        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
+        N, M, K,
         alpha,
-        d_A, lda,
         d_B, ldb,
+        d_A, lda,
         beta,
         d_C, ldc
     );
@@ -253,13 +253,13 @@ void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d
     oneapi::mkl::transpose opB =
         transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
 
-    oneapi::mkl::blas::row_major::gemm_batch(
+    oneapi::mkl::blas::column_major::gemm_batch(
         workq,
-        opA, opB,
-        M, N, K,
+        opB, opA,
+        N, M, K,
         alpha,
-        d_A, lda, strideA,
         d_B, ldb, strideB,
+        d_A, lda, strideA,
         beta,
         d_C, ldc, strideC,
         batchCount
@@ -2018,7 +2018,7 @@ void solve_lower_triangular(double* d_A, double* d_B, int row, int col) {
         double* d_A_tmp = tracked_syclMalloc<double>(row * row, workq);
 
         // 転置 A → d_A_tmp
-        auto ev_trans = oneapi::mkl::blas::row_major::omatcopy(
+        auto ev_trans = oneapi::mkl::blas::column_major::omatcopy(
             workq,
             oneapi::mkl::transpose::trans,  // 転置
             row, row,
@@ -2089,6 +2089,7 @@ void solve_lower_triangular(double* d_A, double* d_B, int row, int col) {
         std::exit(1);
     }
 }
+
 
 inline void writeMatrixToFile(std::string filename, double* array, size_t size) {
     std::ofstream outFile(filename);
@@ -2204,8 +2205,6 @@ void compute_RI_IntermediateMatrixB(
         d_auxiliary_schwarz_upper_bound_factors,
         schwarz_screening_threshold,
         verbose);
-
-
     // Compute the intermediate matrix B
     solve_lower_triangular(d_two_center_eri, d_three_center_eri, num_auxiliary_basis, num_basis*num_basis);
     workq.memcpy(d_intermediate_matrix_B, d_three_center_eri,
@@ -4285,7 +4284,7 @@ void computeInverseByDtrsm(real_t* two_center_eris, real_t* two_center_eris_inve
     q_ct1.wait();
 
     const real_t alpha = 1.0;
-    oneapi::mkl::blas::row_major::trsm(
+    oneapi::mkl::blas::column_major::trsm(
         q_ct1,
         oneapi::mkl::side::left,
         oneapi::mkl::uplo::upper,
@@ -5410,16 +5409,16 @@ void computeMolucularGradients(
 
     workq.memcpy(d_grad_total, d_grad_N, sizeof(double) * 3 * num_atoms).wait();
 
-    oneapi::mkl::blas::row_major::axpy(
+    oneapi::mkl::blas::column_major::axpy(
     workq, 3*num_atoms, alpha, d_grad_S, 1, d_grad_total, 1);
 
-    oneapi::mkl::blas::row_major::axpy(
+    oneapi::mkl::blas::column_major::axpy(
     workq, 3*num_atoms, alpha, d_grad_K, 1, d_grad_total, 1);
 
-    oneapi::mkl::blas::row_major::axpy(
+    oneapi::mkl::blas::column_major::axpy(
     workq, 3*num_atoms, alpha, d_grad_V, 1, d_grad_total, 1);
 
-    oneapi::mkl::blas::row_major::axpy(
+    oneapi::mkl::blas::column_major::axpy(
     workq, 3*num_atoms, alpha, d_grad_G, 1, d_grad_total, 1);
 
     workq.wait();

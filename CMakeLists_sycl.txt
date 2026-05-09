@@ -15,7 +15,8 @@ cmake_minimum_required(VERSION 3.31)
 project(GANSU LANGUAGES CXX)
 
 # SYCL を有効化
-add_compile_options(-fsycl)
+#add_compile_options(-fsycl -g -O0)
+add_compile_options(-g -O0)
 add_link_options(-fsycl)
 
 # --- Include directories ---
@@ -38,6 +39,17 @@ add_library(grad_k STATIC src_sycl/grad/grad_k.dp.cpp)
 add_library(grad_v STATIC src_sycl/grad/grad_v.dp.cpp)
 add_library(grad_g STATIC src_sycl/grad/grad_g.dp.cpp)
 
+# ここで「SYCL コンパイル」をターゲット単位で指定
+target_compile_options(int1e PRIVATE -fsycl)
+target_compile_options(int2e PRIVATE -fsycl)
+target_compile_options(int2c2e PRIVATE -fsycl)
+target_compile_options(int3c2e PRIVATE -fsycl)
+target_compile_options(int2e_direct PRIVATE -fsycl)
+target_compile_options(grad_w PRIVATE -fsycl)
+target_compile_options(grad_s PRIVATE -fsycl)
+target_compile_options(grad_k PRIVATE -fsycl)
+target_compile_options(grad_v PRIVATE -fsycl)
+target_compile_options(grad_g PRIVATE -fsycl)
 
 # --- oneAPI MKL ---
 find_package(MKL CONFIG REQUIRED)
@@ -68,6 +80,7 @@ set(GANSU_SOURCES
 
 add_library(gansu STATIC ${GANSU_SOURCES})
 target_compile_definitions(gansu PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
+target_compile_options(gansu PRIVATE -fsycl)
 # target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e MKL::MKL_SYCL)
 target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e int2e_direct MKL::MKL_SYCL
         grad_w
@@ -80,6 +93,7 @@ target_link_libraries(gansu PRIVATE int1e int2e int2c2e int3c2e int2e_direct MKL
 # --- 実行ファイル ---
 add_executable(HF_main src_sycl/HF_main.dp.cpp)
 target_compile_definitions(HF_main PRIVATE PROFILE_ENABLED CONSOLE_COLOR_ENABLED)
+target_compile_options(HF_main PRIVATE -fsycl)
 target_link_libraries(HF_main PRIVATE gansu)
 
 # --- TBB が必要なら ---
