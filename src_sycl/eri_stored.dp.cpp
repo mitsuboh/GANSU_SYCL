@@ -266,8 +266,6 @@ void extract_w_oovv_kernel(const sycl::nd_item<1> item,
  * where o3 = nocc^3.
  */
 void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
-    sycl::local_accessor<double, 1> wt,
-    sycl::local_accessor<double, 1> zt,
     sycl::local_accessor<double, 1> r3buf,
                           const double *__restrict__ F_sum, int F_cols_int,
                           const double *__restrict__ M_sum, int M_cols_int,
@@ -275,7 +273,10 @@ void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
                           const double *__restrict__ t1,
                           const double *__restrict__ eps, int nocc, int nvir,
                           const int *__restrict__ abc_triples, int num_triples,
-                          double *__restrict__ block_E_T)
+                          double *__restrict__ block_E_T,
+                          double *__restrict__ g_wt,       // global memory: num_triples * 6 * o3
+                          double *__restrict__ g_zt)       // global memory: num_triples * 6 * o3
+
 {
     int triple_id = item.get_group_linear_id();
     if (triple_id >= num_triples) return;
@@ -297,50 +298,50 @@ void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
     if (a == c) d3_scale = 6.0;
     else if (a == b || b == c) d3_scale = 2.0;
 
-    int perms[6][3] = {{a,b,c},{a,c,b},{b,a,c},{b,c,a},{c,a,b},{c,b,a}};
+    const int perms[6][3] = {{a,b,c},{a,c,b},{b,a,c},{b,c,a},{c,a,b},{c,b,a}};
+
+    const size_t block_offset = (size_t)triple_id * 6 * o3;
+    double* wt = g_wt + block_offset;
+    double* zt = g_zt + block_offset;
 
     // Phase 1 & 2: for each permutation, compute wt[p] and zt[p]
     for (int p = 0; p < 6; p++) {
-        int aa = perms[p][0], bb = perms[p][1], cc = perms[p][2];
+        const int aa = perms[p][0], bb = perms[p][1], cc = perms[p][2];
 
         // Phase 1: compute wt[p] and store wpv in zt[p] temporarily
         for (int ijk = lid; ijk < o3; ijk += lsize) {
-            int k = ijk % nocc;
-            int j = (ijk / nocc) % nocc;
-            int i = ijk / oo;
+            const int k = ijk % nocc;
+            const int j = (ijk / nocc) % nocc;
+            const int i = ijk / oo;
 
-            // F_sum lookup: F_sum[(i*vv + aa*nvir+bb), (k*nocc+j)*nvir + cc]
-            size_t f_row = (size_t)i * vv + (size_t)aa * nvir + bb;
-            size_t f_col = ((size_t)k * nocc + j) * nvir + cc;
+            const size_t f_row = (size_t)i * vv + (size_t)aa * nvir + bb;
+            const size_t f_col = ((size_t)k * nocc + j) * nvir + cc;
             double wval = F_sum[f_row * F_cols + f_col];
 
-            // M_sum lookup: M_sum[(aa*oo + j*nocc+i), (k*vv + bb*nvir+cc)]
-            size_t m_row = (size_t)aa * oo + (size_t)j * nocc + i;
-            size_t m_col = (size_t)k * vv + (size_t)bb * nvir + cc;
+            const size_t m_row = (size_t)aa * oo + (size_t)j * nocc + i;
+            const size_t m_col = (size_t)k * vv + (size_t)bb * nvir + cc;
             wval += M_sum[m_row * M_cols + m_col];
 
-            // v-term: v_oovv[(i*nocc+j)*vv + aa*nvir+bb] * t1[k*nvir+cc]
-            double vval = v_oovv[((size_t)i * nocc + j) * vv + (size_t)aa * nvir + bb]
+            const double vval = v_oovv[((size_t)i * nocc + j) * vv + (size_t)aa * nvir + bb]
                         * t1[k * nvir + cc];
 
             wt[p * o3 + ijk] = wval;
-            zt[p * o3 + ijk] = wval + 0.5 * vval; // temporarily store wpv
+            zt[p * o3 + ijk] = wval + 0.5 * vval;
         }
 
         item.barrier();
 
-        // Phase 2a: compute r3out from wpv (stored in zt[p]) into temporary buffer
-        // Must not overwrite zt[p] yet — other threads may still read wpv at permuted indices
+        // Phase 2a: compute r3out from wpv (stored in zt[p]) into shared r3buf
         for (int ijk = lid; ijk < o3; ijk += lsize) {
-            double wpv_self = zt[p * o3 + ijk];
-            int k = ijk % nocc;
-            int j = (ijk / nocc) % nocc;
-            int i = ijk / oo;
-            int idx1 = (i*nocc+k)*nocc+j;  // ikj
-            int idx2 = (j*nocc+i)*nocc+k;  // jik
-            int idx3 = (j*nocc+k)*nocc+i;  // jki
-            int idx4 = (k*nocc+i)*nocc+j;  // kij
-            int idx5 = (k*nocc+j)*nocc+i;  // kji
+            const double wpv_self = zt[p * o3 + ijk];
+            const int k = ijk % nocc;
+            const int j = (ijk / nocc) % nocc;
+            const int i = ijk / oo;
+            const int idx1 = (i*nocc+k)*nocc+j;
+            const int idx2 = (j*nocc+i)*nocc+k;
+            const int idx3 = (j*nocc+k)*nocc+i;
+            const int idx4 = (k*nocc+i)*nocc+j;
+            const int idx5 = (k*nocc+j)*nocc+i;
 
             r3buf[ijk] = 4.0*wpv_self + zt[p*o3+idx3] + zt[p*o3+idx4]
                        - 2.0*zt[p*o3+idx5] - 2.0*zt[p*o3+idx1] - 2.0*zt[p*o3+idx2];
@@ -348,12 +349,12 @@ void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
 
         item.barrier();
 
-        // Phase 2b: write zt[p] = r3out / D (now safe to overwrite)
+        // Phase 2b: write zt[p] = r3out / D
         for (int ijk = lid; ijk < o3; ijk += lsize) {
-            int k = ijk % nocc;
-            int j = (ijk / nocc) % nocc;
-            int i = ijk / oo;
-            double D = (eps[i] + eps[j] + eps[k]
+            const int k = ijk % nocc;
+            const int j = (ijk / nocc) % nocc;
+            const int i = ijk / oo;
+            const double D = (eps[i] + eps[j] + eps[k]
                       - eps[nocc+perms[p][0]] - eps[nocc+perms[p][1]] - eps[nocc+perms[p][2]]) * d3_scale;
             zt[p * o3 + ijk] = r3buf[ijk] / D;
         }
@@ -362,7 +363,6 @@ void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
     }
 
     // Phase 3: compute 36 dot products for energy
-    // E_T += sum_{q,p} sum_r wt[p][idx[comp[q][p]][r]] * zt[q][r]
     const int comp[6][6] = {
         {0,1,2,3,4,5}, {1,0,4,5,2,3}, {2,3,0,1,5,4},
         {4,5,1,0,3,2}, {3,2,5,4,0,1}, {5,4,3,2,1,0}
@@ -371,11 +371,11 @@ void ccsd_t_energy_kernel(const sycl::nd_item<1> item,
     double thread_E = 0.0;
     for (int q = 0; q < 6; q++) {
         for (int pp = 0; pp < 6; pp++) {
-            int s = comp[q][pp];
+            const int s = comp[q][pp];
             for (int r = lid; r < o3; r += lsize) {
-                int kr = r % nocc;
-                int jr = (r / nocc) % nocc;
-                int ir = r / oo;
+                const int kr = r % nocc;
+                const int jr = (r / nocc) % nocc;
+                const int ir = r / oo;
                 int sr;
                 switch(s) {
                     case 0: sr = r; break;
@@ -6268,20 +6268,24 @@ real_t ccsd_spatial_orbital(const real_t* __restrict__ d_eri_ao,
         q_ct1.memcpy(d_eps_t, eps.data(), N * sizeof(double));
         q_ct1.memcpy(d_abc, abc_triples.data(), num_triples * 3 * sizeof(int));
 
+        // Allocate global memory for wt/zt (6 * o3 per triple)
+        const size_t wt_zt_size = (size_t)num_triples * 6 * o3;
+        double *d_g_wt = tracked_syclMalloc<double>( wt_zt_size, q_ct1);
+        double *d_g_zt = tracked_syclMalloc<double>( wt_zt_size, q_ct1);
+
+
         // Launch kernel: one block per (a,b,c) triple
         const int blockSize = 128;
         {
             q_ct1.submit([&](sycl::handler &cgh) {
-                sycl::local_accessor<double, 1> wt   (sycl::range<1>(6 * o3), cgh);
-                sycl::local_accessor<double, 1> zt   (sycl::range<1>(6 * o3), cgh);
-                sycl::local_accessor<double, 1> r3buf(sycl::range<1>(o3),     cgh);
+                sycl::local_accessor<double, 1> r3buf(sycl::range<1>(o3), cgh);
                 cgh.parallel_for(
                     sycl::nd_range<1>(num_triples * blockSize, blockSize),
                     [=](sycl::nd_item<1> item) {
-                        ccsd_t_energy_kernel( item, wt, zt, r3buf,
+                        ccsd_t_energy_kernel( item, r3buf,
                             d_F_sum, (int)F_cols, d_M_sum, (int)M_cols,
                             d_v_oovv_t, d_t1_t, d_eps_t, nocc, nvir, d_abc,
-                            num_triples, d_block_ET);
+                            num_triples, d_block_ET, d_g_wt, d_g_zt);
                     });
             });
         }
@@ -6296,6 +6300,8 @@ real_t ccsd_spatial_orbital(const real_t* __restrict__ d_eri_ao,
             E_T += block_ET[i];
 
         // Free GPU memory
+        tracked_syclFree(d_g_wt);
+        tracked_syclFree(d_g_zt);
         tracked_syclFree(d_F_sum);
         tracked_syclFree(d_M_sum);
         tracked_syclFree(d_v_oovv_t);

@@ -59,12 +59,13 @@ public:
 
     void precompute_eri_matrix() override;
     void compute_fock_matrix() override;
+    void reset_convergence() override;
     void compute_density_matrix() override;
     void guess_initial_fock_matrix(const real_t* density_matrix_a=nullptr, const real_t* density_matrix_b=nullptr, bool force_density=false) override;
     void compute_coefficient_matrix_impl() override;
     void compute_energy() override;
     void update_fock_matrix() override;
-    void compute_Energy_Gradient() override;
+    std::vector<double> compute_Energy_Gradient() override;
 
     real_t get_energy() const override { return energy_; }
 
@@ -217,6 +218,8 @@ public:
      */
     virtual std::string get_algorithm_name() const = 0;
 
+    virtual void reset() {} ///< Reset internal state (e.g., DIIS history) for a new SCF cycle
+
 protected:
     UHF& hf_; ///< UHF
     bool verbose; ///< Verbose mode
@@ -315,6 +318,8 @@ public:
         }
         return name;
     }
+
+    void reset() override { first_iteration_ = true; }
 
 private:
     real_t damping_factor_; ///< Damping factor
@@ -457,6 +462,8 @@ public:
         name += ")";
         return name;
     }
+
+    void reset() override { iteration_ = 0; }
 
 private:
     int iteration_; ///< count of iterations
@@ -724,7 +731,9 @@ public:
             return {density_matrix_alpha.data(), density_matrix_beta.data()};
         }
 
-        std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+        if(hf_.get_run_type() != "optimize"){
+            std::cout << "------ [SAD] Computing density matrix for : " << atomic_number_to_element_name(atomic_number) << " ------" << std::endl;
+        }
 
         ParameterManager parameters;
         parameters.set_default_values_to_unspecified_parameters();
@@ -807,7 +816,9 @@ public:
         for(int i=0; i<hf_.get_atoms().size(); i++){
             const std::string element_name = atomic_number_to_element_name(hf_.get_atoms()[i].atomic_number);
 
-            std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            if(hf_.get_run_type() != "optimize"){
+                std::cout << " [SAD] Loading density matrix for : " << element_name  << std::endl;
+            }
 
             int atom_num_basis;
             auto [atom_density_matrix_alpha, atom_density_matrix_beta] = read_density_from_sad(element_name, hf_.get_gbsfilename(), atom_num_basis);
@@ -960,5 +971,7 @@ protected:
     UHF& uhf_; ///< UHF
 };
 
+
+inline void UHF::reset_convergence() { if(convergence_method_) convergence_method_->reset(); }
 
 } // namespace gansu

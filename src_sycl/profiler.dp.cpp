@@ -25,7 +25,7 @@ namespace gansu {
 #ifdef PROFILE_ENABLED
 
 
-
+bool GlobalProfiler::silent_ = false; 
 std::chrono::high_resolution_clock::time_point GlobalProfiler::programStartTime;
 std::unordered_map<std::string, std::chrono::high_resolution_clock::time_point> GlobalProfiler::startTimes;
 std::unordered_map<std::string, long long> GlobalProfiler::executionTimes;
@@ -48,11 +48,13 @@ void GlobalProfiler::start(const std::string& name) {
     auto seconds = (sinceStart % 60000000) / 1000000;
     auto milliseconds = (sinceStart % 1000000) / 1000;
 
-    std::cout << "[" << ConsoleColor::GREEN 
-              << std::setw(2) << std::setfill('0') << minutes << ":" 
-              << std::setw(2) << std::setfill('0') << seconds << "."
-              << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET << "] START: " 
-              << name << std::endl;
+    if(!silent_){
+        std::cout << "[" << ConsoleColor::GREEN
+                  << std::setw(2) << std::setfill('0') << minutes << ":"
+                  << std::setw(2) << std::setfill('0') << seconds << "."
+                  << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET << "] START: "
+                  << name << std::endl;
+    }
 }
 
 void GlobalProfiler::stop(const std::string& name) {
@@ -69,11 +71,13 @@ void GlobalProfiler::stop(const std::string& name) {
 
     double duration_milliseconds = static_cast<double>(duration) / 1000;
 
-    std::cout << "[" << ConsoleColor::GREEN 
-              << std::setw(2) << std::setfill('0') << minutes << ":"
-              << std::setw(2) << std::setfill('0') << seconds << "."
-              << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET << "] END:   " 
-              << name << " after " << std::setprecision(5) << duration_milliseconds << " ms" << std::endl;
+    if(!silent_){
+        std::cout << "[" << ConsoleColor::GREEN
+                  << std::setw(2) << std::setfill('0') << minutes << ":"
+                  << std::setw(2) << std::setfill('0') << seconds << "."
+                  << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET << "] END:   "
+                  << name << " after " << std::setprecision(5) << duration_milliseconds << " ms" << std::endl;
+    }
 }
 
 void GlobalProfiler::report() {
@@ -97,11 +101,13 @@ void GlobalProfiler::displayElapsedTime(const std::string& label) {
     seconds = seconds % 60;
     milliseconds = milliseconds % 1000;
 
-    std::cout << "[" << ConsoleColor::RED 
-                << std::setw(2) << std::setfill('0') << minutes << ":"
-                << std::setw(2) << std::setfill('0') << seconds << "."
-                << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET 
-                << "] " << label << std::endl;
+    if(!silent_){
+        std::cout << "[" << ConsoleColor::RED
+                  << std::setw(2) << std::setfill('0') << minutes << ":"
+                  << std::setw(2) << std::setfill('0') << seconds << "."
+                  << std::setw(3) << std::setfill('0') << milliseconds << ConsoleColor::RESET
+                  << "] " << label << std::endl;
+    }
 }
 
 ScopedTimer::ScopedTimer(const std::string& name) : functionName(name) {

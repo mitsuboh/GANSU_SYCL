@@ -79,17 +79,21 @@ RHF::RHF(const Molecular& molecular, const ParameterManager& parameters) :
         }
         set_eri_method(std::move(eri_stored));
     }else if(eri_method == "ri"){ // Resolution of Identity (RI) method
-        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
-        Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
+        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename");
+        BasisSet aux_basis = get_auxiliary_basis(molecular, auxiliary_gbsfilename);
+        Molecular auxiliary_molecular(molecular.get_atoms(), aux_basis);
+        std::cout << "[RI] Auxiliary basis: " << auxiliary_molecular.get_num_basis() << " functions" << std::endl;
         set_eri_method(std::make_unique<ERI_RI_RHF>(*this, auxiliary_molecular));
     }else if(eri_method == "direct"){
         set_eri_method(std::make_unique<ERI_Direct_RHF>(*this));
     }else if(eri_method == "hash"){
         set_eri_method(std::make_unique<ERI_Hash_RHF>(*this));
     }else if(eri_method == "direct_ri"){
-        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
-        Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
-        set_eri_method(std::make_unique<ERI_RI_Direct_RHF>(*this,  auxiliary_molecular));
+        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename");
+        BasisSet aux_basis = get_auxiliary_basis(molecular, auxiliary_gbsfilename);
+        Molecular auxiliary_molecular(molecular.get_atoms(), aux_basis);
+        std::cout << "[RI] Auxiliary basis: " << auxiliary_molecular.get_num_basis() << " functions" << std::endl;
+        set_eri_method(std::make_unique<ERI_RI_Direct_RHF>(*this, auxiliary_molecular));
     }else{
         THROW_EXCEPTION("Invalid ERI method name: " + eri_method);
     }
@@ -338,10 +342,24 @@ void RHF::export_density_matrix(real_t* density_matrix_a, real_t* density_martix
  * @brief Compute the gradient of the total electronic energy
  * @details This function calculates the gradient of the total electronic energy with respect to nuclear coordinates.
  */
-void RHF::compute_Energy_Gradient() {
+std::vector<double> RHF::compute_Energy_Gradient() {
     PROFILE_FUNCTION();
-    // Compute the gradient of the total electronic energy
-    gpu::computeEnergyGradient_RHF(shell_type_infos, shell_pair_type_infos, atoms.device_ptr(), density_matrix.device_ptr(), coefficient_matrix.device_ptr(), orbital_energies.device_ptr(), primitive_shells.device_ptr(), boys_grid.device_ptr(), cgto_normalization_factors.device_ptr(), atoms.size(), num_basis, num_electrons, verbose);
+
+    return gpu::computeEnergyGradient_RHF(
+        shell_type_infos,
+        shell_pair_type_infos,
+        atoms.device_ptr(),
+        density_matrix.device_ptr(),
+        coefficient_matrix.device_ptr(),
+        orbital_energies.device_ptr(),
+        primitive_shells.device_ptr(),
+        boys_grid.device_ptr(),
+        cgto_normalization_factors.device_ptr(),
+        static_cast<int>(atoms.size()),
+        num_basis,
+        num_electrons,
+        verbose
+    );
 }
 
 

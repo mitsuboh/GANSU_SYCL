@@ -204,6 +204,23 @@ catch (sycl::exception const& e) {
 }
 }
 
+/**
+ * @brief Computes the product of two rectangular matrices using cuBLAS.
+ *
+ * Computes C = alpha * op(A) * op(B) + beta * C
+ * where op(X) = X if transpose=false, X^T if transpose=true.
+ *
+ * @param d_A  Row-major matrix. Without transpose: M×K. With transpose: K×M.
+ * @param d_B  Row-major matrix. Without transpose: K×N. With transpose: N×K.
+ * @param d_C  Row-major output matrix M×N.
+ * @param M    Number of rows of op(A) and C.
+ * @param N    Number of columns of op(B) and C.
+ * @param K    Number of columns of op(A) / rows of op(B).
+ * @param transpose_A  If true, A is K×M and transposed.
+ * @param transpose_B  If true, B is N×K and transposed.
+ * @param accumulate   If true, C += alpha*op(A)*op(B). If false, C = alpha*op(A)*op(B).
+ * @param alpha        Scalar multiplier (default 1.0).
+ */
 void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
     const int M, const int N, const int K,
     const bool transpose_A, const bool transpose_B, const bool accumulate, const double alpha)
@@ -213,15 +230,55 @@ void matrixMatrixProductRect(const double* d_A, const double* d_B, double* d_C,
 
     double beta = accumulate ? 1.0 : 0.0;
 
-    // 行メジャーの leading dimension
-    int lda = transpose_A ? M : K;  // A の物理幅
-    int ldb = transpose_B ? K : N;  // B の物理幅
-    int ldc = N;                    // C の物理幅
+    // cuBLAS uses column-major. For row-major A(M×K), cuBLAS sees it as
+    // column-major A'(K×M). So we compute C' = B' * A' to get row-major C.
+    // Row-major op(A)[M×K]: stored as M×K. cuBLAS sees K×M column-major.
+    // Row-major op(B)[K×N]: stored as K×N. cuBLAS sees N×K column-major.
+    // We want row-major C[M×N]: cuBLAS sees N×M column-major.
+    // cuBLAS call: C' = B' * A' → (N×M) = (N×K) * (K×M)
+
+    // Leading dimensions in memory (row-major storage):
+    // A stored as (transpose_A ? K×M : M×K) → lda = (transpose_A ? M : K)
+    // B stored as (transpose_B ? N×K : K×N) → ldb = (transpose_B ? K : N)
+    int lda = transpose_A ? M : K;  // physical row width of A
+    int ldb = transpose_B ? K : N;  // physical row width of B
+    int ldc = N;                    // physical row width of C
+
+    // cuBLAS sees row-major as column-major transposed.
+    // For row-major A[M×K] without transpose:
+    //   cuBLAS sees col-major A'[K×M], which is A^T in cuBLAS notation → CUBLAS_OP_T to undo
+    //   But we need op(A)=A, so cuBLAS must apply T to get A from A'.
+    // For row-major A[K×M] with transpose:
+    //   cuBLAS sees col-major A'[M×K], which is A^T in cuBLAS notation → CUBLAS_OP_N gives A^T
+    //
+    // Simpler approach: C = op(A)*op(B) in row-major
+    // ↔ C^T = op(B)^T * op(A)^T in col-major
+    // ↔ cuBLAS(C^T[N×M]) = cuBLAS_op_B * cuBLAS_op_A
+    //
+    // For cuBLAS: we call cublasDgemm with:
+    //   op_cuB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N  (for B in C^T = B^T * A^T)
+    //   op_cuA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N  (for A in C^T = B^T * A^T)
+    //   But row-major→col-major already gives transpose, so we need to invert:
+    //   cuBLAS_opB for B^T in col-major: if transpose_B=false, B is K×N row-major = N×K col-major,
+    //     we need B^T[N×K] col-major → CUBLAS_OP_T on the N×K col-major → gives K×N which is wrong.
+    //
+    // Let me use the standard row-major trick directly:
+    // C[M×N] = op(A)[M×K] * op(B)[K×N]  in row-major
+    // Equivalent to: C_col[N×M] = op(B)_col[N×K] * op(A)_col[K×M] in col-major
+    //
+    // A is stored row-major. Without transpose: shape M×K, col-major view: K×M.
+    //   op(A) in row-major = A[M×K]. In col-major: we see A'[K×M].
+    //   For op(A)_col[K×M] we need CUBLAS_OP_N on A' → gives K×M. ✓
+    //   → cuBLAS_opA = transpose_A ? CUBLAS_OP_T : CUBLAS_OP_N
+    //
+    // Similarly: cuBLAS_opB = transpose_B ? CUBLAS_OP_T : CUBLAS_OP_N
+
+    const oneapi::mkl::transpose syOpB = transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
+    const oneapi::mkl::transpose syOpA = transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans; 
 
     auto ev = oneapi::mkl::blas::column_major::gemm(
         workq,
-        transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
-        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans,
+        syOpB, syOpA,
         N, M, K,
         alpha,
         d_B, ldb,
@@ -243,19 +300,17 @@ void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d
 
     double beta = accumulate ? 1.0 : 0.0;
 
-    // 行メジャーの leading dimension
     int lda = transpose_A ? K : N;  // A: M×K or K×M（row-major）
     int ldb = transpose_B ? N : K;  // B: K×N or N×K
     int ldc = N;                    // C: M×N
 
-    oneapi::mkl::transpose opA =
-        transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
-    oneapi::mkl::transpose opB =
-        transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
+    // Row-major → col-major: C^T = op(B)^T * op(A)^T
+    const oneapi::mkl::transpose syOpA = transpose_A ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
+    const oneapi::mkl::transpose syOpB = transpose_B ? oneapi::mkl::transpose::trans : oneapi::mkl::transpose::nontrans;
 
     oneapi::mkl::blas::column_major::gemm_batch(
         workq,
-        opB, opA,
+        syOpB, syOpA,
         N, M, K,
         alpha,
         d_B, ldb, strideB,
@@ -264,8 +319,6 @@ void matrixMatrixProductBatched( const double* d_A, const double* d_B, double* d
         d_C, ldc, strideC,
         batchCount
     );
-
-    // 必要なら q.wait(); は呼び出し側で制御
 }
 
 /**
@@ -5284,8 +5337,6 @@ void computeMolucularGradients(
     streams.reserve(num_kernels);
     for(int i=0; i<num_kernels; i++) {
         streams.emplace_back(GPUHandle::syclqueue());
-//            THROW_EXCEPTION(std::string("Failed to create CUDA stream: ") +
-//                            std::string(dpct::get_error_string_dummy(err)));
     }
     
 
@@ -5307,7 +5358,7 @@ void computeMolucularGradients(
         sycl::range<1> blocks(num_blocks);
         sycl::range<1> threads(threads_per_block);
 
-        streams[stream_id].submit([&](sycl::handler& cgh){
+        streams[stream_id++].submit([&](sycl::handler& cgh){
             cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                      [=](sycl::nd_item<1> item_ct1) {
                 compute_gradients_two_electron(item_ct1,
@@ -5330,7 +5381,7 @@ void computeMolucularGradients(
             sycl::range<1> blocks(num_blocks);
             sycl::range<1> threads(threads_per_block);
 
-            streams[stream_id].submit([&](sycl::handler& cgh){
+            streams[stream_id++].submit([&](sycl::handler& cgh){
                 cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                          [=](sycl::nd_item<1> item_ct1) {
                     compute_gradients_overlap(item_ct1,
@@ -5340,7 +5391,7 @@ void computeMolucularGradients(
                 });
             });
 
-            streams[stream_id].submit([&](sycl::handler& cgh){
+            streams[stream_id++].submit([&](sycl::handler& cgh){
                 cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                          [=](sycl::nd_item<1> item_ct1) {
                     compute_gradients_kinetic(item_ct1,
@@ -5350,7 +5401,7 @@ void computeMolucularGradients(
                 });
             });
 
-            streams[stream_id].submit([&](sycl::handler& cgh){
+            streams[stream_id++].submit([&](sycl::handler& cgh){
                 cgh.parallel_for(sycl::nd_range<1>(blocks * threads, threads),
                          [=](sycl::nd_item<1> item_ct1) {
                     compute_gradients_nuclear(item_ct1,
@@ -5364,63 +5415,28 @@ void computeMolucularGradients(
     }
 
     const int NR_blocks = (num_atoms * num_atoms + threads_per_block - 1) / threads_per_block;
-    streams[stream_id].parallel_for(
+    streams[stream_id++].parallel_for(
         sycl::nd_range<1>(NR_blocks * threads_per_block, threads_per_block),
         [=](sycl::nd_item<1> item_ct1) {
             compute_nuclear_repulsion_gradient_kernel(item_ct1, d_grad_N, d_atoms,
                                                       num_atoms);
         });
 
-    // syncronize streams
-    //dpct::err0 err = DPCT_CHECK_ERROR(dev_ct1.queues_wait_and_throw());
-    /*
-    DPCT1000:245: Error handling if-stmt was detected but could not be
-    rewritten.
-    */
-    //if (err != 0) {
-        /*
-        DPCT1009:249: SYCL reports errors using exceptions and does not use
-        error codes. Please replace the "get_error_string_dummy(...)" with a
-        real error-handling function.
-        */
-        /*
-        DPCT1001:244: The statement could not be removed.
-        */
-        //std::cerr << "CUDA error: " << dpct::get_error_string_dummy(err)
-        //          << std::endl;
-        //abort();
-    //}
 
     // destory streams
-    //for(int i=0; i<num_kernels; i++) {
-    //    dev_ct1.destroy_queue(streams[i]);
-    //}
+    for(auto &s : streams) {
+        s.wait();
+    }
 
     // 微分の影響を合計
     const double alpha = 1.0;
-/*
-    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_S, 1, d_grad_total, 1);
-    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_K, 1, d_grad_total, 1);
-    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_V, 1, d_grad_total, 1);
-    cublasDaxpy(handle, 3*num_atoms, &alpha, d_grad_G, 1, d_grad_total, 1);
-
-    cublasDestroy(handle);
-*/
 
     workq.memcpy(d_grad_total, d_grad_N, sizeof(double) * 3 * num_atoms).wait();
 
-    oneapi::mkl::blas::column_major::axpy(
-    workq, 3*num_atoms, alpha, d_grad_S, 1, d_grad_total, 1);
-
-    oneapi::mkl::blas::column_major::axpy(
-    workq, 3*num_atoms, alpha, d_grad_K, 1, d_grad_total, 1);
-
-    oneapi::mkl::blas::column_major::axpy(
-    workq, 3*num_atoms, alpha, d_grad_V, 1, d_grad_total, 1);
-
-    oneapi::mkl::blas::column_major::axpy(
-    workq, 3*num_atoms, alpha, d_grad_G, 1, d_grad_total, 1);
-
+    oneapi::mkl::blas::column_major::axpy( workq, 3*num_atoms, alpha, d_grad_S, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, 3*num_atoms, alpha, d_grad_K, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, 3*num_atoms, alpha, d_grad_V, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, 3*num_atoms, alpha, d_grad_G, 1, d_grad_total, 1);
     workq.wait();
 }
 catch (sycl::exception const &exc) {
@@ -5431,9 +5447,9 @@ catch (sycl::exception const &exc) {
 
 
 // エネルギー微分を計算する関数
-void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
-                                const Atom* d_atoms, const real_t* d_density_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, 
-                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors, 
+std::vector<double> computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_infos, const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+                                const Atom* d_atoms, const real_t* d_density_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies,
+                                const PrimitiveShell* d_primitive_shells, const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,
                                 const int num_atoms, const int num_basis, const int num_electron, const bool verbose)
 {
     sycl::queue& workq = GPUHandle::syclqueue();
@@ -5443,30 +5459,9 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     const size_t gradients_bytes = n * sizeof(double);  // dx, dy, dz の計算結果を1次元配列に格納
 
     // CPU側のメモリ確保
-    real_t* W_matrix = nullptr;
-    double* grad_N = nullptr;
-    double* grad_S = nullptr;
-    double* grad_K = nullptr;
-    double* grad_V = nullptr;
-    double* grad_G = nullptr;
     double* grad_total = nullptr;
 
-    W_matrix   = sycl::malloc_host<real_t>(num_basis * num_basis, workq);
-    grad_N     = sycl::malloc_host<double>(3 * num_atoms, workq);
-    grad_S     = sycl::malloc_host<double>(3 * num_atoms, workq);
-    grad_K     = sycl::malloc_host<double>(3 * num_atoms, workq);
-    grad_V     = sycl::malloc_host<double>(3 * num_atoms, workq);
-    grad_G     = sycl::malloc_host<double>(3 * num_atoms, workq);
     grad_total = sycl::malloc_host<double>(3 * num_atoms, workq);
-/*
-    cudaMallocHost((void**)&W_matrix, wmat_bytes);
-    cudaMallocHost((void**)&grad_N, gradients_bytes);
-    cudaMallocHost((void**)&grad_S, gradients_bytes);
-    cudaMallocHost((void**)&grad_K, gradients_bytes);
-    cudaMallocHost((void**)&grad_V, gradients_bytes);
-    cudaMallocHost((void**)&grad_G, gradients_bytes);
-    cudaMallocHost((void**)&grad_total, gradients_bytes);
-*/
 
     // GPU側のメモリ確保
     real_t* d_W_matrix = nullptr;
@@ -5504,29 +5499,17 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     compute_W(d_W_matrix, d_coefficient_matrix, d_orbital_energies, num_basis, num_electron);
 
     // 各分子積分の微分を同時に計算
-    computeMolucularGradients(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G, d_W_matrix, 
-                              shell_type_infos, shell_pair_type_infos, d_atoms, 
+    computeMolucularGradients(d_grad_total, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G, d_W_matrix,
+                              shell_type_infos, shell_pair_type_infos, d_atoms,
                               d_density_matrix, d_coefficient_matrix, d_orbital_energies, d_primitive_shells,
                               d_boys_grid, d_cgto_normalization_factors, num_atoms, num_basis, num_electron, verbose);
 
                               
-    // CPU側へ結果コピー（方向別に）
-    workq.memcpy(W_matrix, d_W_matrix, wmat_bytes).wait();
-    workq.memcpy(grad_N, d_grad_N, gradients_bytes).wait();
-    workq.memcpy(grad_S, d_grad_S, gradients_bytes).wait();
-    workq.memcpy(grad_K, d_grad_K, gradients_bytes).wait();
-    workq.memcpy(grad_V, d_grad_V, gradients_bytes).wait();
-    workq.memcpy(grad_G, d_grad_G, gradients_bytes).wait();
+    // CPU側へ結果コピー
     workq.memcpy(grad_total, d_grad_total, gradients_bytes).wait();
 
-    // 結果を出力
-    // print_W_Matrix("W matrix", W_matrix, num_basis);
-    // printGradientMatrix("N-Term Gradient", grad_N, num_atoms);
-    // printGradientMatrix("S-Term Gradient", grad_S, num_atoms);
-    // printGradientMatrix("K-Term Gradient", grad_K, num_atoms);
-    // printGradientMatrix("V-Term Gradient", grad_V, num_atoms);
-    // printGradientMatrix("G-Term Gradient", grad_G, num_atoms);
-    // printGradientMatrix("Total Gradient", grad_total, num_atoms);
+    // ---- std::vector に詰め替え ----
+    std::vector<double> gradient(grad_total, grad_total + n);
 
     // GPUメモリの解放
     sycl::free(d_W_matrix, workq);
@@ -5538,18 +5521,311 @@ void computeEnergyGradient_RHF(const std::vector<ShellTypeInfo>& shell_type_info
     sycl::free(d_grad_total, workq);
 
     // CPUメモリの解放
-    sycl::free(W_matrix, workq);
-    sycl::free(grad_N, workq);
-    sycl::free(grad_S, workq);
-    sycl::free(grad_K, workq);
-    sycl::free(grad_V, workq);
-    sycl::free(grad_G, workq);
     sycl::free(grad_total, workq);
+
+    return gradient;
 }
 
 
+void computeMolucularGradients_UHF(
+    double *d_grad_total, double *d_grad_N, double *d_grad_S, double *d_grad_K,
+    double *d_grad_V, double *d_grad_G,
+    real_t *d_W_total, const real_t *d_D_total,
+    const std::vector<ShellTypeInfo> &shell_type_infos,
+    const std::vector<ShellPairTypeInfo> &shell_pair_type_infos,
+    const Atom *d_atoms,
+    const real_t *d_density_matrix_a, const real_t *d_density_matrix_b,
+    const PrimitiveShell *d_primitive_shells,
+    const real_t *d_boys_grid,
+    const real_t *d_cgto_normalization_factors,
+    const int num_atoms, const int num_basis, const bool verbose)
+{
+    sycl::queue &workq = GPUHandle::syclqueue();
+
+    const int threads_per_block = 128;
+    const int shell_type_count  = shell_type_infos.size();
+
+    // ---- 2電子部分の前処理 ----
+    std::vector<std::tuple<int,int,int,int>> shell_quadruples;
+    for (int a = 0; a < shell_type_count; ++a) {
+        for (int b = a; b < shell_type_count; ++b) {
+            for (int c = 0; c < shell_type_count; ++c) {
+                for (int d = c; d < shell_type_count; ++d) {
+                    if (a < c || (a == c && b <= d)) {
+                        shell_quadruples.emplace_back(a, b, c, d);
+                    }
+                }
+            }
+        }
+    }
+    std::reverse(shell_quadruples.begin(), shell_quadruples.end());
+
+    // ---- multi stream 相当 queue 群 ----
+    int stream_id = 0;
+    const int num_kernels =
+        static_cast<int>(shell_quadruples.size()) +
+        3 * (shell_type_count * (shell_type_count + 1) / 2) +
+        1;
+
+    std::vector<sycl::queue> streams;
+    streams.reserve(num_kernels);
+    for (int i = 0; i < num_kernels; ++i) {
+        streams.emplace_back(GPUHandle::syclqueue());
+    }
+
+    // ---- 2電子部分 (UHF: α/β 密度行列を別々に渡す) ----
+    for (const auto &quadruple : shell_quadruples) {
+        int s0, s1, s2, s3;
+        std::tie(s0, s1, s2, s3) = quadruple;
+
+        const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+        const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+        const ShellTypeInfo shell_s2 = shell_type_infos[s2];
+        const ShellTypeInfo shell_s3 = shell_type_infos[s3];
+
+        const size_t num_bra = (s0 == s1)
+            ? shell_s0.count * (shell_s0.count + 1) / 2
+            : shell_s0.count * shell_s1.count;
+        const size_t num_ket = (s2 == s3)
+            ? shell_s2.count * (shell_s2.count + 1) / 2
+            : shell_s2.count * shell_s3.count;
+        const size_t num_braket =
+            ((s0 == s2) && (s1 == s3))
+                ? num_bra * (num_bra + 1) / 2
+                : num_bra * num_ket;
+        const int num_blocks =
+            (static_cast<int>(num_braket) + threads_per_block - 1) /
+            threads_per_block;
+
+        sycl::range<1> blocks(num_blocks);
+        sycl::range<1> threads(threads_per_block);
+
+        streams[stream_id++].submit([&](sycl::handler &cgh) {
+            cgh.parallel_for(
+                sycl::nd_range<1>(blocks * threads, threads),
+                [=](sycl::nd_item<1> item_ct1) {
+                    compute_gradients_two_electron_uhf(
+                        item_ct1,
+                        d_grad_G,
+                        d_density_matrix_a,
+                        d_density_matrix_b,
+                        d_primitive_shells,
+                        d_cgto_normalization_factors,
+                        shell_s0, shell_s1, shell_s2, shell_s3,
+                        num_braket,
+                        num_basis,
+                        d_boys_grid);
+                });
+        });
+    }
+
+    // ---- 1電子部分 (RHF カーネルを D_total, W_total で再利用) ----
+    for (int s0 = shell_type_count - 1; s0 >= 0; --s0) {
+        for (int s1 = shell_type_count - 1; s1 >= s0; --s1) {
+            const ShellTypeInfo shell_s0 = shell_type_infos[s0];
+            const ShellTypeInfo shell_s1 = shell_type_infos[s1];
+
+            const int num_shell_pairs =
+                (s0 == s1)
+                    ? (shell_s0.count * (shell_s0.count + 1) / 2)
+                    : (shell_s0.count * shell_s1.count);
+            const int num_blocks =
+                (num_shell_pairs + threads_per_block - 1) /
+                threads_per_block;
+
+            sycl::range<1> blocks(num_blocks);
+            sycl::range<1> threads(threads_per_block);
+
+            // overlap (W_total)
+            streams[stream_id++].submit([&](sycl::handler &cgh) {
+                cgh.parallel_for(
+                    sycl::nd_range<1>(blocks * threads, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        compute_gradients_overlap(
+                            item_ct1,
+                            d_grad_S,
+                            d_W_total,
+                            d_primitive_shells,
+                            d_cgto_normalization_factors,
+                            num_basis,
+                            shell_s0, shell_s1,
+                            num_shell_pairs);
+                    });
+            });
+
+            // kinetic (D_total)
+            streams[stream_id++].submit([&](sycl::handler &cgh) {
+                cgh.parallel_for(
+                    sycl::nd_range<1>(blocks * threads, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        compute_gradients_kinetic(
+                            item_ct1,
+                            d_grad_K,
+                            d_D_total,
+                            d_primitive_shells,
+                            d_cgto_normalization_factors,
+                            num_basis,
+                            shell_s0, shell_s1,
+                            num_shell_pairs);
+                    });
+            });
+
+            // nuclear (D_total)
+            streams[stream_id++].submit([&](sycl::handler &cgh) {
+                cgh.parallel_for(
+                    sycl::nd_range<1>(blocks * threads, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
+                        compute_gradients_nuclear(
+                            item_ct1,
+                            d_grad_V,
+                            d_D_total,
+                            d_primitive_shells,
+                            d_cgto_normalization_factors,
+                            d_atoms,
+                            num_atoms,
+                            num_basis,
+                            shell_s0, shell_s1,
+                            num_shell_pairs,
+                            d_boys_grid);
+                    });
+            });
+        }
+    }
+
+    // ---- 核間反発 ----
+    const int NR_blocks =
+        (num_atoms * num_atoms + threads_per_block - 1) /
+        threads_per_block;
+
+    streams[stream_id++].submit([&](sycl::handler &cgh) {
+        cgh.parallel_for(
+            sycl::nd_range<1>(NR_blocks * threads_per_block,
+                              threads_per_block),
+            [=](sycl::nd_item<1> item_ct1) {
+                compute_nuclear_repulsion_gradient_kernel(
+                    item_ct1,
+                    d_grad_N,
+                    d_atoms,
+                    num_atoms);
+            });
+    });
+
+    // ---- 全 stream 完了待ち（cudaDeviceSynchronize 相当）----
+    for (auto &s : streams) {
+        s.wait();
+    }
+
+    // ---- 微分の影響を合計（cuBLAS → oneMKL）----
+    const int n      = 3 * num_atoms;
+    const double alpha = 1.0;
+
+    workq.memcpy(d_grad_total, d_grad_N, sizeof(double) * n).wait();
+
+    oneapi::mkl::blas::column_major::axpy( workq, n, alpha, d_grad_S, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, n, alpha, d_grad_K, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, n, alpha, d_grad_V, 1, d_grad_total, 1);
+    oneapi::mkl::blas::column_major::axpy( workq, n, alpha, d_grad_G, 1, d_grad_total, 1);
+
+    workq.wait();
+}
 
 
+std::vector<double> computeEnergyGradient_UHF(
+    const std::vector<ShellTypeInfo>& shell_type_infos,
+    const std::vector<ShellPairTypeInfo>& shell_pair_type_infos,
+    const Atom* d_atoms,
+    const real_t* d_density_matrix_a, const real_t* d_density_matrix_b,
+    const real_t* d_coefficient_matrix_a, const real_t* d_coefficient_matrix_b,
+    const real_t* d_orbital_energies_a, const real_t* d_orbital_energies_b,
+    const PrimitiveShell* d_primitive_shells,
+    const real_t* d_boys_grid, const real_t* d_cgto_normalization_factors,
+    const int num_atoms, const int num_basis,
+    const int num_alpha, const int num_beta,
+    const bool verbose)
+{
+    sycl::queue& workq = GPUHandle::syclqueue();
+
+    const int n = 3 * num_atoms;
+    const size_t mat_elems       = static_cast<size_t>(num_basis) * num_basis;
+    const size_t mat_bytes       = mat_elems * sizeof(real_t);
+    const size_t gradients_bytes = static_cast<size_t>(n) * sizeof(double);
+
+    // CPU pinned
+    double* grad_total = sycl::malloc_host<double>(n, workq);
+
+    // GPU
+    real_t* d_W_a      = sycl::malloc_device<real_t>(mat_elems, workq);
+    real_t* d_W_b      = sycl::malloc_device<real_t>(mat_elems, workq);
+    real_t* d_W_total  = sycl::malloc_device<real_t>(mat_elems, workq);
+    real_t* d_D_total  = sycl::malloc_device<real_t>(mat_elems, workq);
+    double* d_grad_N   = sycl::malloc_device<double>(n, workq);
+    double* d_grad_S   = sycl::malloc_device<double>(n, workq);
+    double* d_grad_K   = sycl::malloc_device<double>(n, workq);
+    double* d_grad_V   = sycl::malloc_device<double>(n, workq);
+    double* d_grad_G   = sycl::malloc_device<double>(n, workq);
+    double* d_grad_tot = sycl::malloc_device<double>(n, workq);
+
+    workq.memset(d_W_a,     0, mat_bytes);
+    workq.memset(d_W_b,     0, mat_bytes);
+    workq.memset(d_W_total, 0, mat_bytes);
+    workq.memset(d_D_total, 0, mat_bytes);
+    workq.memset(d_grad_N,  0, gradients_bytes);
+    workq.memset(d_grad_S,  0, gradients_bytes);
+    workq.memset(d_grad_K,  0, gradients_bytes);
+    workq.memset(d_grad_V,  0, gradients_bytes);
+    workq.memset(d_grad_G,  0, gradients_bytes);
+    workq.memset(d_grad_tot,0, gradients_bytes);
+    workq.wait();
+
+    // D_total = Da + Db
+    workq.memcpy(d_D_total, d_density_matrix_a, mat_bytes).wait();
+    workq.parallel_for(sycl::range<1>(mat_elems), [=](sycl::id<1> idx) {
+        auto i = idx[0];
+        d_D_total[i] += d_density_matrix_b[i];
+    });
+
+    // W_a, W_b
+    compute_W(d_W_a, d_coefficient_matrix_a, d_orbital_energies_a,
+              num_basis, 2 * num_alpha);
+    compute_W(d_W_b, d_coefficient_matrix_b, d_orbital_energies_b,
+              num_basis, 2 * num_beta);
+
+    // W_total = 0.5 * W_a + 0.5 * W_b
+    workq.memcpy(d_W_total, d_W_a, mat_bytes).wait();
+    workq.parallel_for(sycl::range<1>(mat_elems), [=](sycl::id<1> idx) {
+        auto i = idx[0];
+        d_W_total[i] = static_cast<real_t>(0.5) * d_W_total[i]
+                     + static_cast<real_t>(0.5) * d_W_b[i];
+    });
+
+    // 勾配計算
+    computeMolucularGradients_UHF(
+        d_grad_tot, d_grad_N, d_grad_S, d_grad_K, d_grad_V, d_grad_G,
+        d_W_total, d_D_total,
+        shell_type_infos, shell_pair_type_infos, d_atoms,
+        d_density_matrix_a, d_density_matrix_b,
+        d_primitive_shells, d_boys_grid, d_cgto_normalization_factors,
+        num_atoms, num_basis, verbose);
+
+    // ホストへコピー
+    workq.memcpy(grad_total, d_grad_tot, gradients_bytes).wait();
+    std::vector<double> gradient(grad_total, grad_total + n);
+
+    // free
+    sycl::free(d_W_a,     workq);
+    sycl::free(d_W_b,     workq);
+    sycl::free(d_W_total, workq);
+    sycl::free(d_D_total, workq);
+    sycl::free(d_grad_N,  workq);
+    sycl::free(d_grad_S,  workq);
+    sycl::free(d_grad_K,  workq);
+    sycl::free(d_grad_V,  workq);
+    sycl::free(d_grad_G,  workq);
+    sycl::free(d_grad_tot,workq);
+    sycl::free(grad_total,workq);
+
+    return gradient;
+}
 
 
 

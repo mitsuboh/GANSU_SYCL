@@ -94,8 +94,10 @@ ROHF::ROHF(const Molecular& molecular, const ParameterManager& parameters) :
     if(eri_method == "stored"){ // stored two-electron integrals
         set_eri_method(std::make_unique<ERI_Stored_ROHF>(*this));
     }else if(eri_method == "ri"){ // RI (Resolution of Identity) method
-        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename"); // auxiliary basis set file name
-        Molecular auxiliary_molecular(molecular.get_atoms(), auxiliary_gbsfilename); // auxiliary molecular object
+        const std::string auxiliary_gbsfilename = parameters.get<std::string>("auxiliary_gbsfilename");
+        BasisSet aux_basis = get_auxiliary_basis(molecular, auxiliary_gbsfilename);
+        Molecular auxiliary_molecular(molecular.get_atoms(), aux_basis);
+        std::cout << "[RI] Auxiliary basis: " << auxiliary_molecular.get_num_basis() << " functions" << std::endl;
         set_eri_method(std::make_unique<ERI_RI_ROHF>(*this, auxiliary_molecular));
     }else{
         THROW_EXCEPTION("Invalid eri_method: " + eri_method);
@@ -328,10 +330,10 @@ void ROHF::export_density_matrix(real_t* density_matrix_a, real_t* density_matri
  * @brief Compute the gradient of the total electronic energy
  * @details This function calculates the gradient of the total electronic energy with respect to nuclear coordinates.
  */
-void ROHF::compute_Energy_Gradient() {
+std::vector<double> ROHF::compute_Energy_Gradient() {
     PROFILE_FUNCTION();
-    // Compute the gradient of the total electronic energy
-    // gpu::computeEnergyGradient_ROHF(shell_type_infos, shell_pair_type_infos, atoms.device_ptr(), density_matrix.device_ptr(), coefficient_matrix.device_ptr(), orbital_energies.device_ptr(), primitive_shells.device_ptr(), boys_grid.device_ptr(), cgto_normalization_factors.device_ptr(), atoms.size(), num_basis, num_electrons, verbose);
+    // ROHF gradient not yet implemented
+    return {};
 }
 
 /**
