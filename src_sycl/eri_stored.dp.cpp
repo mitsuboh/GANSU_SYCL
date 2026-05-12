@@ -220,7 +220,7 @@ void extract_subblock_4d(const sycl::nd_item<1> item,
                                      int off1, int sz1,
                                      int off2, int sz2,
                                      int off3, int sz3) {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t total = (size_t)sz0 * sz1 * sz2 * sz3;
     if (gid >= total) return;
 
@@ -241,7 +241,7 @@ void extract_w_oovv_kernel(const sycl::nd_item<1> item,
                                        const double* __restrict__ eri_mo,
                                        double* __restrict__ w_oovv,
                                        int N, int nocc, int nvir) {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t total = (size_t)nocc * nocc * nvir * nvir;
     if (gid >= total) return;
 
@@ -410,7 +410,7 @@ void tensor4d_permute_kernel(const sycl::nd_item<1> item,
                                         const double* __restrict__ in,
                                         double* __restrict__ out,
                                         int N, int p0, int p1, int p2, int p3) {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t N4 = (size_t)N * N * N * N;
     if (gid >= N4) return;
 
@@ -444,7 +444,7 @@ void build_tau_kernel(const sycl::nd_item<1> item,
                                   const double* __restrict__ t1,
                                   double* __restrict__ tau,
                                   int nocc, int nvir) {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     const int vv = nvir * nvir;
     const size_t total = (size_t)nocc * nocc * vv;
     if (gid >= total) return;
@@ -462,7 +462,7 @@ void build_Wabcd_kernel(const sycl::nd_item<1> item,
                                     const double* __restrict__ ovvv_t1,
                                     double* __restrict__ Wabcd,
                                     int nvir) {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t vv = (size_t)nvir * nvir;
     size_t vvv = vv * nvir;
     size_t vv2 = vv * vv;
@@ -489,8 +489,8 @@ void compute_Fac_kernel(const sycl::nd_item<2> item,
                                     const double* __restrict__ tau,
                                     double* __restrict__ Fac,
                                     int nocc, int nvir) {
-    int a = item.get_global_id(1);   // y 次元
-    int c = item.get_global_id(0);   // x 次元
+    const size_t a = item.get_global_id(1);   // y 次元
+    const size_t c = item.get_global_id(0);   // x 次元
     if (a >= nvir || c >= nvir) return;
 
     int oo = nocc * nocc;
@@ -515,8 +515,8 @@ void compute_Fkc_kernel(const sycl::nd_item<2> item,
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 //    int k = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //            item_ct1.get_local_id(2);
-    int k = item.get_global_id(1);   // y 次元
-    int c = item.get_global_id(0);   // x 次元
+    const size_t k = item.get_global_id(1);   // y 次元
+    const size_t c = item.get_global_id(0);   // x 次元
     if (k >= nocc || c >= nvir) return;
 
     int vv = nvir * nvir;
@@ -691,7 +691,7 @@ void mp2_from_moeri_kernel(
 {
     const int vir = nao - occ;
 
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
     size_t total = (size_t)occ * occ * (size_t)vir * (size_t)vir;
 
     double contrib = 0.0;
@@ -851,7 +851,7 @@ void mp2_naive_kernel(
   int vir = num_basis - occ;
   // Flattened index over (i,j,a,b) with i,j in occ, a,b in vir (offset by occ)
   size_t total = (size_t)occ * occ * vir * vir;
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
   double contrib = 0.0;
   if(gid < total){
@@ -933,7 +933,7 @@ void mp2_moeri_kernel(
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,a,b) with i,j in occ, a,b in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * vir * vir;
 
   double contrib = 0.0;
@@ -973,7 +973,7 @@ void mp2_stored_kernel_ovov(
     const double* d_eri_mo, const double* d_eps,
     int num_occupied, int num_virtual)
 {
-    size_t gid = item.get_global_id(0);
+    const size_t gid = item.get_global_id(0);
     const size_t total = (size_t)num_occupied * num_virtual * num_occupied * num_virtual;
     size_t stride = item.get_global_range(0);
 
@@ -1276,7 +1276,7 @@ void mp3_naive_4h2p_kernel(sycl::nd_item<1> item_ct1,
   int vir = num_basis - occ;
   // Flattened index over (i,j,k,l,a,b) with i,j,k,l in occ, a,b in vir (offset by occ)
   size_t total = (size_t)occ * occ * occ * occ * vir * vir;
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
   double contrib = 0.0;
   if(gid < total){
@@ -1318,7 +1318,7 @@ void mp3_naive_2h4p_kernel(sycl::nd_item<1> item_ct1,
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,a,b,c,d) with i,j in occ, a,b,c,d in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * vir * vir * vir * vir;
 
   double contrib = 0.0;
@@ -1363,7 +1363,7 @@ void mp3_naive_3h3p_kernel(sycl::nd_item<1> item_ct1,
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,k,a,b,c) with i,j,k in occ, a,b,c in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * occ * vir * vir * vir;
 
   double contrib = 0.0;
@@ -1535,12 +1535,6 @@ real_t mp3_naive(const real_t *d_eri, const real_t *d_coefficient_matrix,
 
 
 ///////////////////////////////////////////////////////////////////////////////////// MP3 energy calculation  (from stored full MO ERI)
-/*
-DPCT1110:15: The total declared local variable size in device function
-mp3_moeri_4h2p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 SYCL_EXTERNAL
 //inline
 void mp3_moeri_4h2p_kernel(
@@ -1552,7 +1546,7 @@ void mp3_moeri_4h2p_kernel(
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,k,l,a,b) with i,j,k,l in occ, a,b in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * occ * occ * vir * vir;
 
   double contrib = 0.0;
@@ -1587,12 +1581,6 @@ void mp3_moeri_4h2p_kernel(
   }
 }
 
-/*
-DPCT1110:16: The total declared local variable size in device function
-mp3_moeri_2h4p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 SYCL_EXTERNAL
 //inline
 void mp3_moeri_2h4p_kernel(
@@ -1604,7 +1592,7 @@ void mp3_moeri_2h4p_kernel(
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,a,b,c,d) with i,j in occ, a,b,c,d in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * vir * vir * vir * vir;
 
   double contrib = 0.0;
@@ -1641,12 +1629,6 @@ void mp3_moeri_2h4p_kernel(
   }
 }
 
-/*
-DPCT1110:17: The total declared local variable size in device function
-mp3_moeri_3h3p_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 SYCL_EXTERNAL
 //inline
 void mp3_moeri_3h3p_kernel(
@@ -1658,7 +1640,7 @@ void mp3_moeri_3h3p_kernel(
 {
   int vir = num_basis - occ;
   // Flattened index over (i,j,k,a,b,c) with i,j,k in occ, a,b,c in vir (offset by occ)
-  size_t gid = (size_t)item_ct1.get_global_linear_id();
+  const size_t gid = (size_t)item_ct1.get_global_linear_id();
   size_t total = (size_t)occ * occ * occ * vir * vir * vir;
 
   double contrib = 0.0;
@@ -2666,7 +2648,7 @@ void compute_F_ae_kernel(const sycl::nd_item<1> item_ct1,
     size_t total = (size_t)num_spin_vir * num_spin_vir;
 //    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                 item_ct1.get_local_id(2);
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2723,7 +2705,7 @@ void compute_F_mi_kernel(const sycl::nd_item<1> item_ct1,
                                     real_t* __restrict__ F_mi)
 {
     size_t total = (size_t)num_spin_occ * num_spin_occ;
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2780,7 +2762,7 @@ void compute_F_me_kernel(const sycl::nd_item<1> item_ct1,
                                     real_t* F_me)
 {
     size_t total = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2823,7 +2805,7 @@ void compute_W_mnij_kernel(const sycl::nd_item<1> item_ct1,
         (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
         num_spin_occ; // 1d index is (i * num_spin_occ + j)  * num_spin_occ *
                       // num_spin_occ + k * num_spin_occ + n
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2867,12 +2849,6 @@ void compute_W_mnij_kernel(const sycl::nd_item<1> item_ct1,
     }
 }
 
-/*
-DPCT1110:22: The total declared local variable size in device function
-compute_W_abef_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void compute_W_abef_kernel(const sycl::nd_item<1> item_ct1,
                            const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
@@ -2884,7 +2860,7 @@ void compute_W_abef_kernel(const sycl::nd_item<1> item_ct1,
         (size_t)num_spin_vir * num_spin_vir * num_spin_vir *
         num_spin_vir; // 1d index is (a * num_spin_vir + b_)  * num_spin_vir *
                       // num_spin_vir + e_ * num_spin_vir + f_
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -2931,12 +2907,6 @@ void compute_W_abef_kernel(const sycl::nd_item<1> item_ct1,
     }
 }
 
-/*
-DPCT1110:23: The total declared local variable size in device function
-compute_W_mbej_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void compute_W_mbej_kernel(const sycl::nd_item<1> item_ct1,
                            const real_t *__restrict__ d_eri_mo,
                            const real_t *__restrict__ t_ia,
@@ -2948,7 +2918,7 @@ void compute_W_mbej_kernel(const sycl::nd_item<1> item_ct1,
         (size_t)num_spin_occ * num_spin_vir * num_spin_vir *
         num_spin_occ; // 1d index is (m * num_spin_vir + b_)  * num_spin_vir *
                       // num_spin_occ + e_ * num_spin_occ + j
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -3002,12 +2972,6 @@ void compute_W_mbej_kernel(const sycl::nd_item<1> item_ct1,
     }
 }
 
-/*
-DPCT1110:24: The total declared local variable size in device function
-compute_t_ia_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void compute_t_ia_kernel(const sycl::nd_item<1> item_ct1,
                          const real_t *__restrict__ d_eri_mo,
                          const real_t *__restrict__ d_eps,
@@ -3020,7 +2984,7 @@ void compute_t_ia_kernel(const sycl::nd_item<1> item_ct1,
                          real_t *__restrict__ t_ia_new)
 {
     size_t total = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -3119,12 +3083,6 @@ void compute_t_ia_kernel(const sycl::nd_item<1> item_ct1,
     }
 }
 
-/*
-DPCT1110:25: The total declared local variable size in device function
-compute_t_ijab_kernel exceeds 128 bytes and may cause high register pressure.
-Consult with your hardware vendor to find the total register size available and
-adjust the code, or use smaller sub-group size to avoid high register pressure.
-*/
 void compute_t_ijab_kernel(const sycl::nd_item<1> item_ct1,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
     const real_t *__restrict__ t_ia_old, const real_t *__restrict__ t_ijab_old,
@@ -3136,7 +3094,7 @@ void compute_t_ijab_kernel(const sycl::nd_item<1> item_ct1,
 {
     size_t total =
         (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_global_linear_id();
+    const size_t gid = (size_t)item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -3365,7 +3323,7 @@ void compute_t_amplitude_max_norm_kernel(
         const size_t total_ia   = (size_t)num_spin_occ * num_spin_vir;
         const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
 
-        size_t gid = item.get_global_linear_id();
+        const size_t gid = item.get_global_linear_id();
         size_t local_id = item.get_local_linear_id();
 
         if (local_id == 0)
@@ -3608,7 +3566,7 @@ void compute_t_amplitude_rms_kernel(
         const size_t total_ia   = (size_t)num_spin_occ * num_spin_vir;
         const size_t total_ijab = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
 
-        size_t gid = item.get_global_linear_id();
+        const size_t gid = item.get_global_linear_id();
         size_t lid = item.get_local_linear_id();
 
         real_t thread_rms = 0.0;
@@ -3645,7 +3603,7 @@ void compute_t_amplitude_rms_kernel(
     item_ct1.barrier(sycl::access::fence_space::local_space);
 
     size_t total_ia = (size_t)num_spin_occ * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+    const size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                  item_ct1.get_local_id(2);
 
     if(gid < total_ia){
@@ -3716,7 +3674,7 @@ void update_t_amplitude_damping_kernel(sycl::nd_item<1> item_ct1,
                                                 const real_t damping_factor)
 {
     size_t total = (size_t)dim1 * dim2;
-    size_t gid = item_ct1.get_global_linear_id();
+    const size_t gid = item_ct1.get_global_linear_id();
 
     if(gid < total){
         t_old[gid] = (1.0 - damping_factor) * t_old[gid] + damping_factor * t_new[gid];
@@ -3772,7 +3730,7 @@ void compute_ccsd_energy_kernel(
                                             real_t* d_ccsd_energy
                                             )
 {
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t lid = item.get_local_linear_id();
     const size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
     const int local_size = item.get_local_range(0);
@@ -3823,7 +3781,7 @@ assert(sycl::ext::oneapi::this_work_item::get_nd_item<3>().get_local_range(2) <=
        256); // ensure local_sum size is sufficient
 
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+    const size_t gid = (size_t)item_ct1.get_group(2) * item_ct1.get_local_range(2) +
                  item_ct1.get_local_id(2);
 
      // assuming max 256 threads per block
@@ -4007,7 +3965,7 @@ void initialize_ccsd_amplitudes_kernel(sycl::nd_item<1> item_ct1,
 {
     size_t total =
         (size_t)num_spin_occ * num_spin_occ * num_spin_vir * num_spin_vir;
-    size_t gid = item_ct1.get_global_linear_id();
+    const size_t gid = item_ct1.get_global_linear_id();
 
     if(gid < total){
         size_t t = gid;
@@ -4106,13 +4064,6 @@ constexpr int parity3[3] =
                                                  -1  //  -f(kji)
                                              };
 
-/*
-DPCT1110:26: The total declared local variable size in device function
-compute_ccsd_t_energy_kernel exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 void compute_ccsd_t_energy_kernel(
     sycl::nd_item<1> item,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
@@ -4125,7 +4076,7 @@ void compute_ccsd_t_energy_kernel(
 {
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
                    num_spin_vir * num_spin_vir * num_spin_vir;
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t lid = item.get_local_linear_id();
 
      // assuming max 256 threads per block
@@ -4271,13 +4222,6 @@ void compute_ccsd_t_energy_kernel(
 
 }
 
-/*
-DPCT1110:28: The total declared local variable size in device function
-compute_ccsd_t_energy_vir1_kernel exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 void compute_ccsd_t_energy_vir1_kernel(
     sycl::nd_item<1> item,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
@@ -4297,7 +4241,7 @@ void compute_ccsd_t_energy_vir1_kernel(
 {
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
                    num_spin_vir * num_spin_vir * num_spin_vir;
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t lid = item.get_local_linear_id();
 
      // assuming max 256 threads per block
@@ -4442,13 +4386,6 @@ void compute_ccsd_t_energy_vir1_kernel(
         atomic_add(d_ccsd_t_energy, block_sum);
 }
 
-/*
-DPCT1110:29: The total declared local variable size in device function
-compute_ccsd_t_energy_vir2_kernel exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 void compute_ccsd_t_energy_vir2_kernel(
     sycl::nd_item<1> item,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
@@ -4463,7 +4400,7 @@ void compute_ccsd_t_energy_vir2_kernel(
 {
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
                    num_spin_vir * num_spin_vir * num_spin_vir;
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t lid = item.get_local_linear_id();
 
     real_t thread_sum = 0;
@@ -4602,13 +4539,6 @@ void compute_ccsd_t_energy_vir2_kernel(
         atomic_add(d_ccsd_t_energy, block_sum);
 }
 
-/*
-DPCT1110:30: The total declared local variable size in device function
-compute_ccsd_t_energy_vir3_kernel exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 void compute_ccsd_t_energy_vir3_kernel(
     sycl::nd_item<1> item,
     const real_t *__restrict__ d_eri_mo, const real_t *__restrict__ d_eps,
@@ -4624,7 +4554,7 @@ void compute_ccsd_t_energy_vir3_kernel(
 {
     size_t total = (size_t)num_spin_occ * num_spin_occ * num_spin_occ *
                    num_spin_vir * num_spin_vir * num_spin_vir;
-    size_t gid = item.get_global_linear_id();
+    const size_t gid = item.get_global_linear_id();
     size_t lid = item.get_local_linear_id();
 
     real_t thread_sum = 0;

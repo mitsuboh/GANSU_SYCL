@@ -1,6 +1,7 @@
 /*
  * GANSU: GPU Accelerated Numerical Simulation Utility
  *
+ * Copyright (c) 2025-2026, Mitsuru Ikei
  * Copyright (c) 2025-2026, Hiroshima University and Fujitsu Limited
  * All rights reserved.
  *
@@ -17,17 +18,9 @@
 #define PP_TYPES 9
 
 #include <sycl/sycl.hpp>
-//#include <dpct/dpct.hpp>
 #include "int2c2e.hpp"
 
 
-/*
-DPCT1110:68: The total declared local variable size in device function
-calculate_upper_bound_factor_ss exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 double calculate_upper_bound_factor_ss(
     PrimitiveShell a, PrimitiveShell b, const double* g_boys_grid)
@@ -69,13 +62,6 @@ double calculate_upper_bound_factor_ss(
                g_boys_grid);
 }
 
-/*
-DPCT1110:69: The total declared local variable size in device function
-calculate_upper_bound_factors_sp exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void calculate_upper_bound_factors_sp(
     PrimitiveShell a, PrimitiveShell b, const double* g_boys_grid, double* upper_bound_factors)
@@ -121,13 +107,6 @@ void calculate_upper_bound_factors_sp(
                 + (-((Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*p*q/((p*p) + 2.0*p*q + (q*q))) * Boys[2]);
 }
 
-/*
-DPCT1110:70: The total declared local variable size in device function
-calculate_upper_bound_factors_pp exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void calculate_upper_bound_factors_pp(
     PrimitiveShell a, PrimitiveShell b, const double* g_boys_grid, double* upper_bound_factors)
@@ -217,13 +196,6 @@ void calculate_upper_bound_factors_pp(
                 + (((Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2])*(Rp[2]-Rq[2]))*(p*p)*(q*q)/((p*p*p*p) + 4.0*(p*p*p)*q + 6.0*(p*p)*(q*q) + 4.0*p*(q*q*q) + (q*q*q*q))) * Boys[4]);
 }
 
-/*
-DPCT1110:71: The total declared local variable size in device function
-get_schwarz_upper_bound_factors_ss exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void get_schwarz_upper_bound_factors_ss(sycl::nd_item<1> item_ct1,
     const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
@@ -234,7 +206,7 @@ void get_schwarz_upper_bound_factors_ss(sycl::nd_item<1> item_ct1,
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
 //    const int id = item_ct1.get_local_range(2) * item_ct1.get_group(2) +
 //                   item_ct1.get_local_id(2);
-    const int id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_ss) {
         return;
     }
@@ -255,13 +227,6 @@ void get_schwarz_upper_bound_factors_ss(sycl::nd_item<1> item_ct1,
     g_upper_bound_factors[id] = sycl::sqrt((double)upper_bound_factor);
 }
 
-/*
-DPCT1110:72: The total declared local variable size in device function
-get_schwarz_upper_bound_factors_sp exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void get_schwarz_upper_bound_factors_sp(sycl::nd_item<1> item_ct1, 
     const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
@@ -269,7 +234,7 @@ void get_schwarz_upper_bound_factors_sp(sycl::nd_item<1> item_ct1,
     const size_t num_ss, const size_t num_sp, const double* g_boys_grid, 
     double* g_max_upper_bound_factors)
 {
-    const int id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_sp) {
         return;
     }
@@ -298,13 +263,6 @@ void get_schwarz_upper_bound_factors_sp(sycl::nd_item<1> item_ct1,
     g_max_upper_bound_factors[num_ss + id] = sycl::sqrt(max_upper_bound_factor);
 }
 
-/*
-DPCT1110:73: The total declared local variable size in device function
-get_schwarz_upper_bound_factors_pp exceeds 128 bytes and may cause high register
-pressure. Consult with your hardware vendor to find the total register size
-available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void get_schwarz_upper_bound_factors_pp(sycl::nd_item<1> item_ct1, 
     const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
@@ -312,7 +270,7 @@ void get_schwarz_upper_bound_factors_pp(sycl::nd_item<1> item_ct1,
     const size_t num_ss_sp, const size_t num_pp, const double* g_boys_grid, 
     double* g_max_upper_bound_factors)
 {
-    const int id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_pp) {
         return;
     }
@@ -342,13 +300,6 @@ void get_schwarz_upper_bound_factors_pp(sycl::nd_item<1> item_ct1,
         sycl::sqrt(max_upper_bound_factor);
 }
 
-/*
-DPCT1110:74: The total declared local variable size in device function
-get_schwarz_upper_bound_factors_general exceeds 128 bytes and may cause high
-register pressure. Consult with your hardware vendor to find the total register
-size available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void get_schwarz_upper_bound_factors_general(sycl::nd_item<1> item_ct1, 
     const PrimitiveShell* g_shell, const real_t* g_cgto_normalization_factors, 
@@ -363,7 +314,7 @@ void get_schwarz_upper_bound_factors_general(sycl::nd_item<1> item_ct1,
     double max_upper_bound_factor = 0.0;
 
     // 通し番号indexの計算
-    const int id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_bra) return;
 
     const double size_Rmid=1377;
@@ -612,13 +563,6 @@ void get_schwarz_upper_bound_factors_general(sycl::nd_item<1> item_ct1,
     g_max_upper_bound_factors[head + id] = sycl::sqrt(max_upper_bound_factor);
 }
 
-/*
-DPCT1110:75: The total declared local variable size in device function
-get_schwarz_upper_bound_factors_aux_general exceeds 128 bytes and may cause high
-register pressure. Consult with your hardware vendor to find the total register
-size available and adjust the code, or use smaller sub-group size to avoid high
-register pressure.
-*/
 
 void get_schwarz_upper_bound_factors_aux_general(sycl::nd_item<1> item_ct1, 
     const PrimitiveShell* g_shell_aux, const real_t* g_aux_cgto_normalization_factors, 
@@ -633,7 +577,7 @@ void get_schwarz_upper_bound_factors_aux_general(sycl::nd_item<1> item_ct1,
     double max_upper_bound_factor = 0.0;
 
     // 通し番号indexの計算
-    const int id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_bra) return;
 
     const double size_Rmid=1377;

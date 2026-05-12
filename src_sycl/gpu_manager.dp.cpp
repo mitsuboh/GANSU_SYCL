@@ -468,7 +468,7 @@ void invertSqrtElements(real_t* d_vectors, const size_t size, const double thres
             [=](sycl::nd_item<1> item_ct1) {
 //                inverseSqrt_kernel(item_ct1, d_vectors, size, threshold);
 
-    size_t idx = item_ct1.get_global_id(0);
+    const size_t idx = item_ct1.get_global_id(0);
     if (idx < size) {
         double value = d_vectors[idx];
         if (value < threshold) {
@@ -506,7 +506,7 @@ void sqrtElements(real_t* d_vectors, const size_t size) {
 //              sqrt_kernel(item_ct1, d_vectors, size, 0.);
           const double threshold = 0.;
 
-    size_t idx = item_ct1.get_global_id(0);
+    const size_t idx = item_ct1.get_global_id(0);
     if (idx < size) {
         double value = d_vectors[idx];
         if (value < threshold) {
@@ -549,8 +549,8 @@ try {
         [=](sycl::nd_item<2> item_ct1) {
 //            transposeMatrixInPlace_kernel(d_matrix, size, s_src, s_dst);
 
-    const int xid = item_ct1.get_global_id(0);
-    const int yid = item_ct1.get_global_id(1);
+    const size_t xid = item_ct1.get_global_id(0);
+    const size_t yid = item_ct1.get_global_id(1);
     const int l_xid = item_ct1.get_local_id(0);
     const int l_yid = item_ct1.get_local_id(1);
     const int b_xid = item_ct1.get_group(0);
@@ -3721,7 +3721,7 @@ void densityMatrixDifferenceShellPairsKernel(sycl::nd_item<1> item,
     const sycl::int2 *g_primitive_shell_pair_indices,
     const int num_primitive_shells, const int num_basis)
 {
-    const int serial = item.get_global_linear_id();
+    const size_t serial = item.get_global_linear_id();
 
     if (serial >= (num_primitive_shells * (num_primitive_shells + 1) / 2)) {
         return;
@@ -4300,14 +4300,14 @@ void computeFockMatrix_Hash_RHF(
 
 // before = |after - before|
 inline void calcDiffMatrix(sycl::nd_item<1> item, const real_t* d_matrix_after, real_t* d_matrix_before, int size) {
-    size_t id = item.get_global_linear_id();
+    const size_t id = item.get_global_linear_id();
     if (id >= size * size) return;
 
     d_matrix_before[id] = d_matrix_after[id] - d_matrix_before[id];
 }
 
 inline void makeIdentityMatrix(sycl::nd_item<1> item_ct1, real_t* d_I, int size) {
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= size * size) return;
 
     int row = id % size;
@@ -4909,7 +4909,7 @@ void computeFockMatrix_RI_Direct_RHF(const real_t* d_density_matrix, const real_
     workq.parallel_for(
         sycl::nd_range<1>(global_size, local_size),
         [=](sycl::nd_item<1> item) {
-            size_t id = item.get_global_linear_id();
+            const size_t id = item.get_global_linear_id();
             if (id < total) d_matrix_before[id] = d_matrix_after[id] - d_matrix_before[id];
         }
     );
@@ -5937,7 +5937,7 @@ const int threads_per_block = 128;
 
 
 inline void addMatrix(sycl::nd_item<1> item_ct1, real_t* d_K, real_t* d_K_iter, int num_elements) {
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_elements) return;
 
     d_K[id] += 2.0*d_K_iter[id];

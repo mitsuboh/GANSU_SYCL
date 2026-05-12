@@ -257,7 +257,7 @@ void fci_diagonal_kernel(sycl::nd_item<1> item,
     int M, int num_alpha_det, int num_beta_det)
 {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    int idx = item.get_global_linear_id();
+    const size_t idx = item.get_global_linear_id();
     int num_det = num_alpha_det * num_beta_det;
     if (idx >= num_det) return;
 
@@ -318,7 +318,7 @@ void fci_sigma_kernel(sycl::nd_item<1> item,
                       real_t *__restrict__ d_sigma, int M, int num_alpha_det,
                       int num_beta_det)
 {
-    int idx_I = item.get_global_linear_id();
+    const size_t idx_I = item.get_global_linear_id();
     int num_det = num_alpha_det * num_beta_det;
     if (idx_I >= num_det) return;
 
@@ -465,7 +465,7 @@ void fci_preconditioner_kernel(sycl::nd_item<1> item,
     real_t* __restrict__ d_output,
     int n)
 {
-    int idx = item.get_global_linear_id();
+    const size_t idx = item.get_global_linear_id();
     if (idx >= n) return;
     real_t diag = d_diagonal[idx];
     d_output[idx] = (sycl::fabs(diag) > 1e-12) ? d_input[idx] / diag : 0.0;

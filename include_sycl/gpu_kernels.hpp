@@ -33,7 +33,7 @@ const unsigned int FULL_MASK = 0xffffffff;
 inline void inverseSqrt_kernel(sycl::nd_item<1> item_ct1, real_t *d_eigenvalues, const size_t size,
                                        const double threshold) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
-    size_t idx = item_ct1.get_global_id(0);
+    const size_t idx = item_ct1.get_global_id(0);
     if (idx < size) {
         double value = d_eigenvalues[idx];
         if (value < threshold) {
@@ -57,7 +57,7 @@ inline void inverseSqrt_kernel(sycl::nd_item<1> item_ct1, real_t *d_eigenvalues,
 inline void sqrt_kernel(sycl::nd_item<1> item_ct1, real_t *d_eigenvalues, const size_t size,
                                        const double threshold) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<1>();
-    size_t idx = item_ct1.get_global_id(0);
+    const size_t idx = item_ct1.get_global_id(0);
     if (idx < size) {
         double value = d_eigenvalues[idx];
         if (value < threshold) {
@@ -84,7 +84,7 @@ inline void computeDensityMatrix_RHF_kernel(sycl::nd_item<1> item_ct1,
      const real_t *d_coefficient_matrix, real_t *d_density_matrix,
      const int num_electron, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
 //    size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                item_ct1.get_local_id(2);
     if (id >= num_basis * num_basis) return;
@@ -114,7 +114,7 @@ inline void
                                  double *d_density_matrix, const int num_spin,
                                  const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     size_t i = id / num_basis;
@@ -144,7 +144,7 @@ inline void computeDensityMatrix_ROHF_kernel(sycl::nd_item<1> item_ct1,
      double *d_density_matrix_open, double *d_density_matrix,
      const int num_closed, const int num_open, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * num_basis) return;
 
     size_t i = id / num_basis;
@@ -180,8 +180,8 @@ inline void transposeMatrixInPlace_kernel(real_t* d_matrix, int size,
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<2>();
 
-    const int xid = item_ct1.get_global_id(0);
-    const int yid = item_ct1.get_global_id(1);
+    const size_t xid = item_ct1.get_global_id(0);
+    const size_t yid = item_ct1.get_global_id(1);
     const int l_xid = item_ct1.get_local_id(0);
     const int l_yid = item_ct1.get_local_id(1);
     const int b_xid = item_ct1.get_group(0);
@@ -473,7 +473,7 @@ inline void computeUnifiedFockMatrix_ROHF_kernel(sycl::nd_item<1> item_ct1,
     const ROHF_ParameterSet rohf_params, real_t *d_unified_fock_matrix,
     const int num_closed, const int num_open, const size_t num_basis) {
 //    auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    size_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
     if (id >= num_basis * (num_basis+1) / 2) return;
 
     const size_t2 ij = index1to2(id, true);

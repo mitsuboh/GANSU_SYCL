@@ -114,9 +114,9 @@ calc_ss_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /* (s|s) */
 inline void calc_ss_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-//        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+//        const size_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                       item_ct1.get_local_id(2);
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -159,7 +159,7 @@ calc_sp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /* (s|p) */
 inline void calc_sp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -202,7 +202,7 @@ calc_sd_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /* (s|d) */
 inline void calc_sd_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -256,7 +256,7 @@ inline void calc_sf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -298,7 +298,7 @@ calc_pp_gpu(real_t *g_result, const PrimitiveShell *g_pshell_aux,
 /* (p|p) */
 inline void calc_pp_gpu(const sycl::nd_item<1>& item_ct1, real_t* g_result, const PrimitiveShell* g_pshell_aux, const real_t* d_auxiliary_cgto_normalization_factors, ShellTypeInfo shell_s0, ShellTypeInfo shell_s1, int num_shell_pairs, const double* g_upper_bound_factors, const double schwarz_screening_threshold, int num_auxiliary_basis, const double* g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -351,7 +351,7 @@ inline void calc_pd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -406,7 +406,7 @@ inline void calc_pf_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -460,7 +460,7 @@ inline void calc_dd_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -514,7 +514,7 @@ inline void calc_df_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -567,7 +567,7 @@ inline void calc_ff_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -622,7 +622,7 @@ inline void calc_sg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 //        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                       item_ct1.get_local_id(2);
 
@@ -676,7 +676,7 @@ inline void calc_pg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -728,7 +728,7 @@ inline void calc_dg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -780,7 +780,7 @@ inline void calc_fg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 size_t2 ab = index1to2(idx, false, shell_s1.count);
@@ -832,7 +832,7 @@ inline void calc_gg_gpu(const sycl::nd_item<1>& item_ct1, real_t *g_result, cons
                  const double schwarz_screening_threshold,
                  int num_auxiliary_basis, const double *g_boys_grid) {
 //        auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
         if(idx < num_shell_pairs){
                 const size_t2 ab = index1to2(idx, true);
@@ -922,7 +922,7 @@ inline void MD_int2c2e_1T1SP(const sycl::nd_item<1>& item_ct1, real_t *g_result,
     // 通し番号indexの計算
 //    const size_t id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                      item_ct1.get_local_id(2);
-    uint64_t id = item_ct1.get_global_linear_id();
+    const size_t id = item_ct1.get_global_linear_id();
 
     if (id >= num_shell_pairs) return;
 

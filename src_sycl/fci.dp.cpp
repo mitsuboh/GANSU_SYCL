@@ -328,7 +328,7 @@ inline void propgate1e_kernel(sycl::nd_item<1> item, int nelec, int norb, int ns
     int* d_link_index,   int* occslst, int* d_link_nnorb, int nvir, int nlink,
     int* d_scratch  // size = nstring * (nvir * 2 + nvir * nelec) * sizeof(int)
 ) {
-    int id = item.get_global_linear_id();
+    const size_t id = item.get_global_linear_id();
     if (id >= nstring) return;
 
     
@@ -630,7 +630,7 @@ inline void cab_kernel(sycl::nd_item<1> item, const double* __restrict__ d_ci0,
                                                   int* d_link_nnorb
                                                 )
 {
-        int thread_id = item.get_global_linear_id();
+        const size_t thread_id = item.get_global_linear_id();
         if (thread_id >= na * bcount) {
                 return;
         }
@@ -665,7 +665,7 @@ inline void sigab_kernel(sycl::nd_item<1> item, double* __restrict__ d_ci1,
                                                         int norb, int na, int nb, int nlinka, int nlinkb, 
                                                         const int* __restrict__ d_clink_index)
 {
-        int thread_id = item.get_global_linear_id();
+        const size_t thread_id = item.get_global_linear_id();
         if (thread_id >= na * bcount) {
                 return;
         }

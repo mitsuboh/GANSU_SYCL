@@ -43,7 +43,7 @@ inline T atomic_add(T* addr, T value) noexcept
 // 重なり部分の微分の係数
 SYCL_EXTERNAL
 void compute_W_Matrix_kernel(const sycl::nd_item<1>& item_ct1, real_t* d_W_matrix, const real_t* d_coefficient_matrix, const real_t* d_orbital_energies, const int num_electron, const int num_basis){
-    size_t idx = item_ct1.get_global_linear_id();
+    const size_t idx = item_ct1.get_global_linear_id();
     if (idx >= num_basis * num_basis) return;
 
     size_t i = idx / num_basis;
@@ -61,7 +61,7 @@ void compute_W_Matrix_kernel(const sycl::nd_item<1>& item_ct1, real_t* d_W_matri
 // 核反発部分の微分を計算
 SYCL_EXTERNAL
 void compute_nuclear_repulsion_gradient_kernel(const sycl::nd_item<1>& item_ct1, double* g_grad, const Atom* g_atom, const int num_atoms){
-    size_t A = item_ct1.get_global_linear_id();
+    const size_t A = item_ct1.get_global_linear_id();
     if (A >= num_atoms) return;
     
     double grad_x = 0.0;
@@ -91,7 +91,7 @@ void compute_nuclear_repulsion_gradient_kernel(const sycl::nd_item<1>& item_ct1,
 
 // 計算結果を出力するカーネル
 void printGradientMatrix_Kernel(const sycl::nd_item<1>& item_ct1, const double* g_grad, int num_atoms){
-    int idx = item_ct1.get_global_linear_id();
+    const size_t idx = item_ct1.get_global_linear_id();
 
     if(idx != 0) return;
 

@@ -96,7 +96,7 @@ void calc_sss_gpu(sycl::nd_item<1>& item_ct1, real_t *g_result, const PrimitiveS
 //        uint64_t idx = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
 //                       item_ct1.get_local_id(2);
 //        size_t idx = item_ct1.get_global_id(2);
-        uint64_t idx = item_ct1.get_global_linear_id();
+        const size_t idx = item_ct1.get_global_linear_id();
 
 
 

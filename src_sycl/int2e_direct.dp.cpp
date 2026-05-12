@@ -37,7 +37,7 @@ void composeFockMatrix(sycl::nd_item<1> item,
     const int num_fock_replicas, bool is_first_call)
 {
     const int num_utm_elements = num_basis * (num_basis + 1) / 2;
-    const int idx_linear = item.get_global_linear_id();
+    const size_t idx_linear = item.get_global_linear_id();
     if (idx_linear >= num_utm_elements)  return; 
 
     const int nu = static_cast<int>(sycl::floor((sycl::sqrt(8.0 * idx_linear + 1.0) - 1.0) * 0.5));
@@ -1389,7 +1389,7 @@ void ssss2e_direct(real_t *g_fock_matrix,
 {
     // 2D grid and 1D block to linear thread index
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -1452,7 +1452,7 @@ void sssp2e_direct(real_t *g_fock_matrix,
 {
     // 2D grid and 1D block to linear thread index
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -1505,7 +1505,7 @@ void sspp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -1557,7 +1557,7 @@ void spsp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -1615,7 +1615,7 @@ void sppp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
@@ -1668,7 +1668,7 @@ void pppp2e_direct(real_t *g_fock_matrix,
                    const size_t head_ket, const int num_fock_replicas)
 {
     auto item_ct1 = sycl::ext::oneapi::this_work_item::get_nd_item<3>();
-    const int idx_linear = item_ct1.get_global_linear_id();
+    const size_t idx_linear = item_ct1.get_global_linear_id();
     if (idx_linear >= num_braket) {
         return;
     }
