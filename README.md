@@ -1,5 +1,11 @@
 ## Updates
 
+- May 13 2026: Ported Original commit b4a166 (dated March 14) to SYCL and compiled it using Intel oneAPI DPC++ Compiler
+2025.3. All 95 test_runner tests were executed (`-fno-sycl-id-queries-fit-in-int` is required). All 95 tests passed on t
+he CPU backend (opencl:cpu). On Intel GPUs, all tests except those failing due to insufficient device memory passed. On
+NVIDIA GPUs, the SYCL version compiled with clang++ 22.0 shows lower performance than the native CUDA version; however,
+using the SYCL CUDA backend (CUDA 12.8), 79 tests passed, excluding those that could not run due to memory limitations.
+At this stage, numerical consistency with the CUDA version is prioritized over performance.
 - Mar 16 2026: To verify the equivalence of the migrated program with the original implementation, we compared the outputs of the CUDA and SYCL versions for H, H₂, and H₂O (standard, RI, and direct). All final energies, SCF iteration counts, and convergence behaviors agreed within rounding-error levels of ~10⁻¹²–10⁻¹⁴ hartree, confirming numerical consistency across all algorithmic branches, including RI and direct methods. Additional tests on open-shell systems also showed full agreement, with no observable deviations introduced by the migration. A SYCL-specific initialization overhead was observed in performance; however, it did not affect numerical correctness. The following quantities were compared:  
     ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m UHF  
     ./HF_main -x ../xyz/monatomic/H.xyz -g ../basis/sto-3g.gbs -m ROHF  
